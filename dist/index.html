@@ -56,7 +56,7 @@
             </label>
           </div>
           <p class="settings-help">例：古園服・きょうだい1人・1人4点なら、古園服は4点までです。設定はこのブラウザに保存されます。</p>
-          <button id="settings-save" class="button button-primary" type="button">制限設定を反映</button>
+          <button id="settings-save" class="button button-primary" type="button" disabled>制限設定を反映</button>
           <div class="settings-data-actions">
             <strong>制限設定のバックアップ</strong>
             <label class="button button-secondary" for="import-settings-file">制限設定を復元</label>
@@ -96,7 +96,7 @@
                 </select>
               </label>
               <button id="backup-folder" class="button button-secondary" type="button">バックアップ先を選択</button>
-              <button id="backup-settings-save" class="button button-primary" type="button">自動バックアップ設定を保存</button>
+              <button id="backup-settings-save" class="button button-primary" type="button" disabled>自動バックアップ設定を保存</button>
               <button id="backup-now" class="button button-secondary" type="button">今すぐバックアップ</button>
             </div>
             <p id="backup-status" class="settings-help">バックアップ先を選ぶと、販売履歴を同じCSVへ上書き保存します。</p>
@@ -132,7 +132,7 @@
               <label id="product-add-new-category-field" class="is-hidden">新しいカテゴリ<input id="product-add-new-category" type="text"></label>
               <label>商品名<input id="product-add-name" type="text" required></label>
               <label>単価<input id="product-add-price" type="number" step="1" required></label>
-              <button id="product-add-submit" class="button button-primary product-add-submit" type="submit">商品を追加</button>
+              <button id="product-add-submit" class="button button-primary product-add-submit" type="submit" disabled>商品を追加</button>
             </div>
           </form>
           <div class="product-management-subheading product-management-list-heading">
@@ -226,6 +226,18 @@
         <div id="cart-list" class="cart-list"></div>
         <div class="total-row"><span>合計</span><strong id="cart-total">¥0</strong></div>
         <p id="purchase-limit" class="limit-status" aria-live="polite"></p>
+        <div id="checkout-limit-adjustment" class="checkout-limit-adjustment is-hidden" aria-live="polite">
+          <div class="checkout-limit-adjustment-copy">
+            <strong>この会計だけ人数を変更</strong>
+            <span id="checkout-limit-adjustment-note">保存済みの制限設定は変更されません。</span>
+          </div>
+          <div class="checkout-limit-stepper" aria-label="この会計だけのきょうだい人数">
+            <button type="button" data-checkout-siblings-step="-1" aria-label="この会計のきょうだい人数を1人減らす">−</button>
+            <input id="checkout-siblings" type="number" min="1" step="1" value="1" aria-label="この会計だけのきょうだい人数">
+            <button type="button" data-checkout-siblings-step="1" aria-label="この会計のきょうだい人数を1人増やす">＋</button>
+          </div>
+          <button id="checkout-limit-reset" class="text-button is-hidden" type="button">設定に戻す</button>
+        </div>
         <div class="payment-box">
           <label for="received">お預かり</label>
           <div class="received-row">

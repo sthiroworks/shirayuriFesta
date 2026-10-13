@@ -83,6 +83,7 @@
     autoBackupTimer: null,
     autoBackupInProgress: false,
     backupDirectoryHandle: null,
+    temporaryCheckoutSiblings: null,
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -136,6 +137,19 @@
     return Array.from(state.cart.entries()).map(([id, quantity]) => ({ product: findProduct(id), quantity })).filter((line) => line.product);
   }
 
+  function getCheckoutLimitSettings() {
+    if (state.temporaryCheckoutSiblings == null) return state.settings;
+    return { ...state.settings, siblings: state.temporaryCheckoutSiblings };
+  }
+
+  function setTemporaryCheckoutSiblings(value) {
+    const fallback = Math.max(1, Math.floor(Number(state.settings.siblings) || 1));
+    const next = Math.max(1, Math.floor(Number(value) || fallback));
+    state.temporaryCheckoutSiblings = next === fallback ? null : next;
+    renderCart();
+    renderCatalog();
+  }
+
   function changeQuantity(id, nextQuantity) {
     const quantity = Math.max(0, Math.floor(Number(nextQuantity) || 0));
     if (quantity === 0) state.cart.delete(id);
@@ -163,6 +177,7 @@
     state.cartProducts.clear();
     state.received = '';
     state.editingTransactionId = null;
+    state.temporaryCheckoutSiblings = null;
     if (elements.received) elements.received.value = '';
   }
 
@@ -241,6 +256,69 @@
     const isNewCategory = elements.productAddCategory.value === NEW_CATEGORY_VALUE;
     elements.productAddNewCategoryField.classList.toggle('is-hidden', !isNewCategory);
     elements.productAddNewCategory.required = isNewCategory;
+    updateProductAddActionState();
+  }
+
+  function updateProductAddActionState() {
+    if (!elements.productAddSubmit) return;
+    const categoryValue = elements.productAddCategory.value.trim();
+    const category = categoryValue === NEW_CATEGORY_VALUE
+      ? elements.productAddNewCategory.value.trim()
+      : categoryValue;
+    const rawPrice = elements.productAddPrice.value.trim();
+    const valid = Boolean(category && elements.productAddName.value.trim() && rawPrice !== '' && Number.isFinite(Number(rawPrice)));
+    elements.productAddSubmit.disabled = !valid;
+  }
+
+  function updateManagedProductSaveState(row) {
+    if (!row) return;
+    const saveButton = row.querySelector('[data-management-action="save"]');
+    const productId = saveButton && saveButton.dataset.productId;
+    const product = state.products.find((candidate) => candidate.id === productId);
+    const nameInput = row.querySelector('[data-management-field="name"]');
+    const categoryInput = row.querySelector('[data-management-field="category"]');
+    const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
+    const priceInput = row.querySelector('[data-management-field="price"]');
+    if (!saveButton || !product || !nameInput || !categoryInput || !priceInput) return;
+    const name = nameInput.value.trim();
+    const selectedCategory = categoryInput.value.trim();
+    const category = selectedCategory === NEW_CATEGORY_VALUE
+      ? (newCategoryInput ? newCategoryInput.value.trim() : '')
+      : selectedCategory;
+    const rawPrice = priceInput.value.trim();
+    const price = Number(rawPrice);
+    const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(price));
+    const changed = valid && (name !== product.name || category !== product.category || price !== Number(product.unitPrice));
+    saveButton.disabled = !changed;
+  }
+
+  function updateSettingsSaveState() {
+    if (!elements.settingsSave) return;
+    const category = elements.settingsCategory.value.trim();
+    const rawSiblings = elements.settingsSiblings.value.trim();
+    const rawPerSibling = elements.settingsPerSibling.value.trim();
+    const siblings = Number(rawSiblings);
+    const perSibling = Number(rawPerSibling);
+    const valid = Boolean(category && rawSiblings !== '' && rawPerSibling !== '' && Number.isInteger(siblings) && siblings >= 1 && Number.isInteger(perSibling) && perSibling >= 0);
+    const changed = valid && (
+      Boolean(elements.settingsEnabled.checked) !== Boolean(state.settings.enabled)
+      || category !== state.settings.category
+      || siblings !== Number(state.settings.siblings)
+      || perSibling !== Number(state.settings.perSibling)
+    );
+    elements.settingsSave.disabled = !changed;
+  }
+
+  function updateBackupSettingsSaveState() {
+    if (!elements.backupSettingsSave) return;
+    const rawInterval = elements.backupInterval.value.trim();
+    const interval = Number(rawInterval);
+    const valid = Boolean(rawInterval && Number.isInteger(interval) && interval >= 1);
+    const changed = valid && (
+      Boolean(elements.backupEnabled.checked) !== Boolean(state.settings.autoBackupEnabled)
+      || interval !== Number(state.settings.autoBackupIntervalMinutes || 5)
+    );
+    elements.backupSettingsSave.disabled = !changed;
   }
 
   function equalizeProductCardHeights() {
@@ -260,7 +338,7 @@
   function renderCatalog() {
     const categories = [];
     const grouped = new Map();
-    const purchaseLimit = Core.calculatePurchaseLimit(getCartLines(), state.settings);
+    const purchaseLimit = Core.calculatePurchaseLimit(getCartLines(), getCheckoutLimitSettings());
     elements.productColumnWidth.value = normalizeProductColumnWidth(state.settings.productColumnWidth);
     state.products.forEach((product) => {
       if (!grouped.has(product.category)) {
@@ -316,7 +394,7 @@
           </div>
         </div>
         <div class="managed-product-actions">
-            <button class="managed-product-action managed-product-save" type="button" data-management-action="save" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の商品情報を反映">商品情報を反映</button>
+            <button class="managed-product-action managed-product-save" type="button" data-management-action="save" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の商品情報を反映" disabled>商品情報を反映</button>
           <button class="managed-product-action" type="button" data-management-action="icon" data-product-id="${escapeHtml(product.id)}">画像を変更</button>
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
         </div>
@@ -324,15 +402,25 @@
   }
 
   function renderCart() {
-    const cart = Core.calculateCart(getCartLines());
-    const limit = Core.calculatePurchaseLimit(getCartLines(), state.settings);
+    const lines = getCartLines();
+    if (!lines.length) state.temporaryCheckoutSiblings = null;
+    const cart = Core.calculateCart(lines);
+    const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
+    const temporarySiblings = state.temporaryCheckoutSiblings;
     elements.cartTotal.textContent = formatYen(cart.total);
     elements.checkoutPanel.classList.toggle('is-limit-exceeded', limit.exceeded);
     elements.checkoutLimitBadge.classList.toggle('is-hidden', !limit.exceeded);
     elements.purchaseLimit.textContent = state.settings.enabled && limit.category
-      ? `${limit.exceeded ? '⚠ ' : ''}${limit.category}: ${limit.count} / ${limit.limit}点${limit.exceeded ? '（制限超過）' : ''}`
+      ? `${limit.exceeded ? '⚠ ' : ''}${limit.category}: ${limit.count} / ${limit.limit}点${limit.exceeded ? '（制限超過）' : ''}${temporarySiblings != null ? `（この会計のみ${temporarySiblings}人）` : ''}`
       : '購入制限なし';
     elements.purchaseLimit.className = `limit-status${limit.exceeded ? ' is-error' : ''}`;
+    const showLimitAdjustment = Boolean(state.settings.enabled && limit.category && (limit.exceeded || temporarySiblings != null));
+    elements.checkoutLimitAdjustment.classList.toggle('is-hidden', !showLimitAdjustment);
+    elements.checkoutSiblings.value = String(temporarySiblings == null ? state.settings.siblings : temporarySiblings);
+    elements.checkoutLimitAdjustmentNote.textContent = temporarySiblings == null
+      ? '保存済みの制限設定は変更されません。'
+      : `この会計のみ${temporarySiblings}人として計算中。保存済みの設定は変更されません。`;
+    elements.checkoutLimitReset.classList.toggle('is-hidden', temporarySiblings == null);
     elements.clearCart.textContent = state.editingTransactionId ? '変更を取消' : 'すべて取消';
     elements.confirmButton.textContent = state.editingTransactionId ? '変更を保存' : '会計を確定する';
     elements.editingBadge.classList.toggle('is-hidden', !state.editingTransactionId);
@@ -353,7 +441,8 @@
     const canCalculateChange = Number.isFinite(received) && state.received !== '';
     elements.change.textContent = canCalculateChange ? formatYen(received - cart.total) : '¥0';
     if (cart.total < 0) elements.paymentMessage.textContent = '合計がマイナスになる組み合わせは確定できません。';
-    else if (limit.exceeded) elements.paymentMessage.textContent = `${limit.category}は${limit.limit}点までです。設定から変更できます。`;
+    else if (limit.exceeded) elements.paymentMessage.textContent = `${limit.category}は${limit.limit}点までです。下の人数をこの会計だけ変更できます。`;
+    else if (temporarySiblings != null) elements.paymentMessage.textContent = `${limit.category}をこの会計だけ${temporarySiblings}人分として計算しています。`;
     else if (canCalculateChange && received < cart.total) elements.paymentMessage.textContent = `あと${formatYen(cart.total - received)}必要です。`;
     else elements.paymentMessage.textContent = '';
     elements.confirmButton.disabled = !cart.lineItems.length || cart.total < 0 || limit.exceeded || !canCalculateChange || received < cart.total;
@@ -764,6 +853,7 @@
     if (!transaction) return;
     state.cart.clear();
     state.cartProducts.clear();
+    state.temporaryCheckoutSiblings = null;
     state.editingTransactionId = transaction.id;
     (transaction.items || []).forEach((item) => {
       const product = {
@@ -818,17 +908,24 @@
   }
 
   function handleProductManagementChange(event) {
+    const row = event.target.closest('.managed-product-row');
+    if (!row) return;
     const target = event.target.closest('[data-management-field="category"]');
-    if (!target) return;
-    const row = target.closest('.managed-product-row');
     const field = row && row.querySelector('.managed-product-new-category');
     const input = row && row.querySelector('[data-management-field="new-category"]');
-    const isNewCategory = target.value === NEW_CATEGORY_VALUE;
-    if (field) field.classList.toggle('is-hidden', !isNewCategory);
-    if (input) {
-      input.required = isNewCategory;
-      if (!isNewCategory) input.value = '';
+    if (target) {
+      const isNewCategory = target.value === NEW_CATEGORY_VALUE;
+      if (field) field.classList.toggle('is-hidden', !isNewCategory);
+      if (input) {
+        input.required = isNewCategory;
+        if (!isNewCategory) input.value = '';
+      }
     }
+    updateManagedProductSaveState(row);
+  }
+
+  function handleProductManagementInput(event) {
+    updateManagedProductSaveState(event.target.closest('.managed-product-row'));
   }
 
   function saveProductDetails(productId, actionTarget) {
@@ -875,7 +972,7 @@
     const category = categoryValue === NEW_CATEGORY_VALUE ? elements.productAddNewCategory.value.trim() : categoryValue.trim();
     const name = elements.productAddName.value.trim();
     const rawPrice = elements.productAddPrice.value.trim();
-    if (!name || rawPrice === '') {
+    if (!category || !name || rawPrice === '' || !Number.isFinite(Number(rawPrice))) {
       setStatus('カテゴリ、商品名、単価を入力してください。', 'error');
       return;
     }
@@ -943,6 +1040,8 @@
     elements.settingsPerSibling.value = state.settings.perSibling;
     elements.backupEnabled.checked = Boolean(state.settings.autoBackupEnabled);
     elements.backupInterval.value = String(state.settings.autoBackupIntervalMinutes || 5);
+    updateSettingsSaveState();
+    updateBackupSettingsSaveState();
     updateBackupStatus();
   }
 
@@ -1003,6 +1102,8 @@
       siblings: Math.max(1, Math.floor(Number(elements.settingsSiblings.value) || 1)),
       perSibling: Math.max(0, Math.floor(Number(elements.settingsPerSibling.value) || 0)),
     };
+    state.temporaryCheckoutSiblings = null;
+    updateSettingsSaveState();
     persistSettings(settings, '制限設定を反映しました。', '制限設定を反映できませんでした。');
   }
 
@@ -1039,7 +1140,22 @@
       autoBackupIntervalMinutes: Math.max(1, Math.floor(Number(elements.backupInterval.value) || 5)),
       autoBackupLastAt: state.settings.autoBackupLastAt || '',
     };
+    updateBackupSettingsSaveState();
     persistSettings(settings, '自動バックアップ設定を保存しました。', '自動バックアップ設定を保存できませんでした。');
+  }
+
+  function handleCheckoutLimitAdjustment(event) {
+    const button = event.target.closest('[data-checkout-siblings-step]');
+    if (!button) return;
+    const current = state.temporaryCheckoutSiblings == null
+      ? Math.max(1, Math.floor(Number(state.settings.siblings) || 1))
+      : state.temporaryCheckoutSiblings;
+    setTemporaryCheckoutSiblings(current + Number(button.dataset.checkoutSiblingsStep));
+  }
+
+  function handleCheckoutLimitAdjustmentChange(event) {
+    if (event.target !== elements.checkoutSiblings) return;
+    setTemporaryCheckoutSiblings(event.target.value);
   }
 
   function downloadTextFile(filename, contents, type) {
@@ -1261,7 +1377,7 @@
   function confirmSale() {
     const lines = getCartLines();
     try {
-      const limit = Core.calculatePurchaseLimit(lines, state.settings);
+      const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
       if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
       const existing = state.transactions.find((transaction) => transaction.id === state.editingTransactionId);
       const transaction = Core.buildTransaction({
@@ -1474,6 +1590,10 @@
     elements.clearCart = $('#clear-cart');
     elements.purchaseLimit = $('#purchase-limit');
     elements.checkoutLimitBadge = $('#checkout-limit-badge');
+    elements.checkoutLimitAdjustment = $('#checkout-limit-adjustment');
+    elements.checkoutLimitAdjustmentNote = $('#checkout-limit-adjustment-note');
+    elements.checkoutSiblings = $('#checkout-siblings');
+    elements.checkoutLimitReset = $('#checkout-limit-reset');
     elements.editingBadge = $('#editing-badge');
     elements.adminPanel = $('#admin-panel');
     elements.adminToggle = $('#admin-toggle');
@@ -1502,6 +1622,7 @@
     elements.productAddNewCategory = $('#product-add-new-category');
     elements.productAddName = $('#product-add-name');
     elements.productAddPrice = $('#product-add-price');
+    elements.productAddSubmit = $('#product-add-submit');
     elements.productColumnWidth = $('#product-column-width');
     elements.productManagementPanel = $('#product-management-panel');
     elements.productManagementList = $('#product-management-list');
@@ -1514,7 +1635,9 @@
     elements.historyBody.addEventListener('click', handleHistoryAction);
     elements.productManagementList.addEventListener('click', handleProductManagementAction);
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
+    elements.productManagementList.addEventListener('input', handleProductManagementInput);
     elements.productAddForm.addEventListener('submit', addProduct);
+    elements.productAddForm.addEventListener('input', updateProductAddActionState);
     elements.productAddCategory.addEventListener('change', renderProductAddCategories);
     elements.productColumnWidth.addEventListener('change', saveProductColumnWidth);
     document.querySelector('.tab-list').addEventListener('click', (event) => {
@@ -1526,6 +1649,9 @@
     elements.checkoutResizeHandle.addEventListener('keydown', handleCheckoutResizeKeydown);
     root.addEventListener('resize', () => { if (state.checkoutHeight) setCheckoutHeight(state.checkoutHeight); });
     elements.paymentBox.addEventListener('click', handleReceivedQuickAction);
+    elements.checkoutLimitAdjustment.addEventListener('click', handleCheckoutLimitAdjustment);
+    elements.checkoutLimitAdjustment.addEventListener('change', handleCheckoutLimitAdjustmentChange);
+    elements.checkoutLimitReset.addEventListener('click', () => setTemporaryCheckoutSiblings(state.settings.siblings));
     $('#exact-total').addEventListener('click', () => { state.received = String(Core.calculateCart(getCartLines()).total); elements.received.value = state.received; renderCart(); });
     elements.confirmButton.addEventListener('click', confirmSale);
     elements.clearCart.addEventListener('click', () => { clearCartState(); renderAll(); });
@@ -1558,9 +1684,14 @@
       const button = event.target.closest('[data-settings-adjust]');
       if (!button) return;
       adjustLimitSetting(button.dataset.settingsAdjust, Number(button.dataset.step));
+      updateSettingsSaveState();
     });
+    elements.settingsPanel.addEventListener('input', updateSettingsSaveState);
+    elements.settingsPanel.addEventListener('change', updateSettingsSaveState);
     updateUnsupportedFeatureVisibility();
     elements.backupSettingsSave.addEventListener('click', saveBackupSettings);
+    elements.backupOptions.addEventListener('input', updateBackupSettingsSaveState);
+    elements.backupOptions.addEventListener('change', updateBackupSettingsSaveState);
     elements.backupFolder.addEventListener('click', () => { void selectBackupDirectory(); });
     elements.backupNow.addEventListener('click', () => { void backupNow(); });
     $('#clear-history').addEventListener('click', async () => {

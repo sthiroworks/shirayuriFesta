@@ -117,6 +117,8 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .managed-product-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .managed-product-action { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .74rem; font-weight: 700; }
 .managed-product-action:hover { border-color: #8ab9b2; background: var(--teal-light); }
+.admin-panel .button:disabled, .admin-panel .managed-product-action:disabled { cursor: not-allowed; opacity: .42; }
+.admin-panel .button:disabled:hover, .admin-panel .managed-product-action:disabled:hover { border-color: var(--line); background: #fff; }
 .managed-product-save { color: #fff; border-color: var(--teal); background: var(--teal); }
 .managed-product-save:hover { border-color: #2b6c70; background: #2b6c70; }
 .managed-product-delete { color: var(--danger); }
@@ -200,6 +202,14 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .total-row strong { font-size: 1.65rem; }
 .limit-status { min-height: 20px; margin: 7px 0 9px; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .limit-status.is-error { padding: 7px 9px; border: 1px solid #e6aaa5; border-radius: 8px; color: var(--danger); background: #fff0ee; }
+.checkout-limit-adjustment { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; padding: 8px 10px; border: 1px solid #e6c67e; border-radius: 8px; background: #fffaf0; }
+.checkout-limit-adjustment-copy { display: grid; gap: 2px; min-width: 0; flex: 1 1 170px; }
+.checkout-limit-adjustment-copy strong { color: #795c18; font-size: .76rem; }
+.checkout-limit-adjustment-copy span { color: var(--muted); font-size: .68rem; line-height: 1.35; }
+.checkout-limit-stepper { display: grid; grid-template-columns: 30px 48px 30px; gap: 4px; align-items: center; flex: 0 0 auto; }
+.checkout-limit-stepper button { width: 30px; height: 30px; padding: 0; border: 1px solid #d5c17e; border-radius: 6px; color: #795c18; background: #fff; font-size: 1rem; font-weight: 800; line-height: 1; }
+.checkout-limit-stepper input { width: 48px; min-width: 0; height: 30px; padding: 4px; border: 1px solid #d5c17e; border-radius: 6px; color: var(--ink); background: #fff; text-align: center; }
+.checkout-limit-reset { flex: 0 0 auto; color: #795c18; font-size: .72rem; }
 .editing-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; color: #7b5a12; background: #fff0cb; font-size: .68rem; vertical-align: middle; }
 .checkout-limit-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; color: #fff; background: var(--danger); font-size: .68rem; vertical-align: middle; }
 .text-button { border: 0; color: var(--danger); background: transparent; font-size: .8rem; font-weight: 700; }
@@ -396,6 +406,14 @@ td.money { white-space: nowrap; font-weight: 700; }
   #checkout-panel .total-row { padding: 5px 0; }
   #checkout-panel .total-row strong { font-size: 1.25rem; }
   #checkout-panel .limit-status { min-height: 14px; margin: 3px 0 5px; font-size: .72rem; }
+  #checkout-panel .checkout-limit-adjustment { gap: 5px; margin-bottom: 5px; padding: 6px 8px; }
+  #checkout-panel .checkout-limit-adjustment-copy { flex-basis: 150px; }
+  #checkout-panel .checkout-limit-adjustment-copy strong { font-size: .7rem; }
+  #checkout-panel .checkout-limit-adjustment-copy span { font-size: .62rem; }
+  #checkout-panel .checkout-limit-stepper { grid-template-columns: 26px 42px 26px; gap: 3px; }
+  #checkout-panel .checkout-limit-stepper button { width: 26px; height: 26px; font-size: .9rem; }
+  #checkout-panel .checkout-limit-stepper input { width: 42px; height: 26px; }
+  #checkout-panel .checkout-limit-reset { flex-basis: 100%; text-align: right; }
   #checkout-panel .payment-box { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; padding: 6px 8px; border-radius: 8px; }
   #checkout-panel .payment-box label { grid-column: 1; margin: 0; font-size: .72rem; }
   #checkout-panel .received-row { grid-column: 2; }
