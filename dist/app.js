@@ -974,6 +974,12 @@
       : `自動バックアップを有効にしています（${interval}分ごと）。初回出力を待機中です。`;
   }
 
+  function updateUnsupportedFeatureVisibility() {
+    const automaticBackupSupported = typeof root.showDirectoryPicker === 'function' && Boolean(root.indexedDB);
+    if (elements.backupOptions) elements.backupOptions.hidden = !automaticBackupSupported;
+    if (elements.backupStatus) elements.backupStatus.hidden = !automaticBackupSupported;
+  }
+
   function persistSettings(settings, successMessage, errorMessage) {
     try {
       Storage.saveSettings(storage, settings);
@@ -998,6 +1004,15 @@
       perSibling: Math.max(0, Math.floor(Number(elements.settingsPerSibling.value) || 0)),
     };
     persistSettings(settings, '制限設定を反映しました。', '制限設定を反映できませんでした。');
+  }
+
+  function adjustLimitSetting(settingKey, delta) {
+    const input = settingKey === 'siblings' ? elements.settingsSiblings : elements.settingsPerSibling;
+    if (!input || !Number.isFinite(delta)) return;
+    const minimum = settingKey === 'siblings' ? 1 : 0;
+    const current = Math.floor(Number(input.value));
+    const next = Math.max(minimum, (Number.isFinite(current) ? current : minimum) + delta);
+    input.value = String(next);
   }
 
   function saveProductColumnWidth() {
@@ -1477,6 +1492,7 @@
     elements.backupEnabled = $('#backup-enabled');
     elements.backupInterval = $('#backup-interval');
     elements.backupFolder = $('#backup-folder');
+    elements.backupOptions = document.querySelector('.backup-options');
     elements.backupStatus = $('#backup-status');
     elements.backupNow = $('#backup-now');
     elements.iconFile = $('#icon-file');
@@ -1538,6 +1554,12 @@
       setAdminMode(false);
     });
     elements.settingsSave.addEventListener('click', saveSettings);
+    elements.settingsPanel.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-settings-adjust]');
+      if (!button) return;
+      adjustLimitSetting(button.dataset.settingsAdjust, Number(button.dataset.step));
+    });
+    updateUnsupportedFeatureVisibility();
     elements.backupSettingsSave.addEventListener('click', saveBackupSettings);
     elements.backupFolder.addEventListener('click', () => { void selectBackupDirectory(); });
     elements.backupNow.addEventListener('click', () => { void backupNow(); });

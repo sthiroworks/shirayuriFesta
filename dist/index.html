@@ -40,8 +40,20 @@
           <div class="settings-grid">
             <label class="setting-check"><input id="settings-enabled" type="checkbox"> 制限を適用する</label>
             <label>対象カテゴリ<select id="settings-category"></select></label>
-            <label>きょうだい人数<input id="settings-siblings" type="number" min="1" step="1" value="1"></label>
-            <label>1人あたり上限<input id="settings-per-sibling" type="number" min="0" step="1" value="4"></label>
+            <label>きょうだい人数
+              <span class="setting-stepper">
+                <button type="button" data-settings-adjust="siblings" data-step="-1" aria-label="きょうだい人数を1減らす">−</button>
+                <input id="settings-siblings" type="number" min="1" step="1" value="1">
+                <button type="button" data-settings-adjust="siblings" data-step="1" aria-label="きょうだい人数を1増やす">＋</button>
+              </span>
+            </label>
+            <label>1人あたり上限
+              <span class="setting-stepper">
+                <button type="button" data-settings-adjust="perSibling" data-step="-1" aria-label="1人あたり上限を1減らす">−</button>
+                <input id="settings-per-sibling" type="number" min="0" step="1" value="4">
+                <button type="button" data-settings-adjust="perSibling" data-step="1" aria-label="1人あたり上限を1増やす">＋</button>
+              </span>
+            </label>
           </div>
           <p class="settings-help">例：古園服・きょうだい1人・1人4点なら、古園服は4点までです。設定はこのブラウザに保存されます。</p>
           <button id="settings-save" class="button button-primary" type="button">制限設定を反映</button>
