@@ -95,6 +95,14 @@
     return String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
   }
 
+  function productNameMarkup(value) {
+    return escapeHtml(value).replace(/\\n|\r?\n/g, '<br>');
+  }
+
+  function productNameText(value) {
+    return String(value == null ? '' : value).replace(/\\n|\r?\n/g, ' ').trim();
+  }
+
   function formatYen(value) {
     return `¥${Math.round(Number(value) || 0).toLocaleString('ja-JP')}`;
   }
@@ -532,18 +540,19 @@
         const stockReached = stock.limited && stockRemainingAfterCart === 0;
         const stockUnavailable = stockReached && quantity === 0;
         const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}`;
-        const accessibleLabel = stockUnavailable ? `${product.name}は在庫切れです` : (limitExceeded ? `${product.name}は購入制限を超えています` : `${product.name}を1個追加`);
+        const accessibleName = productNameText(product.name);
+        const accessibleLabel = stockUnavailable ? `${accessibleName}は在庫切れです` : (limitExceeded ? `${accessibleName}は購入制限を超えています` : `${accessibleName}を1個追加`);
         return `<article class="product-card${cardState}" data-action="add" data-product-id="${escapeHtml(product.id)}" data-product-category="${escapeHtml(product.category)}" tabindex="0" role="button" aria-disabled="${String(stockUnavailable)}" aria-label="${escapeHtml(accessibleLabel)}">
           <span class="product-background-icon" aria-hidden="true">${iconMarkup(product)}</span>
           <div class="product-title-row">
             <button class="product-add" type="button" data-action="add" data-product-id="${escapeHtml(product.id)}">
-              ${escapeHtml(product.name)}<small>${formatYen(product.unitPrice)}</small>
+              ${productNameMarkup(product.name)}<small>${formatYen(product.unitPrice)}</small>
             </button>
           </div>
-          <div class="stepper" aria-label="${escapeHtml(product.name)}の数量">
-    ${quantity > 0 ? `<button type="button" data-action="decrement" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}を1減らす">−</button>` : ""}
+          <div class="stepper" aria-label="${escapeHtml(accessibleName)}の数量">
+    ${quantity > 0 ? `<button type="button" data-action="decrement" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(accessibleName)}を1減らす">−</button>` : ""}
             <span class="quantity-badge">
-              <input type="number" min="0" step="1" value="${quantity}" data-action="quantity" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の数量">
+              <input type="number" min="0" step="1" value="${quantity}" data-action="quantity" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(accessibleName)}の数量">
               <span aria-hidden="true">個</span>
             </span>
           </div>
@@ -569,15 +578,15 @@
         <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
         <div class="managed-product-info">
           <div class="managed-product-fields">
-            <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(product.name)}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の商品名"></label>
-            <label class="managed-product-category">カテゴリ<select data-management-field="category" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}のカテゴリ">${categories.map((category) => `<option value="${escapeHtml(category)}"${category === product.category ? ' selected' : ''}>${escapeHtml(category)}</option>`).join('')}<option value="${NEW_CATEGORY_VALUE}">＋新しいカテゴリを追加</option></select></label>
-            <label class="managed-product-price">単価<input type="number" step="1" value="${escapeHtml(product.unitPrice)}" data-management-field="price" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の単価"></label>
-            <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${Math.max(0, product.stockLimit - getProductSales(product))}` : '上限なし'}</small></label>
-            <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(product.name)}の新しいカテゴリ"></label>
+          <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(product.name)}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品名"></label>
+            <label class="managed-product-category">カテゴリ<select data-management-field="category" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}のカテゴリ">${categories.map((category) => `<option value="${escapeHtml(category)}"${category === product.category ? ' selected' : ''}>${escapeHtml(category)}</option>`).join('')}<option value="${NEW_CATEGORY_VALUE}">＋新しいカテゴリを追加</option></select></label>
+            <label class="managed-product-price">単価<input type="number" step="1" value="${escapeHtml(product.unitPrice)}" data-management-field="price" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の単価"></label>
+            <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${Math.max(0, product.stockLimit - getProductSales(product))}` : '上限なし'}</small></label>
+            <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(productNameText(product.name))}の新しいカテゴリ"></label>
           </div>
         </div>
         <div class="managed-product-actions">
-            <button class="managed-product-action managed-product-save" type="button" data-management-action="save" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の商品情報を反映" disabled>商品情報を反映</button>
+            <button class="managed-product-action managed-product-save" type="button" data-management-action="save" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品情報を反映" disabled>商品情報を反映</button>
           <button class="managed-product-action" type="button" data-management-action="icon" data-product-id="${escapeHtml(product.id)}">画像を変更</button>
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
         </div>
@@ -615,7 +624,7 @@
         const id = product ? product.id : `${item.category}::${item.name}`;
         const lineLimitExceeded = limit.exceeded && item.category === limit.category;
         return `<div class="cart-line${lineLimitExceeded ? ' is-limit-exceeded' : ''}">
-          <div><div class="cart-line-name">${escapeHtml(item.name)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div>
+          <div><div class="cart-line-name">${productNameMarkup(item.name)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div>
           <div><div class="cart-line-total">${formatYen(item.subtotal)}</div><div class="stepper"><button type="button" data-action="decrement" data-product-id="${escapeHtml(id)}">−</button><input type="number" min="0" step="1" value="${item.quantity}" data-action="quantity" data-product-id="${escapeHtml(id)}"><button type="button" data-action="increment" data-product-id="${escapeHtml(id)}">＋</button></div></div>
         </div>`;
       }).join('');
@@ -848,7 +857,7 @@
       return;
     }
     const maxSales = Math.max(1, ...rows.flatMap((hour) => (hour.products || []).map((product) => Number(product.sales) || 0)));
-    const productHeaders = products.map((product) => `<th scope="col" title="${escapeHtml(product.category)}">${escapeHtml(product.name)}<small>${escapeHtml(product.category)}</small></th>`).join('');
+    const productHeaders = products.map((product) => `<th scope="col" title="${escapeHtml(product.category)}">${productNameMarkup(product.name)}<small>${escapeHtml(product.category)}</small></th>`).join('');
     elements.hourlyProductTableHead.innerHTML = `<tr><th scope="col">時間帯</th>${productHeaders}<th scope="col">合計</th></tr>`;
     elements.hourlyProductTableBody.innerHTML = rows.map((hour) => {
       const rowProducts = new Map((hour.products || []).map((product) => [productKey(product), product]));
@@ -969,7 +978,7 @@
 
   function renderHistory() {
     elements.historyBody.innerHTML = state.transactions.slice(0, 20).map((transaction) => {
-      const detail = (transaction.items || []).map((item) => `<div class="history-item"><span class="history-item-name">${escapeHtml(item.name)}</span><small class="history-item-unit-price">${escapeHtml(formatYen(item.unitPrice))}</small><strong>×${item.quantity}</strong></div>`).join('');
+      const detail = (transaction.items || []).map((item) => `<div class="history-item"><span class="history-item-name">${productNameMarkup(item.name)}</span><small class="history-item-unit-price">${escapeHtml(formatYen(item.unitPrice))}</small><strong>×${item.quantity}</strong></div>`).join('');
       return `<article class="history-card" role="listitem">
         <div class="history-card-header">
           <div class="history-time"><span>${escapeHtml(formatDate(transaction.recordedAt))}</span><small>${transaction.itemCount}点</small></div>

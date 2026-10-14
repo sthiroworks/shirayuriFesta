@@ -21,7 +21,7 @@
     ["古園服", "タイツ・レギンス", 100, "tights-leggings.png"],
     ["古園服", "お買い得品（一律）", 50, "bargain-tag.png"],
     ["チケット販売", "おまとめチケット", 500, "ticket-bundle.png"],
-    ["チケット販売", "もぐらたたき&たこ焼きビンゴ", 100, "mole-whack.png"],
+    ["チケット販売", "もぐらたたき&\nたこ焼きビンゴ", 100, "mole-whack.png"],
     ["チケット販売", "お魚釣り(お菓子)", 150, "candy-fishing.png"],
     ["チケット販売", "お宝すくい", 150, "treasure-scoop.png"],
     ["チケット販売", "先生スタンプラリー", 100, "takoyaki-bingo.png"],
@@ -29,7 +29,12 @@
     ["チケット販売", "ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png"],
     ["チケット販売", "ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png"],
     ["チケット販売", "ブレスレット作り(10:20〜)", 200, "bracelet-mint.png"],
-    ["チケット販売", "ブレスレット作り(10:40〜)", 200, "bracelet-pink-aqua.png"],
+    [
+      "チケット販売",
+      "ブレスレット作り(10:40〜)",
+      200,
+      "bracelet-pink-aqua.png"
+    ],
     ["チケット販売", "ブレスレット作り(11:00〜)", 200, "bracelet-orange.png"],
     ["チケット販売", "ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png"],
     ["他", "ありがとうチケット", -50, "thank-you-ticket.png"]
