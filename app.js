@@ -256,7 +256,7 @@
 
   function checkoutHeightBounds() {
     const minimum = 170;
-    const maximum = Math.max(minimum, Math.floor((root.innerHeight || 700) * (1 / 3)));
+    const maximum = Math.max(minimum, Math.floor((root.innerHeight || 700) * 0.9));
     return { minimum, maximum };
   }
 
