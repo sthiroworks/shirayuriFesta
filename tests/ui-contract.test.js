@@ -87,11 +87,11 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(html, /data-received-action="clear"/);
   assert.match(app, /handleReceivedQuickAction/);
   assert.match(app, /setCheckoutHeight/);
-  assert.match(app, /innerHeight \|\| 700\) \* \(2 \/ 3\)/);
+  assert.match(app, /innerHeight \|\| 700\) \* \(1 \/ 3\)/);
   assert.match(css, /#checkout-panel \{ position: fixed;/);
-  assert.match(css, /max-height: 66\.6667vh/);
+  assert.match(css, /max-height: 33\.3333vh/);
   assert.match(css, /\.checkout-resize-handle \{ display: block;/);
-  assert.match(css, /padding: 18px 12px calc\(var\(--checkout-space, 36vh\)/);
+  assert.match(css, /padding: 18px 12px calc\(var\(--checkout-space, 33\.3333dvh\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(420px, 1\.05fr\); \}/);
   assert.match(css, /\.checkout-panel \.cart-line \{ gap: 8px; padding: 8px 0;/);

@@ -47,7 +47,7 @@
   }
 
   function isProduct(value) {
-    return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && typeof value.category === 'string' && typeof value.name === 'string' && Number.isFinite(value.unitPrice));
+    return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && typeof value.category === 'string' && typeof value.name === 'string' && Number.isFinite(value.unitPrice) && (value.stockLimit === undefined || (Number.isInteger(value.stockLimit) && value.stockLimit >= 0)));
   }
 
   function isTransaction(value) {

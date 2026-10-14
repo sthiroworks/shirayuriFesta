@@ -86,7 +86,7 @@
     const products = new Map();
     const stats = { accepted: 0, rejected: 0, duplicates: 0 };
 
-    function addProduct(category, name, price, rowNumber, icon, iconPath) {
+    function addProduct(category, name, price, rowNumber, icon, iconPath, stockLimitValue, productIdValue) {
       const normalizedCategory = clean(category) || 'その他';
       const normalizedName = clean(name);
       if (!normalizedName || price === null) {
@@ -94,7 +94,16 @@
         warnings.push(`${rowNumber}行目: 商品名または単価が不正です`);
         return;
       }
+      const rawStockLimit = clean(stockLimitValue);
+      const stockLimit = rawStockLimit === '' ? null : parsePrice(rawStockLimit);
+      if (rawStockLimit !== '' && (stockLimit === null || !Number.isInteger(stockLimit) || stockLimit < 0)) {
+        stats.rejected += 1;
+        warnings.push(`${rowNumber}行目: 在庫上限は0以上の整数で入力してください`);
+        return;
+      }
       const product = makeProduct(normalizedCategory, normalizedName, price);
+      if (clean(productIdValue)) product.id = clean(productIdValue);
+      if (stockLimit !== null) product.stockLimit = stockLimit;
       const normalizedIcon = clean(icon);
       if (normalizedIcon) product.icon = normalizedIcon;
       const normalizedIconPath = clean(iconPath);
@@ -119,12 +128,14 @@
     const priceIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['単価', '金額', '価格', 'price', 'unitprice'].includes(value));
     const iconIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['アイコン', 'icon', 'emoji'].includes(value));
     const iconPathIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['アイコンパス', 'iconpath'].includes(value));
+    const stockLimitIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['在庫上限', 'stocklimit', 'stock'].includes(value));
+    const productIdIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['商品id', 'productid'].includes(value));
     const isNormalized = normalizedHeader && categoryIndex >= 0 && nameIndex >= 0 && priceIndex >= 0;
 
     if (isNormalized) {
       nonEmptyRows.slice(headerIndex + 1).forEach((row, offset) => {
         const rowNumber = headerIndex + offset + 2;
-        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '');
+        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '', stockLimitIndex >= 0 ? row[stockLimitIndex] : '', productIdIndex >= 0 ? row[productIdIndex] : '');
       });
     } else {
       const blocks = [];
@@ -156,7 +167,13 @@
     }
 
     if (products.size === 0 && rows.length > 0) warnings.push('取り込める商品がありません');
-    return { products: Array.from(products.values()), warnings, stats };
+    return {
+      products: Array.from(products.values()),
+      warnings,
+      stats,
+      hasStockLimitColumn: Boolean(normalizedHeader && stockLimitIndex >= 0),
+      hasProductIdColumn: Boolean(normalizedHeader && productIdIndex >= 0),
+    };
   }
 
   function calculateCart(lines) {
@@ -166,13 +183,15 @@
       const quantity = Math.max(0, Math.floor(Number(line.quantity) || 0));
       if (!product || quantity === 0) return;
       const subtotal = product.unitPrice * quantity;
-      lineItems.push({
+      const item = {
         category: product.category,
         name: product.name,
         unitPrice: product.unitPrice,
         quantity,
         subtotal,
-      });
+      };
+      if (typeof product.id === 'string' && product.id) item.productId = product.id;
+      lineItems.push(item);
     });
     return {
       lineItems,
@@ -354,7 +373,7 @@
   }
 
   function transactionsToCsv(transactions) {
-    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額'];
+    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID'];
     (transactions || []).forEach((transaction) => {
       const dates = formatExportDate(transaction.recordedAt);
       const items = transaction.items || [];
@@ -374,6 +393,7 @@
           item.unitPrice,
           item.quantity,
           item.subtotal,
+          item.productId || '',
         ].map(csvEscape).join(','));
       });
     });
@@ -381,7 +401,7 @@
   }
 
   function productsToCsv(products) {
-    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス'];
+    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID'];
     (products || []).forEach((product) => {
       lines.push([
         product.category,
@@ -389,6 +409,8 @@
         product.unitPrice,
         product.icon || '',
         product.iconPath || '',
+        Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : '',
+        product.id || '',
       ].map(csvEscape).join(','));
     });
     return lines.join('\r\n');
@@ -419,6 +441,7 @@
         name: clean(product.name),
         unitPrice: Number(product.unitPrice),
       };
+      if (Number.isInteger(product.stockLimit) && product.stockLimit >= 0) value.stockLimit = product.stockLimit;
       if (typeof product.icon === 'string' && product.icon) value.icon = product.icon;
       if (typeof product.iconPath === 'string' && product.iconPath) value.iconPath = product.iconPath;
       return value;
@@ -469,6 +492,13 @@
       }
       productIds.add(id);
       const product = { id, category, name, unitPrice };
+      if (source && source.stockLimit !== undefined) {
+        const stockLimit = parsePrice(source.stockLimit);
+        if (stockLimit === null || !Number.isInteger(stockLimit) || stockLimit < 0) {
+          return { products: [], settings: null, warnings: [`設定一式ファイルの商品${index + 1}件目の在庫上限が不正です。`] };
+        }
+        product.stockLimit = stockLimit;
+      }
       if (typeof (source && source.icon) === 'string' && source.icon) product.icon = source.icon;
       if (typeof (source && source.iconPath) === 'string' && source.iconPath) product.iconPath = source.iconPath;
       products.push(product);
@@ -578,8 +608,9 @@
       unitPrice: indexOf('単価'),
       quantity: indexOf('数量'),
       subtotal: indexOf('売上金額'),
+      productId: indexOf('商品id'),
     };
-    const missing = Object.entries(indexes).filter(([, index]) => index < 0).map(([name]) => name);
+    const missing = Object.entries(indexes).filter(([name, index]) => name !== 'productId' && index < 0).map(([name]) => name);
     if (missing.length) {
       return { transactions: [], warnings: [`会計履歴CSVに必要な列がありません: ${missing.join('、')}`], stats: { accepted: 0, rejected: 0 } };
     }
@@ -607,7 +638,9 @@
       if (!transactionMap.has(id)) {
         transactionMap.set(id, { id, recordedAt, total, received, change, itemCount, items: [] });
       }
-      transactionMap.get(id).items.push({ category, name, unitPrice, quantity, subtotal });
+      const item = { category, name, unitPrice, quantity, subtotal };
+      if (indexes.productId >= 0 && clean(row[indexes.productId])) item.productId = clean(row[indexes.productId]);
+      transactionMap.get(id).items.push(item);
     });
 
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };

@@ -101,7 +101,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .product-management-tool-actions { display: flex !important; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .product-management-tool-actions .button { padding: 8px 10px; font-size: .74rem; }
 .product-add-form { margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
-.product-add-grid { display: grid; grid-template-columns: 1.1fr 1.15fr 1.5fr .75fr auto; gap: 10px; align-items: end; }
+.product-add-grid { display: grid; grid-template-columns: 1.1fr 1.5fr .75fr .8fr auto; gap: 10px; align-items: end; }
 .product-add-grid label, .managed-product-price { display: grid; gap: 4px; color: var(--muted); font-size: .73rem; font-weight: 700; }
 .product-add-grid input, .product-add-grid select, .managed-product-price input { width: 100%; padding: 8px 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; }
 .product-add-submit { grid-column: -1; }
@@ -113,11 +113,12 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .managed-product-preview img { width: 100%; height: 100%; object-fit: contain; }
 .managed-product-preview .product-icon-sprite { width: 44px; height: 44px; }
 .managed-product-info { display: grid; gap: 2px; min-width: 0; }
-.managed-product-fields { display: grid; grid-template-columns: minmax(150px, 1.5fr) minmax(120px, 1fr) 112px; gap: 8px; align-items: end; min-width: 0; }
+.managed-product-fields { display: grid; grid-template-columns: minmax(145px, 1.35fr) minmax(120px, 1fr) 96px minmax(95px, .75fr); gap: 8px; align-items: end; min-width: 0; }
 .managed-product-fields label { display: grid; gap: 4px; color: var(--muted); font-size: .68rem; font-weight: 700; }
 .managed-product-new-category { grid-column: 1 / -1; }
 .managed-product-fields input, .managed-product-fields select { width: 100%; min-width: 0; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; }
 .managed-product-fields input:focus, .managed-product-fields select:focus { border-color: var(--teal); }
+.managed-stock-summary { color: var(--muted); font-size: .61rem; font-weight: 500; line-height: 1.2; white-space: nowrap; }
 .managed-product-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .managed-product-action { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .74rem; font-weight: 700; }
 .managed-product-action:hover { border-color: #8ab9b2; background: var(--teal-light); }
@@ -181,6 +182,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .product-card:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 2px; }
 .product-card.has-quantity { border-color: #4b9690; background: #e8f4f1; box-shadow: 0 0 0 2px rgba(75, 150, 144, .16); }
 .product-card.is-limit-exceeded { border-color: var(--danger); background: #fff3f1; box-shadow: 0 0 0 2px rgba(183, 74, 67, .18); }
+.product-card.is-stock-exhausted { cursor: not-allowed; }
 .product-card.is-limit-exceeded::before { content: "制限超過"; position: absolute; top: 7px; right: 7px; z-index: 2; padding: 2px 5px; border-radius: 999px; color: #fff; background: var(--danger); font-size: .62rem; font-weight: 800; pointer-events: none; }
 .product-card.is-limit-exceeded .stepper input { border-color: var(--danger); color: var(--danger); background: #fff; font-weight: 800; }
 .checkout-panel.is-limit-exceeded { border-color: var(--danger); background: #fff8f7; box-shadow: 0 0 0 3px rgba(183, 74, 67, .16), var(--shadow); }
@@ -398,7 +400,9 @@ td.money { white-space: nowrap; font-weight: 700; }
   .product-background-icon .product-icon-sprite { width: var(--product-icon-tablet-size); height: var(--product-icon-tablet-size); }
   .product-title-row { padding-right: calc(var(--product-icon-tablet-size) + 8px); }
   .managed-product-row { grid-template-columns: 40px minmax(0, 1fr); align-items: start; }
-  .managed-product-fields { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 96px; }
+  .product-add-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-add-submit { grid-column: 1 / -1; }
+  .managed-product-fields { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 90px minmax(85px, .8fr); }
   .managed-product-fields > label { min-width: 0; }
   .managed-product-actions { grid-column: 2; width: 100%; justify-content: flex-start; }
   .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -409,7 +413,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
   .status { top: calc(env(safe-area-inset-top) + 12px); right: auto; bottom: auto; left: 50%; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
-  .page-shell { padding: 18px 12px calc(var(--checkout-space, 36vh) + 18px + env(safe-area-inset-bottom)); }
+  .page-shell { padding: 18px 12px calc(var(--checkout-space, 33.3333vh) + 18px + env(safe-area-inset-bottom)); padding: 18px 12px calc(var(--checkout-space, 33.3333dvh) + 18px + env(safe-area-inset-bottom)); }
   .summary-grid { grid-template-columns: 1fr; gap: 7px; }
   .summary-cards-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
   .summary-card { min-height: 66px; padding: 8px 10px; }
@@ -421,7 +425,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .period-control select { width: auto; min-width: 132px; flex: 1; padding: 7px 8px; }
   .catalog-panel, .checkout-panel, .chart-panel, .ranking-panel, .history-panel { padding: 16px; }
   .product-list { grid-template-columns: repeat(var(--product-grid-columns-mobile), minmax(0, 1fr)); gap: 7px; }
-  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; height: var(--checkout-height, auto); max-height: 66.6667vh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
+  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; height: var(--checkout-height, 33.3333vh); height: var(--checkout-height, 33.3333dvh); max-height: 33.3333vh; max-height: 33.3333dvh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
   .checkout-resize-handle { display: block; width: 48px; height: 4px; margin: -1px auto 5px; padding: 0; border: 0; border-radius: 999px; background: var(--line); touch-action: none; }
   .checkout-resize-handle:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 3px; }
   #checkout-panel .panel-heading { margin-bottom: 4px; }
@@ -482,6 +486,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .managed-product-row { grid-template-columns: 40px minmax(0, 1fr); }
   .managed-product-fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .managed-product-name { grid-column: 1 / -1; }
+  .managed-stock-summary { white-space: normal; }
   .managed-product-actions { grid-column: 2; justify-content: flex-start; }
   .settings-grid { grid-template-columns: 1fr; }
   .backup-settings { grid-template-columns: 1fr; }
@@ -800,9 +805,9 @@ td.money { white-space: nowrap; font-weight: 700; }
     0 0 4px rgba(255, 255, 255, .96);
 }
 
-/* Pin the limit warning to the card's upper-left outside corner. */
-.product-card.is-limit-exceeded::before {
-  content: "制限超過" !important;
+/* Pin limit and stock notices to the same upper-left card corner. */
+.product-card.is-limit-exceeded::before,
+.product-card.is-stock-reached:not(.is-limit-exceeded)::before {
   position: absolute !important;
   top: -8px !important;
   right: auto !important;
@@ -823,12 +828,16 @@ td.money { white-space: nowrap; font-weight: 700; }
   white-space: nowrap;
   pointer-events: none;
 }
+.product-card.is-limit-exceeded::before { content: "制限超過" !important; }
+.product-card.is-stock-reached:not(.is-limit-exceeded)::before { content: "在庫上限" !important; }
+.product-card.is-stock-exhausted:not(.is-limit-exceeded)::before { content: "在庫切れ" !important; }
 .product-card.is-limit-exceeded::after {
   content: none !important;
 }
 
 @media (max-width: 560px) {
-  .product-card.is-limit-exceeded::before {
+  .product-card.is-limit-exceeded::before,
+  .product-card.is-stock-reached:not(.is-limit-exceeded)::before {
     top: -7px !important;
     left: 3px !important;
     padding: 1px 4px !important;
@@ -951,4 +960,6 @@ td.money { white-space: nowrap; font-weight: 700; }
     inset: 8px 7px 8px 7px;
   }
 }
+
+.product-card:not(.has-quantity) .quantity-badge { display: none; }
 

@@ -139,6 +139,69 @@
     return Array.from(state.cart.entries()).map(([id, quantity]) => ({ product: findProduct(id), quantity })).filter((line) => line.product);
   }
 
+  function readOptionalStockLimit(input) {
+    const raw = input ? input.value.trim() : '';
+    if (!raw) return { valid: true, value: null };
+    const value = Number(raw);
+    return { valid: Number.isInteger(value) && value >= 0, value };
+  }
+
+  function isTransactionItemForProduct(item, product) {
+    if (item && item.productId) return item.productId === product.id;
+    return Boolean(item && item.category === product.category && item.name === product.name);
+  }
+
+  function getProductSales(product, excludedTransactionId) {
+    return state.transactions.reduce((total, transaction) => {
+      if (transaction.id === excludedTransactionId) return total;
+      return total + (transaction.items || []).reduce((subtotal, item) => (
+        subtotal + (isTransactionItemForProduct(item, product) ? Math.max(0, Number(item.quantity) || 0) : 0)
+      ), 0);
+    }, 0);
+  }
+
+  function getEditingProductQuantity(product) {
+    const transaction = state.transactions.find((item) => item.id === state.editingTransactionId);
+    if (!transaction) return 0;
+    return (transaction.items || []).reduce((total, item) => (
+      total + (isTransactionItemForProduct(item, product) ? Math.max(0, Number(item.quantity) || 0) : 0)
+    ), 0);
+  }
+
+  function getProductStockInfo(product) {
+    const limited = Number.isInteger(product && product.stockLimit) && product.stockLimit >= 0;
+    const sold = getProductSales(product, state.editingTransactionId);
+    const editingQuantity = getEditingProductQuantity(product);
+    if (!limited) return { limited: false, sold, editingQuantity, remaining: null, maxQuantity: null };
+    const remaining = Math.max(0, product.stockLimit - sold);
+    return { limited: true, sold, editingQuantity, remaining, maxQuantity: Math.max(remaining, editingQuantity) };
+  }
+
+  function migrateLegacyTransactionProductIds() {
+    const productsByName = new Map();
+    state.products.forEach((product) => {
+      productsByName.set(`${product.category}::${product.name}`, product);
+      productsByName.set(product.id, product);
+    });
+    let changed = false;
+    state.transactions.forEach((transaction) => {
+      (transaction.items || []).forEach((item) => {
+        if (item.productId) return;
+        const product = productsByName.get(`${item.category}::${item.name}`);
+        if (!product) return;
+        item.productId = product.id;
+        changed = true;
+      });
+    });
+    if (changed) {
+      try {
+        Storage.saveTransactions(storage, state.transactions);
+      } catch (error) {
+        // In-memory migration still works for this session if persistence is unavailable.
+      }
+    }
+  }
+
   function getCheckoutLimitSettings() {
     if (state.temporaryCheckoutSiblings == null) return state.settings;
     return { ...state.settings, siblings: state.temporaryCheckoutSiblings };
@@ -153,7 +216,15 @@
   }
 
   function changeQuantity(id, nextQuantity) {
-    const quantity = Math.max(0, Math.floor(Number(nextQuantity) || 0));
+    let quantity = Math.max(0, Math.floor(Number(nextQuantity) || 0));
+    const product = findProduct(id);
+    if (product) {
+      const stock = getProductStockInfo(product);
+      if (stock.limited && quantity > stock.maxQuantity) {
+        quantity = stock.maxQuantity;
+        setStatus(`${product.name}は在庫上限（${product.stockLimit}個）に達しています。`, 'error');
+      }
+    }
     if (quantity === 0) state.cart.delete(id);
     else state.cart.set(id, quantity);
     renderCart();
@@ -185,7 +256,7 @@
 
   function checkoutHeightBounds() {
     const minimum = 170;
-    const maximum = Math.max(minimum, Math.floor((root.innerHeight || 700) * (2 / 3)));
+    const maximum = Math.max(minimum, Math.floor((root.innerHeight || 700) * (1 / 3)));
     return { minimum, maximum };
   }
 
@@ -290,7 +361,8 @@
       ? elements.productAddNewCategory.value.trim()
       : categoryValue;
     const rawPrice = elements.productAddPrice.value.trim();
-    const valid = Boolean(category && elements.productAddName.value.trim() && rawPrice !== '' && Number.isFinite(Number(rawPrice)));
+    const stockLimit = readOptionalStockLimit(elements.productAddStockLimit);
+    const valid = Boolean(category && elements.productAddName.value.trim() && rawPrice !== '' && Number.isFinite(Number(rawPrice)) && stockLimit.valid);
     elements.productAddSubmit.disabled = !valid;
   }
 
@@ -303,7 +375,8 @@
     const categoryInput = row.querySelector('[data-management-field="category"]');
     const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
     const priceInput = row.querySelector('[data-management-field="price"]');
-    if (!saveButton || !product || !nameInput || !categoryInput || !priceInput) return;
+    const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
+    if (!saveButton || !product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return;
     const name = nameInput.value.trim();
     const selectedCategory = categoryInput.value.trim();
     const category = selectedCategory === NEW_CATEGORY_VALUE
@@ -311,8 +384,10 @@
       : selectedCategory;
     const rawPrice = priceInput.value.trim();
     const price = Number(rawPrice);
-    const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(price));
-    const changed = valid && (name !== product.name || category !== product.category || price !== Number(product.unitPrice));
+    const stockLimit = readOptionalStockLimit(stockLimitInput);
+    const currentStockLimit = Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : null;
+    const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(price) && stockLimit.valid);
+    const changed = valid && (name !== product.name || category !== product.category || price !== Number(product.unitPrice) || stockLimit.value !== currentStockLimit);
     saveButton.disabled = !changed;
   }
 
@@ -360,8 +435,8 @@
   }
 
   function hasProductAddFormChanges() {
-    if (!elements.productAddName || !elements.productAddPrice || !elements.productAddNewCategory) return false;
-    return Boolean(elements.productAddName.value.trim() || elements.productAddPrice.value.trim() || elements.productAddNewCategory.value.trim());
+    if (!elements.productAddName || !elements.productAddPrice || !elements.productAddNewCategory || !elements.productAddStockLimit) return false;
+    return Boolean(elements.productAddName.value.trim() || elements.productAddPrice.value.trim() || elements.productAddNewCategory.value.trim() || elements.productAddStockLimit.value.trim());
   }
 
   function hasManagedProductChanges() {
@@ -374,13 +449,18 @@
       const categoryInput = row.querySelector('[data-management-field="category"]');
       const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
       const priceInput = row.querySelector('[data-management-field="price"]');
-      if (!product || !nameInput || !categoryInput || !priceInput) return false;
+      const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
+      if (!product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return false;
       const category = categoryInput.value === NEW_CATEGORY_VALUE
         ? (newCategoryInput ? newCategoryInput.value.trim() : '')
         : categoryInput.value.trim();
+      const stockLimit = readOptionalStockLimit(stockLimitInput);
+      const currentStockLimit = Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : null;
       return nameInput.value.trim() !== product.name
         || category !== product.category
-        || priceInput.value.trim() !== String(product.unitPrice);
+        || priceInput.value.trim() !== String(product.unitPrice)
+        || !stockLimit.valid
+        || stockLimit.value !== currentStockLimit;
     });
   }
 
@@ -445,10 +525,14 @@
       const selectedCount = categoryProducts.reduce((sum, product) => sum + (state.cart.get(product.id) || 0), 0);
       const cards = categoryProducts.map((product) => {
         const quantity = state.cart.get(product.id) || 0;
+        const stock = getProductStockInfo(product);
+        const stockRemainingAfterCart = stock.limited ? Math.max(0, stock.maxQuantity - quantity) : null;
         const limitExceeded = quantity > 0 && purchaseLimit.exceeded && product.category === purchaseLimit.category;
-        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}`;
-        const accessibleLabel = limitExceeded ? `${product.name}は購入制限を超えています` : `${product.name}を1個追加`;
-        return `<article class="product-card${cardState}" data-action="add" data-product-id="${escapeHtml(product.id)}" data-product-category="${escapeHtml(product.category)}" tabindex="0" role="button" aria-label="${escapeHtml(accessibleLabel)}">
+        const stockReached = stock.limited && stockRemainingAfterCart === 0;
+        const stockUnavailable = stockReached && quantity === 0;
+        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}`;
+        const accessibleLabel = stockUnavailable ? `${product.name}は在庫切れです` : (limitExceeded ? `${product.name}は購入制限を超えています` : `${product.name}を1個追加`);
+        return `<article class="product-card${cardState}" data-action="add" data-product-id="${escapeHtml(product.id)}" data-product-category="${escapeHtml(product.category)}" tabindex="0" role="button" aria-disabled="${String(stockUnavailable)}" aria-label="${escapeHtml(accessibleLabel)}">
           <span class="product-background-icon" aria-hidden="true">${iconMarkup(product)}</span>
           <div class="product-title-row">
             <button class="product-add" type="button" data-action="add" data-product-id="${escapeHtml(product.id)}">
@@ -487,6 +571,7 @@
             <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(product.name)}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の商品名"></label>
             <label class="managed-product-category">カテゴリ<select data-management-field="category" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}のカテゴリ">${categories.map((category) => `<option value="${escapeHtml(category)}"${category === product.category ? ' selected' : ''}>${escapeHtml(category)}</option>`).join('')}<option value="${NEW_CATEGORY_VALUE}">＋新しいカテゴリを追加</option></select></label>
             <label class="managed-product-price">単価<input type="number" step="1" value="${escapeHtml(product.unitPrice)}" data-management-field="price" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の単価"></label>
+            <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(product.name)}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${Math.max(0, product.stockLimit - getProductSales(product))}` : '上限なし'}</small></label>
             <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(product.name)}の新しいカテゴリ"></label>
           </div>
         </div>
@@ -980,11 +1065,14 @@
     state.temporaryCheckoutSiblings = null;
     state.editingTransactionId = transaction.id;
     (transaction.items || []).forEach((item) => {
+      const productId = item.productId || `${item.category}::${item.name}`;
+      const currentProduct = state.products.find((candidate) => candidate.id === productId);
       const product = {
-        id: `${item.category}::${item.name}`,
+        id: productId,
         category: item.category,
         name: item.name,
         unitPrice: item.unitPrice,
+        ...(currentProduct && Number.isInteger(currentProduct.stockLimit) && currentProduct.stockLimit >= 0 ? { stockLimit: currentProduct.stockLimit } : {}),
       };
       state.cartProducts.set(product.id, product);
       state.cart.set(product.id, item.quantity);
@@ -1059,6 +1147,7 @@
     const categoryInput = row && row.querySelector('[data-management-field="category"]');
     const newCategoryInput = row && row.querySelector('[data-management-field="new-category"]');
     const priceInput = row && row.querySelector('[data-management-field="price"]');
+    const stockLimitInput = row && row.querySelector('[data-management-field="stock-limit"]');
     const name = nameInput ? nameInput.value.trim() : '';
     const selectedCategory = categoryInput ? categoryInput.value.trim() : '';
     const category = selectedCategory === NEW_CATEGORY_VALUE
@@ -1073,12 +1162,19 @@
       setStatus('単価は数値で入力してください。', 'error');
       return;
     }
+    const stockLimit = readOptionalStockLimit(stockLimitInput);
+    if (!stockLimit.valid) {
+      setStatus('在庫上限は0以上の整数で入力してください。空欄の場合は無制限です。', 'error');
+      return;
+    }
     if (state.products.some((candidate) => candidate.id !== productId && candidate.category === category && candidate.name === name)) {
       setStatus('同じカテゴリと商品名の商品がすでにあります。', 'error');
       return;
     }
     try {
       const nextProduct = { ...product, name, category, unitPrice };
+      if (stockLimit.value === null) delete nextProduct.stockLimit;
+      else nextProduct.stockLimit = stockLimit.value;
       const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
       Storage.saveProducts(storage, nextProducts);
       state.products = nextProducts;
@@ -1096,12 +1192,18 @@
     const category = categoryValue === NEW_CATEGORY_VALUE ? elements.productAddNewCategory.value.trim() : categoryValue.trim();
     const name = elements.productAddName.value.trim();
     const rawPrice = elements.productAddPrice.value.trim();
+    const stockLimit = readOptionalStockLimit(elements.productAddStockLimit);
     if (!category || !name || rawPrice === '' || !Number.isFinite(Number(rawPrice))) {
       setStatus('カテゴリ、商品名、単価を入力してください。', 'error');
       return;
     }
+    if (!stockLimit.valid) {
+      setStatus('在庫上限は0以上の整数で入力してください。空欄の場合は無制限です。', 'error');
+      return;
+    }
     try {
       const product = Core.makeProduct(category, name, Number(rawPrice));
+      if (stockLimit.value !== null) product.stockLimit = stockLimit.value;
       if (state.products.some((candidate) => candidate.id === product.id)) {
         setStatus('同じカテゴリと商品名の商品がすでにあります。', 'error');
         return;
@@ -1111,6 +1213,7 @@
       state.products = nextProducts;
       elements.productAddName.value = '';
       elements.productAddPrice.value = '';
+      elements.productAddStockLimit.value = '';
       elements.productAddNewCategory.value = '';
       elements.productAddCategory.value = product.category;
       renderAll();
@@ -1503,6 +1606,12 @@
     try {
       const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
       if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
+      lines.forEach(({ product, quantity }) => {
+        const stock = getProductStockInfo(product);
+        if (stock.limited && quantity > stock.maxQuantity) {
+          throw new Error(`${product.name}の在庫上限（${product.stockLimit}個）を超えています`);
+        }
+      });
       const existing = state.transactions.find((transaction) => transaction.id === state.editingTransactionId);
       const transaction = Core.buildTransaction({
         id: existing ? existing.id : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -1530,12 +1639,23 @@
         return;
       }
       try {
-        const existingVisuals = new Map(state.products.map((product) => [product.id, { icon: product.icon, iconPath: product.iconPath }]));
+        const existingProducts = new Map(state.products.map((product) => [product.id, product]));
         const nextProducts = parsed.products.map((product) => {
-          if (!existingVisuals.has(product.id)) return product;
-          if (existingVisuals.get(product.id).iconPath) return { ...product, ...existingVisuals.get(product.id) };
-          if (product.icon) return product;
-          return { ...product, ...existingVisuals.get(product.id) };
+          const existing = existingProducts.get(product.id) || (!parsed.hasProductIdColumn
+            ? state.products.find((candidate) => candidate.category === product.category && candidate.name === product.name)
+            : null);
+          if (!existing) return product;
+          const merged = { ...product, id: existing.id };
+          if (existing.iconPath) {
+            merged.iconPath = existing.iconPath;
+            merged.icon = existing.icon || '';
+          } else if (!product.icon && existing.icon) {
+            merged.icon = existing.icon;
+          }
+          if (!parsed.hasStockLimitColumn && Number.isInteger(existing.stockLimit) && existing.stockLimit >= 0) {
+            merged.stockLimit = existing.stockLimit;
+          }
+          return merged;
         });
         Storage.saveProducts(storage, nextProducts);
         state.products = nextProducts;
@@ -1588,6 +1708,7 @@
       try {
         Storage.saveTransactions(storage, parsed.transactions);
         state.transactions = parsed.transactions;
+        migrateLegacyTransactionProductIds();
         clearCartState();
         renderAll();
         setStatus(`${parsed.transactions.length}件の会計履歴を復元しました。`, 'success');
@@ -1746,6 +1867,7 @@
     elements.productAddNewCategory = $('#product-add-new-category');
     elements.productAddName = $('#product-add-name');
     elements.productAddPrice = $('#product-add-price');
+    elements.productAddStockLimit = $('#product-add-stock-limit');
     elements.productAddSubmit = $('#product-add-submit');
     elements.productColumnWidth = $('#product-column-width');
     elements.categoryFilterControl = document.querySelector('.category-filter-control');
@@ -1767,6 +1889,7 @@
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
     elements.productAddForm.addEventListener('submit', addProduct);
     elements.productAddForm.addEventListener('input', updateProductAddActionState);
+    elements.productAddForm.addEventListener('change', updateProductAddActionState);
     elements.productAddCategory.addEventListener('change', renderProductAddCategories);
     elements.productColumnWidth.addEventListener('change', saveProductColumnWidth);
     document.querySelector('.tab-list').addEventListener('click', (event) => {
@@ -1843,6 +1966,7 @@
     });
     renderHourlyHourOptions();
     applyProductColumnWidth();
+    migrateLegacyTransactionProductIds();
     renderAll();
     renderSettings();
     startAutoBackupTimer();

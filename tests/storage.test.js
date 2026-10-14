@@ -22,6 +22,7 @@ test('default products contain current-day categories and ticket', () => {
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === '手提げ').iconPath, 'assets/icons/tote-bag.png');
   assert.equal(DEFAULT_PRODUCTS.every((product) => typeof product.iconPath === 'string'), true);
   assert.equal(new Set(DEFAULT_PRODUCTS.map((product) => product.iconPath)).size, DEFAULT_PRODUCTS.length);
+  assert.equal(new Set(DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売').map((product) => product.iconPath)).size, 12);
   assert.equal(DEFAULT_PRODUCTS.every((product) => fs.existsSync(path.join(__dirname, '..', product.iconPath))), true);
 });
 

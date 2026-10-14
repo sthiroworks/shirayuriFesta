@@ -112,7 +112,7 @@
               <h2 id="product-management-title">商品管理</h2>
             </div>
           </div>
-          <p class="settings-help">商品の追加・価格変更・削除と、商品アイコンの差し替えを行えます。CSVの「アイコン」列から絵文字を設定することもできます。</p>
+          <p class="settings-help">商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。CSVの「アイコン」列から絵文字も設定できます。在庫上限は全会計の累計販売数に適用され、空欄なら無制限です。</p>
           <div class="product-management-tools">
             <div>
               <strong>初期設定・一括更新</strong>
@@ -134,6 +134,7 @@
               <label id="product-add-new-category-field" class="is-hidden">新しいカテゴリ<input id="product-add-new-category" type="text"></label>
               <label>商品名<input id="product-add-name" type="text" required></label>
               <label>単価<input id="product-add-price" type="number" step="1" required></label>
+              <label>在庫上限<input id="product-add-stock-limit" type="number" min="0" step="1" placeholder="無制限"></label>
               <button id="product-add-submit" class="button button-primary product-add-submit" type="submit" disabled>商品を追加</button>
             </div>
           </form>

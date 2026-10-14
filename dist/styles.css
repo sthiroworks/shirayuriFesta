@@ -409,7 +409,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
   .status { top: calc(env(safe-area-inset-top) + 12px); right: auto; bottom: auto; left: 50%; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
-  .page-shell { padding: 18px 12px calc(var(--checkout-space, 36vh) + 18px + env(safe-area-inset-bottom)); }
+  .page-shell { padding: 18px 12px calc(var(--checkout-space, 33.3333vh) + 18px + env(safe-area-inset-bottom)); padding: 18px 12px calc(var(--checkout-space, 33.3333dvh) + 18px + env(safe-area-inset-bottom)); }
   .summary-grid { grid-template-columns: 1fr; gap: 7px; }
   .summary-cards-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
   .summary-card { min-height: 66px; padding: 8px 10px; }
@@ -421,7 +421,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .period-control select { width: auto; min-width: 132px; flex: 1; padding: 7px 8px; }
   .catalog-panel, .checkout-panel, .chart-panel, .ranking-panel, .history-panel { padding: 16px; }
   .product-list { grid-template-columns: repeat(var(--product-grid-columns-mobile), minmax(0, 1fr)); gap: 7px; }
-  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; height: var(--checkout-height, auto); max-height: 66.6667vh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
+  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; height: var(--checkout-height, 33.3333vh); height: var(--checkout-height, 33.3333dvh); max-height: 33.3333vh; max-height: 33.3333dvh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
   .checkout-resize-handle { display: block; width: 48px; height: 4px; margin: -1px auto 5px; padding: 0; border: 0; border-radius: 999px; background: var(--line); touch-action: none; }
   .checkout-resize-handle:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 3px; }
   #checkout-panel .panel-heading { margin-bottom: 4px; }
@@ -951,4 +951,6 @@ td.money { white-space: nowrap; font-weight: 700; }
     inset: 8px 7px 8px 7px;
   }
 }
+
+.product-card:not(.has-quantity) .quantity-badge { display: none; }
 
