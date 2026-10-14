@@ -18,7 +18,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scrollbar-gutter: stable; }
+html { scrollbar-gutter: stable; touch-action: manipulation; }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif; line-height: 1.5; }
 button, input, select { font: inherit; }
 button, label.button { cursor: pointer; }
