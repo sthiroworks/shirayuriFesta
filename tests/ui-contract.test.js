@@ -20,6 +20,7 @@ test('index contains the checkout and dashboard interaction contract', () => {
   }
   assert.match(html, /core\.js[\s\S]*storage\.js[\s\S]*products\.default\.js[\s\S]*app\.js/);
   assert.match(html, /id="sales-summary" class="summary-grid"/);
+  assert.match(html, /class="summary-cards-row"/);
   assert.ok(html.indexOf('id="sales-summary"') > html.indexOf('class="tab-list"'), 'summary cards share the tab area');
   assert.match(html, /<option value="week">今週<\/option>/);
   assert.match(html, /<option value="month">今月<\/option>/);
@@ -162,6 +163,8 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(css, /\.category-heading-rule/);
   assert.match(css, /\.category-filter-control/);
   assert.match(css, /\.category-filter-menu/);
+  assert.match(css, /\.period-control \{ display: flex; align-items: center; justify-content: space-between;/);
+  assert.match(css, /\.summary-cards-row \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-card\.is-limit-exceeded/);
   assert.match(css, /\.checkout-panel\.is-limit-exceeded/);
   assert.match(app, /checkoutLimitBadge/);
