@@ -165,6 +165,7 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(css, /\.category-filter-menu/);
   assert.match(css, /\.period-control \{ display: flex; align-items: center; justify-content: space-between;/);
   assert.match(css, /\.summary-cards-row \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.doesNotMatch(css, /\.summary-cards-row \{ display: contents;/);
   assert.match(css, /\.product-card\.is-limit-exceeded/);
   assert.match(css, /\.checkout-panel\.is-limit-exceeded/);
   assert.match(app, /checkoutLimitBadge/);
