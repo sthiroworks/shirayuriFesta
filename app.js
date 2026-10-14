@@ -5,9 +5,9 @@
   const Storage = root.SalesRegisterStorage;
   const fallbackProducts = root.DEFAULT_PRODUCTS || [];
   const PRODUCT_COLUMN_WIDTHS = Object.freeze({
-    compact: { desktop: 180, mobile: 125, columns: 3, icon: 70, tabletIcon: 58, phoneIcon: 44 },
-    standard: { desktop: 200, mobile: 145, columns: 2, icon: 78, tabletIcon: 66, phoneIcon: 56 },
-    wide: { desktop: 230, mobile: 280, columns: 1, icon: 88, tabletIcon: 76, phoneIcon: 72 },
+    compact: { desktop: 180, mobile: 125, desktopColumns: 5, mobileColumns: 3, icon: 70, tabletIcon: 58, phoneIcon: 44 },
+    standard: { desktop: 200, mobile: 145, desktopColumns: 4, mobileColumns: 2, icon: 78, tabletIcon: 66, phoneIcon: 56 },
+    wide: { desktop: 230, mobile: 280, desktopColumns: 3, mobileColumns: 1, icon: 88, tabletIcon: 76, phoneIcon: 72 },
   });
 
   function normalizeProductColumnWidth(value) {
@@ -111,7 +111,8 @@
     root.document.documentElement.dataset.productColumnWidth = columnWidth;
     root.document.documentElement.style.setProperty('--product-card-min-width', `${widths.desktop}px`);
     root.document.documentElement.style.setProperty('--product-card-mobile-min-width', `${widths.mobile}px`);
-    root.document.documentElement.style.setProperty('--product-grid-columns-mobile', String(widths.columns));
+    root.document.documentElement.style.setProperty('--product-grid-columns', String(widths.desktopColumns));
+    root.document.documentElement.style.setProperty('--product-grid-columns-mobile', String(widths.mobileColumns));
     root.document.documentElement.style.setProperty('--product-icon-size', `${widths.icon}px`);
     root.document.documentElement.style.setProperty('--product-icon-tablet-size', `${widths.tabletIcon}px`);
     root.document.documentElement.style.setProperty('--product-icon-phone-size', `${widths.phoneIcon}px`);
