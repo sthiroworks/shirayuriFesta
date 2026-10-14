@@ -244,10 +244,44 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .payment-box label { display: block; margin-bottom: 6px; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .received-row input { min-width: 0; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
 .received-quick-buttons { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
-.received-quick-buttons button { min-width: 0; height: 42px; width: 100%; padding: 6px 4px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
-.received-quick-buttons button[data-received-add] { flex: 1 1 0; }
+.received-quick-buttons button { min-width: 0; height: 50px; width: 100%; padding: 5px 4px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+.received-quick-buttons button[data-received-add] { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 1 1 0; padding: 3px 2px; line-height: 1.05; }
 .received-quick-buttons button[data-received-action] { flex: 0 0 auto; }
-.received-quick-buttons button[data-received-add="1000"] { padding-inline: 5px; font-size: .74rem; letter-spacing: -.01em; }
+.received-coin { display: block; flex: 0 0 24px; width: 24px; height: 24px; overflow: visible; }
+.received-coin .coin-value { font-family: Arial, Helvetica, sans-serif; font-weight: 700; paint-order: stroke; stroke: rgba(255,255,255,.48); stroke-width: .2px; text-anchor: middle; }
+.received-coin .coin-highlight-ring { fill: none; stroke: rgba(255,255,255,.72); stroke-width: .4px; }
+.received-coin .coin-detail-ring { fill: none; stroke: rgba(68,72,68,.25); stroke-width: .3px; }
+.received-coin-10 .coin-rim { fill: url(#coin10-metal); stroke: #8f552e; }
+.received-coin-10 .coin-value { fill: #704329; font-size: 9.5px; }
+.received-coin-10 .coin-inner { fill: none; stroke: #f0c39a; stroke-width: .45px; }
+.received-coin-10 .coin-evergreen { fill: none; stroke: #704329; stroke-linecap: round; stroke-linejoin: round; stroke-width: .65px; }
+.received-coin-50 .coin-rim { fill: url(#coin50-metal); stroke: #83969b; }
+.received-coin-50 .coin-value { fill: #65797e; font-size: 9.5px; }
+.received-coin-50 .coin-inner { fill: none; stroke: #f7f9f9; }
+.received-coin-50 .coin-hole { fill: #fff; stroke: #83969b; stroke-width: .8px; }
+.received-coin-50 .coin-year-dots, .received-coin-100 .coin-year-dots, .received-coin-500 .coin-year-dots { fill: none; stroke: #7f8c8c; stroke-linecap: round; stroke-width: .8px; }
+.received-coin-100 .coin-rim { fill: url(#coin100-metal); stroke: #879894; }
+.received-coin-100 .coin-value { fill: #697a75; font-size: 8.5px; }
+.received-coin-100 .coin-inner { fill: none; stroke: #fff; }
+.received-coin-500 .coin-rim { fill: url(#coin500-rim); stroke: #737a6d; }
+.received-coin-500 .coin-value { fill: #52605e; font-size: 8.2px; }
+.received-coin-500 .coin-inner { fill: url(#coin500-center); stroke: #8f9a98; }
+.received-coin-500 .coin-bamboo { fill: none; stroke: #756838; stroke-linecap: round; stroke-linejoin: round; stroke-width: .65px; }
+.received-coin-500 .coin-orange { fill: #d79b37; stroke: #806b36; stroke-width: .55px; }
+.received-coin-500 .coin-orange-leaf { fill: #78834a; stroke: #687140; stroke-width: .35px; }
+.received-banknote-1000 { flex: 0 0 24px; width: 38px; height: 24px; }
+.banknote-field { fill: #cbdde8; stroke: #66839a; stroke-width: 1px; }
+.banknote-border { fill: none; stroke: #f7fafb; stroke-width: .7px; }
+.banknote-portrait { fill: #7893a6; stroke: #f7fafb; stroke-width: .5px; }
+.banknote-hair { fill: #566f82; stroke: #f7fafb; stroke-width: .35px; }
+.banknote-face-lines { fill: none; stroke: #405d70; stroke-linecap: round; stroke-linejoin: round; stroke-width: .3px; }
+.banknote-collar { fill: #dce8ed; stroke: #66839a; stroke-width: .45px; }
+.banknote-seal { fill: #7594a8; stroke: #f7fafb; stroke-width: .6px; }
+.banknote-wave { fill: none; stroke: #6e8ea4; stroke-linecap: round; stroke-width: .85px; }
+.banknote-wave-crest { fill: none; stroke: #6e8ea4; stroke-linecap: round; stroke-linejoin: round; stroke-width: .45px; }
+.received-coin .coin-rim { stroke-width: 1px; }
+.received-coin .coin-inner { stroke-width: .7px; }
+.received-quick-buttons button[data-received-add="1000"] { padding-inline: 3px; }
 .received-quick-buttons button:hover { border-color: var(--teal); background: var(--teal-light); }
 .received-help { margin: 5px 0 0; color: var(--muted); font-size: .68rem; }
 .change-row { padding-bottom: 0; }
@@ -380,8 +414,21 @@ td.money { white-space: nowrap; font-weight: 700; }
   .checkout-panel .confirm-button { margin-top: 10px; padding: 11px; }
 }
 
-@media (max-width: 1100px) and (min-width: 561px) {
-  .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1400px) and (min-width: 561px) {
+  .admin-sections { grid-template-columns: minmax(0, 1fr); }
+  .settings-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .backup-history-actions { align-items: stretch; flex-direction: column; }
+  .backup-history-buttons { justify-content: flex-start; }
+  .managed-product-row { grid-template-columns: 48px minmax(0, 1fr); align-items: start; }
+  .managed-product-info { grid-column: 2; }
+  .managed-product-actions { grid-column: 2; width: 100%; justify-content: flex-start; }
+}
+
+@media (max-width: 1600px) and (min-width: 1401px) {
+  .backup-history-actions { align-items: stretch; flex-direction: column; }
+  .managed-product-row { grid-template-columns: 48px minmax(0, 1fr); align-items: start; }
+  .managed-product-info { grid-column: 2; }
+  .managed-product-actions { grid-column: 2; width: 100%; justify-content: flex-start; }
 }
 
 @media (max-width: 900px) {
@@ -456,7 +503,10 @@ td.money { white-space: nowrap; font-weight: 700; }
   #checkout-panel .received-row input { padding: 6px; }
   #checkout-panel .received-row .button { padding: 7px 10px; }
   #checkout-panel .received-quick-buttons { grid-column: 1 / -1; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin-top: 0; overflow: visible; }
-  #checkout-panel .received-quick-buttons button { flex: 1 1 0; min-width: 0; height: 42px; padding: 5px 2px; font-size: .72rem; }
+  #checkout-panel .received-quick-buttons button { flex: 1 1 0; min-width: 0; height: 48px; padding: 4px 2px; font-size: .72rem; }
+  #checkout-panel .received-quick-buttons button[data-received-add] { gap: 1px; padding: 2px 1px; font-size: .62rem; }
+  #checkout-panel .received-coin { flex-basis: 22px; width: 22px; height: 22px; }
+  #checkout-panel .received-banknote-1000 { flex-basis: 22px; width: 34px; height: 22px; }
   #checkout-panel .received-help { display: none; }
   #checkout-panel .change-row { grid-column: 1 / -1; padding: 3px 0 0; }
   #checkout-panel .change-row strong { font-size: 1rem; }
