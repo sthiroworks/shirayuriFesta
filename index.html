@@ -250,7 +250,7 @@
         <div class="payment-box">
           <label for="received">お預かり</label>
           <div class="received-row">
-            <input id="received" type="number" min="0" step="1" inputmode="none" placeholder="0" readonly aria-describedby="received-help">
+            <input id="received" type="number" min="0" step="1" inputmode="numeric" placeholder="0" aria-describedby="received-help">
             <button id="exact-total" class="button button-secondary" type="button">ちょうど</button>
           </div>
           <div class="received-quick-buttons" aria-label="お預かり金額をタップで加算">
@@ -261,7 +261,7 @@
             <button type="button" data-received-add="1000">＋1,000</button>
             <button type="button" data-received-action="clear">クリア</button>
           </div>
-          <p id="received-help" class="received-help">金額ボタンを押してお預かりを加算します。</p>
+          <p id="received-help" class="received-help">金額を直接入力するか、ボタンで加算できます。</p>
           <div class="change-row"><span>おつり</span><strong id="change">¥0</strong></div>
           <p id="payment-message" class="field-message"></p>
         </div>

@@ -82,7 +82,8 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(app, /root\.clearTimeout\(state\.statusTimer\)/);
   assert.match(app, /root\.setTimeout\(\(\) =>/);
   assert.match(app, /state\.received = ''/);
-  assert.match(html, /id="received"[^>]*readonly/);
+  assert.match(html, /id="received"[^>]*inputmode="numeric"/);
+  assert.doesNotMatch(html.match(/<input id="received"[^>]*>/)?.[0] ?? '', /readonly/);
   assert.match(html, /data-received-add="1000"/);
   assert.match(html, /data-received-action="clear"/);
   assert.match(app, /handleReceivedQuickAction/);
