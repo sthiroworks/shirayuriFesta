@@ -1014,3 +1014,20 @@ td.money { white-space: nowrap; font-weight: 700; }
 
 .product-card:not(.has-quantity) .quantity-badge { display: none; }
 
+.product-card button.product-add .product-card-meta {
+  display: flex;
+  align-self: flex-start;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+.product-card button.product-add .product-stock-remaining {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+}
+.product-card button.product-add .product-stock-remaining.is-empty {
+  color: var(--danger);
+}
+

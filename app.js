@@ -535,9 +535,10 @@
       const cards = categoryProducts.map((product) => {
         const quantity = state.cart.get(product.id) || 0;
         const stock = getProductStockInfo(product);
-        const stockRemainingAfterCart = stock.limited ? Math.max(0, stock.maxQuantity - quantity) : null;
+        const stockRemainingAfterCart = stock.limited ? Math.max(0, stock.remaining - quantity) : null;
+        const stockCanStillAdd = stock.limited ? Math.max(0, stock.maxQuantity - quantity) : null;
         const limitExceeded = quantity > 0 && purchaseLimit.exceeded && product.category === purchaseLimit.category;
-        const stockReached = stock.limited && stockRemainingAfterCart === 0;
+        const stockReached = stock.limited && stockCanStillAdd === 0;
         const stockUnavailable = stockReached && quantity === 0;
         const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}`;
         const accessibleName = productNameText(product.name);
@@ -546,7 +547,7 @@
           <span class="product-background-icon" aria-hidden="true">${iconMarkup(product)}</span>
           <div class="product-title-row">
             <button class="product-add" type="button" data-action="add" data-product-id="${escapeHtml(product.id)}">
-              ${productNameMarkup(product.name)}<small>${formatYen(product.unitPrice)}</small>
+              ${productNameMarkup(product.name)}<small class="product-card-meta"><span>${formatYen(product.unitPrice)}</span>${stock.limited ? `<span class="product-stock-remaining${stockRemainingAfterCart === 0 ? ' is-empty' : ''}">残り ${stockRemainingAfterCart}</span>` : ''}</small>
             </button>
           </div>
           <div class="stepper" aria-label="${escapeHtml(accessibleName)}の数量">
