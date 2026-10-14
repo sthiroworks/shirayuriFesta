@@ -107,11 +107,12 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   const app = read('app.js');
   const core = read('core.js');
   const css = read('styles.css');
-  for (const id of ['settings-panel', 'settings-enabled', 'settings-siblings', 'settings-per-sibling', 'settings-category', 'product-column-width', 'backup-settings-save', 'icon-file', 'product-add-form', 'product-add-category', 'product-add-new-category-field', 'product-add-new-category', 'product-add-name', 'product-add-price']) {
+  for (const id of ['settings-panel', 'settings-enabled', 'settings-siblings', 'settings-per-sibling', 'settings-category', 'product-column-width', 'category-filter-options', 'category-filter-summary-count', 'backup-settings-save', 'icon-file', 'product-add-form', 'product-add-category', 'product-add-new-category-field', 'product-add-new-category', 'product-add-name', 'product-add-price']) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
   }
   assert.match(html, /<select id="settings-category"><\/select>/);
   assert.match(html, /class="catalog-panel-actions"/);
+  assert.match(html, /class="category-filter-control"/);
   assert.match(html, /<select id="product-add-category" required><\/select>/);
   assert.ok(html.indexOf('class="settings-data-actions"') < html.indexOf('class="backup-settings"'), 'restriction file actions stay with restriction settings');
   assert.match(app, /data-history-action/);
@@ -144,12 +145,23 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /readAsDataURL/);
   assert.match(app, /loadSettings/);
   assert.match(app, /productColumnWidth/);
+  assert.match(app, /hiddenCategories/);
+  assert.match(app, /data-category-filter/);
+  assert.match(app, /handleCategoryFilterChange/);
+  assert.match(app, /handleCategoryFilterOutsideClick/);
   assert.match(core, /商品列幅/);
   assert.match(app, /autoBackupIntervalMinutes: 5/);
   assert.match(core, /autoBackupIntervalMinutes \|\| 5/);
   assert.match(app, /calculatePurchaseLimit/);
   assert.match(app, /has-quantity/);
   assert.match(app, /is-limit-exceeded/);
+  assert.match(app, /category-selection-count/);
+  assert.match(app, /category-heading-rule/);
+  assert.match(app, /selectedCount/);
+  assert.match(css, /\.category-selection-count/);
+  assert.match(css, /\.category-heading-rule/);
+  assert.match(css, /\.category-filter-control/);
+  assert.match(css, /\.category-filter-menu/);
   assert.match(css, /\.product-card\.is-limit-exceeded/);
   assert.match(css, /\.checkout-panel\.is-limit-exceeded/);
   assert.match(app, /checkoutLimitBadge/);

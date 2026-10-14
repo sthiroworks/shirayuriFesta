@@ -77,6 +77,8 @@
     hourlyEndHour: 23,
     hourlySort: 'hour',
     hourlyHideEmpty: false,
+    collapsedCategories: new Set(),
+    hiddenCategories: new Set(),
     checkoutHeight: null,
     editingTransactionId: null,
     statusTimer: null,
@@ -259,6 +261,28 @@
     updateProductAddActionState();
   }
 
+  function renderCategoryFilter(categories = getProductCategories()) {
+    if (!elements.categoryFilterOptions || !elements.categoryFilterSummaryCount) return;
+    state.hiddenCategories.forEach((category) => {
+      if (!categories.includes(category)) state.hiddenCategories.delete(category);
+    });
+    const visibleCategories = categories.filter((category) => !state.hiddenCategories.has(category));
+    elements.categoryFilterSummaryCount.textContent = categories.length && visibleCategories.length === categories.length
+      ? '全て'
+      : `${visibleCategories.length}/${categories.length}`;
+    elements.categoryFilterOptions.innerHTML = categories.length
+      ? categories.map((category) => {
+        const selectedCount = state.products
+          .filter((product) => product.category === category)
+          .reduce((sum, product) => sum + (state.cart.get(product.id) || 0), 0);
+        return `<label class="category-filter-option">
+          <input type="checkbox" data-category-filter="${escapeHtml(category)}"${state.hiddenCategories.has(category) ? '' : ' checked'} aria-label="${escapeHtml(category)}を表示">
+          <span>${escapeHtml(category)}</span>${selectedCount > 0 ? `<small class="category-filter-option-count">${selectedCount}</small>` : ''}
+        </label>`;
+      }).join('')
+      : '<span class="muted-label">カテゴリがありません。</span>';
+  }
+
   function updateProductAddActionState() {
     if (!elements.productAddSubmit) return;
     const categoryValue = elements.productAddCategory.value.trim();
@@ -321,6 +345,61 @@
     elements.backupSettingsSave.disabled = !changed;
   }
 
+  function hasSettingsFormChanges() {
+    if (!elements.settingsEnabled || !elements.settingsCategory || !elements.settingsSiblings || !elements.settingsPerSibling) return false;
+    return Boolean(elements.settingsEnabled.checked) !== Boolean(state.settings.enabled)
+      || elements.settingsCategory.value.trim() !== state.settings.category
+      || elements.settingsSiblings.value.trim() !== String(state.settings.siblings)
+      || elements.settingsPerSibling.value.trim() !== String(state.settings.perSibling);
+  }
+
+  function hasBackupSettingsFormChanges() {
+    if (!elements.backupEnabled || !elements.backupInterval) return false;
+    return Boolean(elements.backupEnabled.checked) !== Boolean(state.settings.autoBackupEnabled)
+      || elements.backupInterval.value.trim() !== String(state.settings.autoBackupIntervalMinutes || 5);
+  }
+
+  function hasProductAddFormChanges() {
+    if (!elements.productAddName || !elements.productAddPrice || !elements.productAddNewCategory) return false;
+    return Boolean(elements.productAddName.value.trim() || elements.productAddPrice.value.trim() || elements.productAddNewCategory.value.trim());
+  }
+
+  function hasManagedProductChanges() {
+    if (!elements.productManagementList) return false;
+    return [...elements.productManagementList.querySelectorAll('.managed-product-row')].some((row) => {
+      const saveButton = row.querySelector('[data-management-action="save"]');
+      const productId = saveButton && saveButton.dataset.productId;
+      const product = state.products.find((candidate) => candidate.id === productId);
+      const nameInput = row.querySelector('[data-management-field="name"]');
+      const categoryInput = row.querySelector('[data-management-field="category"]');
+      const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
+      const priceInput = row.querySelector('[data-management-field="price"]');
+      if (!product || !nameInput || !categoryInput || !priceInput) return false;
+      const category = categoryInput.value === NEW_CATEGORY_VALUE
+        ? (newCategoryInput ? newCategoryInput.value.trim() : '')
+        : categoryInput.value.trim();
+      return nameInput.value.trim() !== product.name
+        || category !== product.category
+        || priceInput.value.trim() !== String(product.unitPrice);
+    });
+  }
+
+  function hasUnconfirmedChanges() {
+    return state.cart.size > 0
+      || state.received !== ''
+      || Boolean(state.editingTransactionId)
+      || hasSettingsFormChanges()
+      || hasBackupSettingsFormChanges()
+      || hasProductAddFormChanges()
+      || hasManagedProductChanges();
+  }
+
+  function handleBeforeUnload(event) {
+    if (!hasUnconfirmedChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  }
+
   function equalizeProductCardHeights() {
     const cards = [...elements.productList.querySelectorAll('.product-card[data-product-category]')];
     if (!cards.length) return;
@@ -347,13 +426,24 @@
       }
       grouped.get(product.category).push(product);
     });
-    elements.productCount.textContent = `${state.products.length}品`;
+    renderCategoryFilter(categories);
+    const visibleCategories = categories.filter((category) => !state.hiddenCategories.has(category));
+    const visibleProductCount = visibleCategories.reduce((sum, category) => sum + grouped.get(category).length, 0);
+    elements.productCount.textContent = visibleProductCount === state.products.length
+      ? `${state.products.length}品`
+      : `${visibleProductCount}/${state.products.length}品表示`;
     if (!state.products.length) {
       elements.productList.innerHTML = '<div class="empty-state">商品がありません。CSVから商品一覧を取り込んでください。</div>';
       return;
     }
-    elements.productList.innerHTML = categories.map((category) => {
-      const cards = grouped.get(category).map((product) => {
+    if (!visibleCategories.length) {
+      elements.productList.innerHTML = '<div class="empty-state">表示中のカテゴリがありません。カテゴリ表示フィルタから表示するカテゴリを選択してください。</div>';
+      return;
+    }
+    elements.productList.innerHTML = visibleCategories.map((category, categoryIndex) => {
+      const categoryProducts = grouped.get(category);
+      const selectedCount = categoryProducts.reduce((sum, product) => sum + (state.cart.get(product.id) || 0), 0);
+      const cards = categoryProducts.map((product) => {
         const quantity = state.cart.get(product.id) || 0;
         const limitExceeded = quantity > 0 && purchaseLimit.exceeded && product.category === purchaseLimit.category;
         const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}`;
@@ -374,7 +464,14 @@
           </div>
         </article>`;
       }).join('');
-      return `<h3 class="category-heading">${escapeHtml(category)}</h3>${cards}`;
+      const collapsed = state.collapsedCategories.has(category);
+      const categoryId = `product-category-${categoryIndex}`;
+      return `<div class="product-category-group${collapsed ? ' is-collapsed' : ''}" data-product-category-group="${escapeHtml(category)}">
+        <button class="category-heading" type="button" data-category-toggle="${escapeHtml(category)}" aria-expanded="${String(!collapsed)}" aria-controls="${categoryId}">
+          <span>${escapeHtml(category)}</span><span class="category-toggle-icon" aria-hidden="true"></span><span class="category-heading-rule" aria-hidden="true"></span>${selectedCount > 0 ? `<span class="category-selection-count" aria-label="選択中 ${selectedCount}点">${selectedCount}</span>` : ''}
+        </button>
+        <div id="${categoryId}" class="category-product-grid">${cards}</div>
+      </div>`;
     }).join('');
     equalizeProductCardHeights();
   }
@@ -838,6 +935,33 @@
     if (target.dataset.action === 'add' || target.dataset.action === 'increment') changeQuantity(id, current + 1);
     if (target.dataset.action === 'decrement') changeQuantity(id, current - 1);
     if (target.dataset.action === 'quantity') changeQuantity(id, target.value);
+  }
+
+  function handleProductListClick(event) {
+    const toggle = event.target.closest('[data-category-toggle]');
+    if (toggle) {
+      const category = toggle.dataset.categoryToggle;
+      if (state.collapsedCategories.has(category)) state.collapsedCategories.delete(category);
+      else state.collapsedCategories.add(category);
+      renderCatalog();
+      return;
+    }
+    handleProductAction(event);
+  }
+
+  function handleCategoryFilterChange(event) {
+    const input = event.target.closest('[data-category-filter]');
+    if (!input) return;
+    const category = input.dataset.categoryFilter;
+    if (input.checked) state.hiddenCategories.delete(category);
+    else state.hiddenCategories.add(category);
+    renderCatalog();
+  }
+
+  function handleCategoryFilterOutsideClick(event) {
+    if (!elements.categoryFilterControl || !elements.categoryFilterControl.open) return;
+    if (elements.categoryFilterControl.contains(event.target)) return;
+    elements.categoryFilterControl.open = false;
   }
 
   function handleProductCardKeydown(event) {
@@ -1624,11 +1748,16 @@
     elements.productAddPrice = $('#product-add-price');
     elements.productAddSubmit = $('#product-add-submit');
     elements.productColumnWidth = $('#product-column-width');
+    elements.categoryFilterControl = document.querySelector('.category-filter-control');
+    elements.categoryFilterOptions = $('#category-filter-options');
+    elements.categoryFilterSummaryCount = $('#category-filter-summary-count');
     elements.productManagementPanel = $('#product-management-panel');
     elements.productManagementList = $('#product-management-list');
-    $('#product-list').addEventListener('click', handleProductAction);
+    $('#product-list').addEventListener('click', handleProductListClick);
     $('#product-list').addEventListener('change', handleProductAction);
     $('#product-list').addEventListener('keydown', handleProductCardKeydown);
+    elements.categoryFilterOptions.addEventListener('change', handleCategoryFilterChange);
+    document.addEventListener('click', handleCategoryFilterOutsideClick);
     root.addEventListener('resize', equalizeProductCardHeights);
     $('#cart-list').addEventListener('click', handleProductAction);
     $('#cart-list').addEventListener('change', handleProductAction);
@@ -1694,6 +1823,7 @@
     elements.backupOptions.addEventListener('change', updateBackupSettingsSaveState);
     elements.backupFolder.addEventListener('click', () => { void selectBackupDirectory(); });
     elements.backupNow.addEventListener('click', () => { void backupNow(); });
+    root.addEventListener('beforeunload', handleBeforeUnload);
     $('#clear-history').addEventListener('click', async () => {
       if (!state.transactions.length || !root.confirm('会計履歴をすべて消去しますか？')) return;
       let archiveResult;
