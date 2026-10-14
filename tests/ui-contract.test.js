@@ -87,9 +87,9 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(html, /data-received-action="clear"/);
   assert.match(app, /handleReceivedQuickAction/);
   assert.match(app, /setCheckoutHeight/);
-  assert.match(app, /innerHeight \|\| 700\) \* \.5/);
+  assert.match(app, /innerHeight \|\| 700\) \* \(2 \/ 3\)/);
   assert.match(css, /#checkout-panel \{ position: fixed;/);
-  assert.match(css, /max-height: 50vh/);
+  assert.match(css, /max-height: 66\.6667vh/);
   assert.match(css, /\.checkout-resize-handle \{ display: block;/);
   assert.match(css, /padding: 18px 12px calc\(var\(--checkout-space, 36vh\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
