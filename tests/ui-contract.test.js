@@ -11,7 +11,7 @@ test('index contains the checkout and dashboard interaction contract', () => {
   for (const id of [
     'product-list', 'cart-list', 'received', 'exact-total', 'confirm-button', 'checkout-resize-handle', 'checkout-limit-badge',
     'sales-total', 'transaction-count', 'item-count', 'average-transaction',
-    'category-summary', 'category-quantity-summary', 'sales-chart', 'quantity-chart', 'share-chart', 'daily-sales-chart', 'hourly-chart', 'hourly-metric', 'hourly-start-hour', 'hourly-end-hour', 'hourly-sort', 'hourly-hide-empty', 'hourly-table-body', 'hourly-table-foot', 'hourly-category-table-head', 'hourly-category-table-body', 'hourly-category-table-foot', 'hourly-product-table-head', 'hourly-product-table-body', 'hourly-product-table-foot', 'history-body', 'import-file', 'import-transactions-file',
+    'category-summary', 'category-quantity-summary', 'sales-chart', 'quantity-chart', 'share-chart', 'daily-sales-chart', 'inventory-chart-summary', 'inventory-chart', 'hourly-chart', 'hourly-metric', 'hourly-start-hour', 'hourly-end-hour', 'hourly-sort', 'hourly-hide-empty', 'hourly-table-body', 'hourly-table-foot', 'hourly-category-table-head', 'hourly-category-table-body', 'hourly-category-table-foot', 'hourly-product-table-head', 'hourly-product-table-body', 'hourly-product-table-foot', 'weekday-heatmap-head', 'weekday-heatmap-body', 'history-body', 'import-file', 'import-transactions-file',
     'tab-products', 'tab-chart', 'tab-history',
     'admin-toggle', 'admin-panel', 'product-management-panel', 'product-management-list',
     'export-products-csv',
@@ -46,7 +46,7 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /\.status:empty \{ display: none; \}/);
   assert.match(css, /pointer-events: none/);
   assert.match(css, /\.status \{ top: calc\(env\(safe-area-inset-top\) \+ 12px\); right: auto; bottom: auto; left: 50%;/);
-  assert.match(css, /\.product-list \{ display: grid; grid-template-columns: repeat\(auto-fit, minmax\(var\(--product-card-min-width\), 1fr\)\);/);
+  assert.match(css, /\.product-list \{ display: grid; grid-template-columns: repeat\(var\(--product-grid-columns\), minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-list \{ grid-template-columns: repeat\(var\(--product-grid-columns-mobile\), minmax\(0, 1fr\)\); gap: 7px;/);
   assert.match(css, /\.product-add-grid \{ grid-template-columns: 1fr; gap: 8px; \}/);
   assert.match(css, /\.page-shell:has\(> \.status:empty\) \{ padding-top: 0; \}/);
@@ -60,6 +60,8 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /renderCategoryChart/);
   assert.match(app, /renderCategoryQuantityChart/);
   assert.match(app, /renderDailySalesChart/);
+  assert.match(app, /renderInventoryChart/);
+  assert.match(app, /renderWeekdayHeatmap/);
   assert.match(app, /renderHourlyChart/);
   assert.match(app, /renderHourlyTable/);
   assert.match(app, /renderHourlyCategoryTable/);
@@ -67,10 +69,15 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /hourlyCategories/);
   assert.match(app, /hourlyProducts/);
   assert.match(app, /getHourlyRows/);
+  assert.match(app, /summarizeWeekdayHours/);
   assert.match(app, /function setAdminMode\(isOpen\)/);
   assert.match(app, /classList\.toggle\('admin-mode', isOpen\)/);
   assert.match(html, /class="category-chart"/);
   assert.match(html, /class="analytics-chart-card category-summary"/);
+  assert.match(html, /aria-labelledby="inventory-chart-title"/);
+  assert.match(html, /class="weekday-heatmap-scroll"/);
+  assert.match(css, /\.weekday-heatmap-card \{ grid-column: 1 \/ -1; \}/);
+  assert.match(css, /\.inventory-chart-row\.is-low \.inventory-chart-bar/);
 });
 
 test('app warns when browser persistence is unavailable and resets payment on import', () => {
@@ -88,17 +95,17 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(html, /data-received-action="clear"/);
   assert.match(app, /handleReceivedQuickAction/);
   assert.match(app, /setCheckoutHeight/);
-  assert.match(app, /innerHeight \|\| 700\) \* \(1 \/ 3\)/);
+  assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
   assert.match(css, /#checkout-panel \{ position: fixed;/);
-  assert.match(css, /max-height: 33\.3333vh/);
+  assert.match(css, /height: var\(--checkout-height, 33\.3333dvh\); max-height: 90vh; max-height: 90dvh;/);
   assert.match(css, /\.checkout-resize-handle \{ display: block;/);
   assert.match(css, /padding: 18px 12px calc\(var\(--checkout-space, 33\.3333dvh\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(420px, 1\.05fr\); \}/);
   assert.match(css, /\.checkout-panel \.cart-line \{ gap: 8px; padding: 8px 0;/);
-  assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{ flex: 1 1 0; \}/);
+  assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{[^}]*flex: 1 1 0;/);
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
-  assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 42px;/);
+  assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);
   assert.match(css, /\.confirm-button \{ width: 100%; height: 60px;/);
   assert.match(css, /\.site-header \{ align-items: center; flex-direction: row; gap: 16px; \}/);
   assert.match(css, /\.header-actions \{ flex: 0 0 auto; justify-content: flex-end; margin-left: auto; \}/);
@@ -134,7 +141,7 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /バックアップCSVをアーカイブできなかったため/);
   assert.match(html, /自動バックアップ設定を保存/);
   assert.match(html, /同じ行の「商品情報を反映」を押してください/);
-  assert.match(app, /const accessibleLabel = limitExceeded/);
+  assert.match(app, /const accessibleLabel = stockUnavailable/);
   assert.match(app, /aria-label="\$\{escapeHtml\(accessibleLabel\)\}"/);
   assert.match(app, /renderProductManagement/);
   assert.match(app, /function exportProductsCsv\(\)/);
@@ -173,5 +180,41 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /lineLimitExceeded/);
   assert.match(css, /\.cart-line\.is-limit-exceeded/);
   assert.match(css, /\.cart-line\.is-limit-exceeded \{ border-bottom-color/);
+});
+
+test('history, inventory, backup, and daily close improvements are wired into the UI', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  const css = read('styles.css');
+  for (const id of ['undo-last-sale', 'history-search', 'history-from', 'history-to', 'history-results', 'history-load-more', 'stock-adjustment-history', 'daily-close-date', 'daily-close-summary', 'daily-close-export']) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
+  }
+  assert.match(app, /filtered\.slice\(0, state\.historyVisibleCount\)/);
+  assert.match(app, /function undoLastSale\(\)/);
+  assert.match(app, /saveSalesAndInventory/);
+  assert.match(app, /function adjustProductStock\(/);
+  assert.match(app, /Core\.dailyCloseReport/);
+  assert.match(app, /24時間以上バックアップがないため/);
+  assert.match(css, /\.daily-close-panel/);
+  assert.match(css, /\.history-tools/);
+  assert.match(css, /\.managed-stock-adjustment/);
+});
+
+test('inventory remaining chart and weekday-by-hour heatmap are wired into analytics', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  const core = read('core.js');
+  const css = read('styles.css');
+  for (const id of ['inventory-chart-summary', 'inventory-chart', 'weekday-heatmap-head', 'weekday-heatmap-body']) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
+  }
+  assert.match(app, /function renderInventoryChart\(\)/);
+  assert.match(app, /function renderWeekdayHeatmap\(summary\)/);
+  assert.match(app, /Core\.summarizeInventoryAvailability/);
+  assert.match(app, /Core\.summarizeWeekdayHours/);
+  assert.match(core, /function summarizeInventoryAvailability\(/);
+  assert.match(core, /function summarizeWeekdayHours\(/);
+  assert.match(css, /\.weekday-heatmap-card \{ grid-column: 1 \/ -1; \}/);
+  assert.match(css, /\.inventory-chart-row\.is-low \.inventory-chart-bar/);
 });
 

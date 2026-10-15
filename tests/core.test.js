@@ -46,18 +46,18 @@ test('parseProductText keeps optional CSV icons', () => {
 
 test('productsToCsv exports products in a re-importable normalized format', () => {
   const csv = Core.productsToCsv([
-    { category: '園グッズ', name: '手提げ', unitPrice: 500, icon: '👜' },
-    { category: '古園服', name: '冬服ブレザー', unitPrice: 400, iconPath: 'assets/icons/winter-blazer.png' },
+    { id: 'product-tote', category: '園グッズ', name: '手提げ', unitPrice: 500, icon: '👜', stockLimit: 20 },
+    { id: 'product-blazer', category: '古園服', name: '冬服ブレザー', unitPrice: 400, iconPath: 'assets/icons/winter-blazer.png' },
   ]);
 
   assert.equal(csv, [
-    'カテゴリ,商品名,単価,アイコン,アイコンパス',
-    '園グッズ,手提げ,500,👜,',
-    '古園服,冬服ブレザー,400,,assets/icons/winter-blazer.png',
+    'カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID',
+    '園グッズ,手提げ,500,👜,,20,product-tote',
+    '古園服,冬服ブレザー,400,,assets/icons/winter-blazer.png,,product-blazer',
   ].join('\r\n'));
   assert.deepEqual(Core.parseProductText(csv).products, [
-    { id: '園グッズ::手提げ', category: '園グッズ', name: '手提げ', unitPrice: 500, icon: '👜' },
-    { id: '古園服::冬服ブレザー', category: '古園服', name: '冬服ブレザー', unitPrice: 400, iconPath: 'assets/icons/winter-blazer.png' },
+    { id: 'product-tote', category: '園グッズ', name: '手提げ', unitPrice: 500, icon: '👜', stockLimit: 20 },
+    { id: 'product-blazer', category: '古園服', name: '冬服ブレザー', unitPrice: 400, iconPath: 'assets/icons/winter-blazer.png' },
   ]);
 });
 
@@ -95,6 +95,21 @@ test('settings bundle preserves products, custom icons, and portable settings', 
   assert.doesNotMatch(json, /not-portable/);
 });
 
+test('settings bundle carries inventory counts and adjustment history without sales transactions', () => {
+  const inventory = {
+    salesByProduct: { 'p1': 7 },
+    remainingByProduct: { 'p1': 3 },
+    adjustments: [{ id: 'a1', productId: 'p1', productName: '手提げ', recordedAt: '2026-10-15T01:00:00.000Z', before: 4, after: 3 }],
+  };
+  const json = Core.settingsBundleToJson([{ id: 'p1', category: '園グッズ', name: '手提げ', unitPrice: 500, stockLimit: 10 }], {
+    enabled: true, category: '古園服', siblings: 1, perSibling: 4,
+  }, inventory);
+  const parsed = Core.parseSettingsBundle(json);
+  assert.equal(JSON.parse(json).version, 2);
+  assert.deepEqual(parsed.inventory, inventory);
+  assert.equal(Object.hasOwn(parsed, 'transactions'), false);
+});
+
 test('parseProductText reports invalid and duplicate rows', () => {
   const result = Core.parseProductText([
     'カテゴリ,商品名,単価',
@@ -118,8 +133,8 @@ test('calculateCart returns subtotals, item count, and total', () => {
   ]);
 
   assert.deepEqual(result.lineItems, [
-    { category: '園グッズ', name: '手提げ', unitPrice: 500, quantity: 2, subtotal: 1000 },
-    { category: '他', name: 'ありがとうチケット', unitPrice: -50, quantity: 1, subtotal: -50 },
+    { category: '園グッズ', name: '手提げ', unitPrice: 500, quantity: 2, subtotal: 1000, productId: '園グッズ::手提げ' },
+    { category: '他', name: 'ありがとうチケット', unitPrice: -50, quantity: 1, subtotal: -50, productId: '他::ありがとうチケット' },
   ]);
   assert.equal(result.itemCount, 3);
   assert.equal(result.total, 950);
@@ -197,21 +212,40 @@ test('summarizeTransactions aggregates today and all periods', () => {
   assert.equal(all.categories.find((item) => item.category === '園グッズ').sales, 1300);
 });
 
+test('summarizeWeekdayHours groups transactions by local weekday and hour with period filters', () => {
+  const at = (year, month, day, hour, minute = 0) => new Date(year, month, day, hour, minute).toISOString();
+  const transactions = [
+    { id: 'mon-1', recordedAt: at(2026, 9, 12, 9), total: 500, itemCount: 1 },
+    { id: 'mon-2', recordedAt: at(2026, 9, 12, 9, 30), total: 300, itemCount: 2 },
+    { id: 'tue', recordedAt: at(2026, 9, 13, 10), total: 100, itemCount: 1 },
+    { id: 'outside-hours', recordedAt: at(2026, 9, 13, 11), total: 200, itemCount: 1 },
+    { id: 'outside-week', recordedAt: at(2026, 9, 5, 9), total: 900, itemCount: 4 },
+  ];
+  const summary = Core.summarizeWeekdayHours(transactions, 'week', new Date(2026, 9, 13, 12), { startHour: 9, endHour: 10 });
+  const monday = summary.weekdays.find((day) => day.weekday === 1);
+  const tuesday = summary.weekdays.find((day) => day.weekday === 2);
+  assert.equal(monday.hours[9].transactionCount, 2);
+  assert.equal(monday.hours[9].sales, 800);
+  assert.equal(tuesday.hours[10].transactionCount, 1);
+  assert.equal(summary.maxTransactions, 2);
+  assert.equal(summary.weekdays.flatMap((day) => day.hours).reduce((count, hour) => count + hour.transactionCount, 0), 3);
+});
+
 test('transactionsToCsv creates one aggregation-friendly row per item', () => {
   const csv = Core.transactionsToCsv([{
     id: 'tx,1', recordedAt: '2026-10-12T12:00:00.000Z', total: 200, received: 200, change: 0, itemCount: 2,
     items: [
-      { category: 'カテゴリ', name: '商品, "限定"', unitPrice: 100, quantity: 1, subtotal: 100 },
-      { category: 'カテゴリ2', name: '別商品', unitPrice: 50, quantity: 2, subtotal: 100 },
+      { category: 'カテゴリ', name: '商品, "限定"', unitPrice: 100, quantity: 1, subtotal: 100, productId: 'product-1' },
+      { category: 'カテゴリ2', name: '別商品', unitPrice: 50, quantity: 2, subtotal: 100, productId: 'product-2' },
     ],
   }]);
 
   const lines = csv.split('\r\n');
   assert.equal(lines.length, 3);
-  assert.equal(lines[0], '会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額');
+  assert.equal(lines[0], '会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID');
   assert.match(lines[1], /^"tx,1",2026-10-12T12:00:00\.000Z,2026-10-12,2026-10-12,200,200,0,2,1,カテゴリ,/);
-  assert.match(lines[1], /"商品, ""限定""",100,1,100$/);
-  assert.match(lines[2], /,200,200,0,2,2,カテゴリ2,別商品,50,2,100$/);
+  assert.match(lines[1], /"商品, ""限定""",100,1,100,product-1$/);
+  assert.match(lines[2], /,200,200,0,2,2,カテゴリ2,別商品,50,2,100,product-2$/);
 });
 
 test('parseTransactionCsv restores complete transactions from exported CSV', () => {
@@ -248,5 +282,60 @@ test('upsertTransaction replaces an edited transaction and removeTransaction del
   assert.deepEqual(Core.upsertTransaction([original], { ...edited, id: 'tx-2' }), [original, { ...edited, id: 'tx-2' }]);
   const secondTransaction = { ...edited, id: 'tx-2' };
   assert.deepEqual(Core.removeTransaction([original, secondTransaction], 'tx-1'), [secondTransaction]);
+});
+
+test('inventory ledger tracks sales separately and restores stock when a sale is removed', () => {
+  const product = { id: 'p1', category: '園グッズ', name: '手提げ', unitPrice: 500, stockLimit: 5 };
+  const sale = { id: 'tx1', items: [{ productId: 'p1', category: '園グッズ', name: '手提げ', quantity: 2 }] };
+  const ledger = Core.createInventoryLedger([product], [sale]);
+  assert.equal(ledger.salesByProduct.p1, 2);
+  assert.equal(ledger.remainingByProduct.p1, 3);
+
+  const changedSale = { ...sale, items: [{ ...sale.items[0], quantity: 3 }] };
+  const afterEdit = Core.applyInventoryTransactionChange(ledger, sale, changedSale, [product]);
+  assert.equal(afterEdit.salesByProduct.p1, 3);
+  assert.equal(afterEdit.remainingByProduct.p1, 2);
+
+  const afterDelete = Core.applyInventoryTransactionChange(afterEdit, changedSale, null, [product]);
+  assert.equal(afterDelete.salesByProduct.p1, 0);
+  assert.equal(afterDelete.remainingByProduct.p1, 5);
+});
+
+test('inventory availability summary uses the lower of physical and sales-limit remaining', () => {
+  const products = [
+    { id: 'limited-a', category: '園グッズ', name: '手提げ', stockLimit: 10 },
+    { id: 'limited-b', category: '園グッズ', name: 'コップ袋', stockLimit: 0 },
+    { id: 'unlimited', category: 'その他', name: 'チケット' },
+  ];
+  const summary = Core.summarizeInventoryAvailability(products, {
+    salesByProduct: { 'limited-a': 6 },
+    remainingByProduct: { 'limited-a': 2 },
+  });
+  assert.deepEqual(summary.map(({ product, total, sold, remaining, soldPercent }) => ({ id: product.id, total, sold, remaining, soldPercent })), [
+    { id: 'limited-a', total: 10, sold: 6, remaining: 2, soldPercent: 80 },
+    { id: 'limited-b', total: 0, sold: 0, remaining: 0, soldPercent: 0 },
+  ]);
+});
+
+test('inventory adjustment is recorded separately from transaction data', () => {
+  const ledger = Core.createInventoryLedger([{ id: 'p1', name: '手提げ', stockLimit: 5 }], []);
+  const adjusted = Core.adjustInventory(ledger, 'p1', '手提げ', 3, new Date('2026-10-15T01:00:00.000Z'));
+  assert.equal(adjusted.remainingByProduct.p1, 3);
+  assert.equal(adjusted.adjustments.length, 1);
+  assert.equal(adjusted.adjustments[0].before, 5);
+  assert.equal(adjusted.adjustments[0].after, 3);
+  assert.throws(() => Core.adjustInventory(ledger, 'p1', '手提げ', -1), /0以上/);
+});
+
+test('daily close report summarizes a selected local day and product sales', () => {
+  const today = new Date(2026, 9, 15, 12, 0, 0).toISOString();
+  const report = Core.dailyCloseReport([{
+    id: 'tx1', recordedAt: today, total: 500, received: 1000, change: 500, itemCount: 1,
+    items: [{ category: '園グッズ', name: '手提げ', productId: 'p1', quantity: 1, unitPrice: 500, subtotal: 500 }],
+  }], '2026-10-15');
+  assert.equal(report.transactionCount, 1);
+  assert.equal(report.totalSales, 500);
+  assert.equal(report.totalReceived, 1000);
+  assert.match(report.csv, /商品別,2026-10-15,園グッズ,手提げ/);
 });
 

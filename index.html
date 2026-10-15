@@ -22,6 +22,7 @@
 
   <main class="page-shell">
     <div id="status" class="status" role="status" aria-live="polite"></div>
+    <button id="undo-last-sale" class="undo-last-sale is-hidden" type="button">直前の会計を取り消す</button>
 
     <section id="admin-panel" class="panel admin-panel is-hidden" aria-labelledby="admin-title">
       <div class="panel-heading">
@@ -112,7 +113,7 @@
               <h2 id="product-management-title">商品管理</h2>
             </div>
           </div>
-          <p class="settings-help">商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。CSVの「アイコン」列から絵文字も設定できます。在庫上限は全会計の累計販売数に適用され、空欄なら無制限です。</p>
+          <p class="settings-help">商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。在庫数は会計履歴とは別に保存され、履歴を消去しても残ります。残数は商品ごとに調整できます。残り3個以下は注意表示されます。</p>
           <div class="product-management-tools">
             <div>
               <strong>初期設定・一括更新</strong>
@@ -144,6 +145,10 @@
           </div>
           <input id="icon-file" class="visually-hidden" type="file" accept="image/*">
           <div id="product-management-list" class="product-management-list"></div>
+          <section class="stock-adjustment-history" aria-labelledby="stock-adjustment-history-title">
+            <h3 id="stock-adjustment-history-title">最近の在庫調整</h3>
+            <div id="stock-adjustment-history" class="stock-adjustment-list"></div>
+          </section>
         </section>
       </div>
       <section class="admin-section data-transfer-panel" aria-labelledby="data-transfer-title">
@@ -156,7 +161,7 @@
         <div class="data-transfer-layout">
           <div class="settings-data-copy">
             <strong>レジ設定一式</strong>
-            <span>商品・アイコン・購入制限・自動バックアップ間隔をまとめて移行します。販売履歴と保存先は含みません。</span>
+            <span>商品・アイコン・在庫残数・購入制限をまとめて移行します。販売履歴とバックアップ先は含みません。</span>
           </div>
           <div class="data-transfer-actions">
             <label class="button button-secondary" for="import-settings-bundle-file">レジ設定を復元</label>
@@ -331,6 +336,14 @@
             <label>終了<select id="hourly-end-hour"></select></label>
             <span id="analysis-time-filter-note" class="muted-label">全時間帯</span>
           </div>
+          <section class="daily-close-panel" aria-labelledby="daily-close-title">
+            <div class="daily-close-heading">
+              <div><h3 id="daily-close-title">日次締めレポート</h3><p>日付を選ぶと、その日の会計と商品別売上を確認できます。</p></div>
+              <label>対象日<input id="daily-close-date" type="date"></label>
+            </div>
+            <div id="daily-close-summary" class="daily-close-summary" aria-live="polite"></div>
+            <button id="daily-close-export" class="button button-secondary" type="button">締めレポートをCSV保存</button>
+          </section>
           <div class="analytics-charts">
             <article class="analytics-chart-card" aria-labelledby="sales-chart-title">
               <div class="chart-card-heading"><h3 id="sales-chart-title">売上ランキング</h3><span class="chart-card-unit">金額</span></div>
@@ -355,6 +368,12 @@
             <article class="analytics-chart-card" aria-labelledby="category-quantity-title">
               <div class="chart-card-heading"><h3 id="category-quantity-title">カテゴリ別販売数</h3><span class="chart-card-unit">個数</span></div>
               <div id="category-quantity-summary" class="category-chart" role="img" aria-label="カテゴリ別販売数グラフ"></div>
+            </article>
+            <article class="analytics-chart-card inventory-chart-card" aria-labelledby="inventory-chart-title">
+              <div class="chart-card-heading"><h3 id="inventory-chart-title">在庫残数</h3><span class="chart-card-unit">在庫上限を設定した商品</span></div>
+              <p id="inventory-chart-summary" class="inventory-chart-summary" aria-live="polite"></p>
+              <div id="inventory-chart" class="inventory-chart" role="list" aria-label="商品別の在庫残数"></div>
+              <p class="inventory-chart-note">横棒は現在の残数の割合です。残り3個以下はオレンジで表示します。</p>
             </article>
             <article class="analytics-chart-card" aria-labelledby="hourly-chart-title">
               <div class="chart-card-heading"><h3 id="hourly-chart-title">時間帯別分析</h3><span class="chart-card-unit">時間帯ごとに絞り込み</span></div>
@@ -397,6 +416,18 @@
                 </table>
               </div>
             </article>
+            <article class="analytics-chart-card weekday-heatmap-card" aria-labelledby="weekday-heatmap-title">
+              <div class="chart-card-heading"><h3 id="weekday-heatmap-title">曜日×時間帯の混雑</h3><span class="chart-card-unit">会計件数 · 濃いほど多い</span></div>
+              <p class="weekday-heatmap-note">選択中の集計期間と時間帯を反映します。複数日のデータがあると曜日ごとの傾向を比べやすくなります。</p>
+              <div class="weekday-heatmap-scroll">
+                <table class="weekday-heatmap" aria-describedby="weekday-heatmap-help">
+                  <caption class="visually-hidden">曜日と時間帯別の会計件数</caption>
+                  <thead id="weekday-heatmap-head"></thead>
+                  <tbody id="weekday-heatmap-body"></tbody>
+                </table>
+              </div>
+              <span id="weekday-heatmap-help" class="visually-hidden">各セルの数字はその曜日・時間帯の会計件数です。</span>
+            </article>
           </div>
         </section>
       </div>
@@ -409,7 +440,15 @@
               <h2 id="history-title">直近の会計</h2>
             </div>
           </div>
+          <div class="history-tools">
+            <label>キーワード<input id="history-search" type="search" placeholder="商品名・カテゴリで検索"></label>
+            <label>開始日<input id="history-from" type="date"></label>
+            <label>終了日<input id="history-to" type="date"></label>
+            <button id="history-filter-clear" class="button button-secondary" type="button">条件をクリア</button>
+          </div>
+          <div class="history-results" id="history-results" aria-live="polite"></div>
           <div id="history-body" class="history-list" role="list"></div>
+          <button id="history-load-more" class="button button-secondary history-load-more is-hidden" type="button">さらに20件表示</button>
         </section>
       </div>
     </section>

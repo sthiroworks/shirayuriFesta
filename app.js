@@ -39,6 +39,7 @@
   const storage = storageInfo.storage;
   const productState = Storage.loadProducts(storage, fallbackProducts);
   const transactionState = Storage.loadTransactions(storage);
+  const inventoryState = Storage.loadInventory(storage);
   const defaultSettings = {
     enabled: true,
     category: '古園服',
@@ -48,6 +49,7 @@
     autoBackupEnabled: false,
     autoBackupIntervalMinutes: 5,
     autoBackupLastAt: '',
+    historyBackupLastAt: '',
   };
   const settingsState = Storage.loadSettings(storage, defaultSettings);
   settingsState.settings = {
@@ -67,6 +69,7 @@
   const state = {
     products: productsWithIcons,
     transactions: transactionState.transactions,
+    inventory: inventoryState.inventory,
     settings: settingsState.settings,
     cart: new Map(),
     cartProducts: new Map(),
@@ -86,6 +89,13 @@
     autoBackupInProgress: false,
     backupDirectoryHandle: null,
     temporaryCheckoutSiblings: null,
+    historySearch: '',
+    historyFrom: '',
+    historyTo: '',
+    historyVisibleCount: 20,
+    undoTransactionId: null,
+    undoTimer: null,
+    lastBackupError: '',
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -111,6 +121,13 @@
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '日時不明';
     return date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function localDateInputValue(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (number) => String(number).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
   function applyProductColumnWidth() {
@@ -161,12 +178,15 @@
   }
 
   function getProductSales(product, excludedTransactionId) {
-    return state.transactions.reduce((total, transaction) => {
-      if (transaction.id === excludedTransactionId) return total;
-      return total + (transaction.items || []).reduce((subtotal, item) => (
-        subtotal + (isTransactionItemForProduct(item, product) ? Math.max(0, Number(item.quantity) || 0) : 0)
+    const ledger = state.inventory || { salesByProduct: {} };
+    let total = Math.max(0, Number(ledger.salesByProduct[product.id]) || 0);
+    if (excludedTransactionId) {
+      const transaction = state.transactions.find((item) => item.id === excludedTransactionId);
+      total -= (transaction && transaction.items || []).reduce((sum, item) => (
+        sum + (isTransactionItemForProduct(item, product) ? Math.max(0, Number(item.quantity) || 0) : 0)
       ), 0);
-    }, 0);
+    }
+    return Math.max(0, total);
   }
 
   function getEditingProductQuantity(product) {
@@ -178,12 +198,66 @@
   }
 
   function getProductStockInfo(product) {
-    const limited = Number.isInteger(product && product.stockLimit) && product.stockLimit >= 0;
+    const hasLimit = Number.isInteger(product && product.stockLimit) && product.stockLimit >= 0;
     const sold = getProductSales(product, state.editingTransactionId);
     const editingQuantity = getEditingProductQuantity(product);
-    if (!limited) return { limited: false, sold, editingQuantity, remaining: null, maxQuantity: null };
-    const remaining = Math.max(0, product.stockLimit - sold);
-    return { limited: true, sold, editingQuantity, remaining, maxQuantity: Math.max(remaining, editingQuantity) };
+    const ledger = state.inventory || { remainingByProduct: {} };
+    const hasPhysicalCount = Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, product.id);
+    const committedRemaining = hasPhysicalCount
+      ? Math.max(0, Number(ledger.remainingByProduct[product.id]) || 0)
+      : (hasLimit ? Math.max(0, product.stockLimit - getProductSales(product)) : null);
+    const physicalRemaining = committedRemaining == null ? Infinity : committedRemaining + editingQuantity;
+    const limitRemaining = hasLimit ? Math.max(0, product.stockLimit - sold) : Infinity;
+    const available = Math.min(physicalRemaining, limitRemaining);
+    if (!Number.isFinite(available)) return { limited: false, sold, editingQuantity, remaining: null, maxQuantity: null };
+    const remaining = Math.max(0, available);
+    return { limited: true, sold, editingQuantity, remaining, maxQuantity: remaining };
+  }
+
+  function cloneInventoryLedger() {
+    const source = state.inventory || { salesByProduct: {}, remainingByProduct: {}, adjustments: [] };
+    return {
+      salesByProduct: { ...(source.salesByProduct || {}) },
+      remainingByProduct: { ...(source.remainingByProduct || {}) },
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+  }
+
+  function updateInventoryForProductChange(ledger, previousProduct, nextProduct) {
+    const next = {
+      salesByProduct: { ...(ledger.salesByProduct || {}) },
+      remainingByProduct: { ...(ledger.remainingByProduct || {}) },
+      adjustments: Array.isArray(ledger.adjustments) ? ledger.adjustments.slice() : [],
+    };
+    const id = nextProduct.id;
+    const sold = Math.max(0, Number(next.salesByProduct[id]) || 0);
+    const oldLimit = previousProduct && Number.isInteger(previousProduct.stockLimit) && previousProduct.stockLimit >= 0
+      ? previousProduct.stockLimit : null;
+    const newLimit = Number.isInteger(nextProduct.stockLimit) && nextProduct.stockLimit >= 0 ? nextProduct.stockLimit : null;
+    if (newLimit === null) {
+      delete next.remainingByProduct[id];
+    } else if (oldLimit === null) {
+      next.remainingByProduct[id] = Math.max(0, newLimit - sold);
+    } else {
+      const currentRemaining = Object.prototype.hasOwnProperty.call(next.remainingByProduct, id)
+        ? Math.max(0, Number(next.remainingByProduct[id]) || 0)
+        : Math.max(0, oldLimit - sold);
+      next.remainingByProduct[id] = Math.max(0, currentRemaining + newLimit - oldLimit);
+    }
+    return next;
+  }
+
+  function addInventoryForProduct(ledger, product) {
+    const next = {
+      salesByProduct: { ...(ledger.salesByProduct || {}) },
+      remainingByProduct: { ...(ledger.remainingByProduct || {}) },
+      adjustments: Array.isArray(ledger.adjustments) ? ledger.adjustments.slice() : [],
+    };
+    next.salesByProduct[product.id] = Math.max(0, Number(next.salesByProduct[product.id]) || 0);
+    if (Number.isInteger(product.stockLimit) && product.stockLimit >= 0) {
+      next.remainingByProduct[product.id] = Math.max(0, product.stockLimit - next.salesByProduct[product.id]);
+    }
+    return next;
   }
 
   function migrateLegacyTransactionProductIds() {
@@ -208,6 +282,25 @@
       } catch (error) {
         // In-memory migration still works for this session if persistence is unavailable.
       }
+    }
+  }
+
+  function initializeInventoryLedger() {
+    if (!state.inventory) state.inventory = Core.createInventoryLedger(state.products, state.transactions);
+    const nextInventory = cloneInventoryLedger();
+    state.products.forEach((product) => {
+      if (!Number.isInteger(product.stockLimit) || product.stockLimit < 0) return;
+      nextInventory.salesByProduct[product.id] = Math.max(0, Number(nextInventory.salesByProduct[product.id]) || 0);
+      if (!Object.prototype.hasOwnProperty.call(nextInventory.remainingByProduct, product.id)) {
+        nextInventory.remainingByProduct[product.id] = Math.max(0, product.stockLimit - nextInventory.salesByProduct[product.id]);
+      }
+    });
+    state.inventory = nextInventory;
+    try {
+      Storage.saveInventory(storage, state.inventory);
+      return '';
+    } catch (error) {
+      return '在庫情報を保存できませんでした。ブラウザの空き容量を確認してください。';
     }
   }
 
@@ -375,29 +468,54 @@
     elements.productAddSubmit.disabled = !valid;
   }
 
-  function updateManagedProductSaveState(row) {
-    if (!row) return;
+  function getManagedProductDraft(row, fallbackProductId) {
+    if (!row) return null;
     const saveButton = row.querySelector('[data-management-action="save"]');
-    const productId = saveButton && saveButton.dataset.productId;
+    const productId = fallbackProductId || (saveButton && saveButton.dataset.productId);
     const product = state.products.find((candidate) => candidate.id === productId);
     const nameInput = row.querySelector('[data-management-field="name"]');
     const categoryInput = row.querySelector('[data-management-field="category"]');
     const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
     const priceInput = row.querySelector('[data-management-field="price"]');
     const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
-    if (!saveButton || !product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return;
+    if (!product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return null;
+
     const name = nameInput.value.trim();
     const selectedCategory = categoryInput.value.trim();
     const category = selectedCategory === NEW_CATEGORY_VALUE
       ? (newCategoryInput ? newCategoryInput.value.trim() : '')
       : selectedCategory;
     const rawPrice = priceInput.value.trim();
-    const price = Number(rawPrice);
+    const unitPrice = Number(rawPrice);
     const stockLimit = readOptionalStockLimit(stockLimitInput);
     const currentStockLimit = Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : null;
-    const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(price) && stockLimit.valid);
-    const changed = valid && (name !== product.name || category !== product.category || price !== Number(product.unitPrice) || stockLimit.value !== currentStockLimit);
-    saveButton.disabled = !changed;
+    const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(unitPrice) && stockLimit.valid);
+    const hasUncommittedChanges = name !== product.name
+      || category !== product.category
+      || rawPrice !== String(product.unitPrice)
+      || !stockLimit.valid
+      || stockLimit.value !== currentStockLimit;
+    const canSave = valid && (
+      name !== product.name
+      || category !== product.category
+      || unitPrice !== Number(product.unitPrice)
+      || stockLimit.value !== currentStockLimit
+    );
+
+    return { saveButton, product, name, category, rawPrice, unitPrice, stockLimit, hasUncommittedChanges, canSave };
+  }
+
+  function updateManagedProductSaveState(row) {
+    const draft = getManagedProductDraft(row);
+    if (draft && draft.saveButton) draft.saveButton.disabled = !draft.canSave;
+    const remainingInput = row && row.querySelector('[data-management-field="stock-remaining"]');
+    const adjustButton = row && row.querySelector('[data-management-action="adjust-stock"]');
+    if (remainingInput && adjustButton) {
+      const raw = remainingInput.value.trim();
+      const value = Number(raw);
+      const valid = raw !== '' && Number.isInteger(value) && value >= 0;
+      adjustButton.disabled = !valid || raw === remainingInput.dataset.savedValue;
+    }
   }
 
   function updateSettingsSaveState() {
@@ -450,27 +568,9 @@
 
   function hasManagedProductChanges() {
     if (!elements.productManagementList) return false;
-    return [...elements.productManagementList.querySelectorAll('.managed-product-row')].some((row) => {
-      const saveButton = row.querySelector('[data-management-action="save"]');
-      const productId = saveButton && saveButton.dataset.productId;
-      const product = state.products.find((candidate) => candidate.id === productId);
-      const nameInput = row.querySelector('[data-management-field="name"]');
-      const categoryInput = row.querySelector('[data-management-field="category"]');
-      const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
-      const priceInput = row.querySelector('[data-management-field="price"]');
-      const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
-      if (!product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return false;
-      const category = categoryInput.value === NEW_CATEGORY_VALUE
-        ? (newCategoryInput ? newCategoryInput.value.trim() : '')
-        : categoryInput.value.trim();
-      const stockLimit = readOptionalStockLimit(stockLimitInput);
-      const currentStockLimit = Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : null;
-      return nameInput.value.trim() !== product.name
-        || category !== product.category
-        || priceInput.value.trim() !== String(product.unitPrice)
-        || !stockLimit.valid
-        || stockLimit.value !== currentStockLimit;
-    });
+    return [...elements.productManagementList.querySelectorAll('.managed-product-row')]
+      .some((row) => getManagedProductDraft(row)?.hasUncommittedChanges
+        || row.querySelector('[data-management-field="stock-remaining"]')?.value.trim() !== row.querySelector('[data-management-field="stock-remaining"]')?.dataset.savedValue);
   }
 
   function hasUnconfirmedChanges() {
@@ -540,14 +640,15 @@
         const limitExceeded = quantity > 0 && purchaseLimit.exceeded && product.category === purchaseLimit.category;
         const stockReached = stock.limited && stockCanStillAdd === 0;
         const stockUnavailable = stockReached && quantity === 0;
-        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}`;
+        const stockLow = stock.limited && stockRemainingAfterCart > 0 && stockRemainingAfterCart <= 3;
+        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}${stockLow ? ' is-stock-low' : ''}`;
         const accessibleName = productNameText(product.name);
         const accessibleLabel = stockUnavailable ? `${accessibleName}は在庫切れです` : (limitExceeded ? `${accessibleName}は購入制限を超えています` : `${accessibleName}を1個追加`);
         return `<article class="product-card${cardState}" data-action="add" data-product-id="${escapeHtml(product.id)}" data-product-category="${escapeHtml(product.category)}" tabindex="0" role="button" aria-disabled="${String(stockUnavailable)}" aria-label="${escapeHtml(accessibleLabel)}">
           <span class="product-background-icon" aria-hidden="true">${iconMarkup(product)}</span>
           <div class="product-title-row">
             <button class="product-add" type="button" data-action="add" data-product-id="${escapeHtml(product.id)}">
-              ${productNameMarkup(product.name)}<small class="product-card-meta"><span>${formatYen(product.unitPrice)}</span>${stock.limited ? `<span class="product-stock-remaining${stockRemainingAfterCart === 0 ? ' is-empty' : ''}">残り ${stockRemainingAfterCart}</span>` : ''}</small>
+              ${productNameMarkup(product.name)}<small class="product-card-meta"><span>${formatYen(product.unitPrice)}</span>${stock.limited ? `<span class="product-stock-remaining${stockRemainingAfterCart === 0 ? ' is-empty' : stockLow ? ' is-low' : ''}"${stockLow ? ' title="残り3個以下" aria-label="残りわずか"' : ''}>残り ${stockRemainingAfterCart}</span>` : ''}</small>
             </button>
           </div>
           <div class="stepper" aria-label="${escapeHtml(accessibleName)}の数量">
@@ -582,8 +683,12 @@
           <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(product.name)}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品名"></label>
             <label class="managed-product-category">カテゴリ<select data-management-field="category" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}のカテゴリ">${categories.map((category) => `<option value="${escapeHtml(category)}"${category === product.category ? ' selected' : ''}>${escapeHtml(category)}</option>`).join('')}<option value="${NEW_CATEGORY_VALUE}">＋新しいカテゴリを追加</option></select></label>
             <label class="managed-product-price">単価<input type="number" step="1" value="${escapeHtml(product.unitPrice)}" data-management-field="price" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の単価"></label>
-            <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${Math.max(0, product.stockLimit - getProductSales(product))}` : '上限なし'}</small></label>
+            <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${getProductStockInfo(product).remaining}` : '上限なし'}</small></label>
             <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(productNameText(product.name))}の新しいカテゴリ"></label>
+          </div>
+          <div class="managed-stock-adjustment">
+            <label>実在庫の残数<input type="number" min="0" step="1" value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-saved-value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-management-field="stock-remaining" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の現在庫残数"></label>
+            <button class="managed-product-action" type="button" data-management-action="adjust-stock" data-product-id="${escapeHtml(product.id)}" disabled>残数を反映</button>
           </div>
         </div>
         <div class="managed-product-actions">
@@ -592,6 +697,12 @@
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
         </div>
       </div>`).join('') || '<div class="empty-state">商品がありません。</div>';
+    if (elements.stockAdjustmentHistory) {
+      const adjustments = (state.inventory && state.inventory.adjustments || []).slice(0, 10);
+      elements.stockAdjustmentHistory.innerHTML = adjustments.length
+        ? adjustments.map((entry) => `<div class="stock-adjustment-entry"><span>${escapeHtml(entry.productName || '商品')}</span><small>${escapeHtml(formatDate(entry.recordedAt))}</small><strong>${entry.before == null ? '—' : entry.before} → ${entry.after}</strong></div>`).join('')
+        : '<p class="muted-label">在庫調整の記録はまだありません。</p>';
+    }
   }
 
   function renderCart() {
@@ -642,22 +753,70 @@
   }
 
   function renderDashboard() {
-    const summary = Core.summarizeTransactions(state.transactions, state.period, new Date(), {
-      startHour: state.hourlyStartHour,
-      endHour: state.hourlyEndHour,
-    });
+    const startHour = Math.min(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
+    const endHour = Math.max(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
+    const timeRange = { startHour, endHour };
+    const now = new Date();
+    const summary = Core.summarizeTransactions(state.transactions, state.period, now, timeRange);
+    const weekdaySummary = Core.summarizeWeekdayHours(state.transactions, state.period, now, timeRange);
     elements.salesTotal.textContent = formatYen(summary.totalSales);
     elements.transactionCount.textContent = String(summary.transactionCount);
     elements.itemCount.textContent = String(summary.itemCount);
     elements.averageTransaction.textContent = formatYen(summary.averageTransaction);
-    const startHour = Math.min(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
-    const endHour = Math.max(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
+    renderDailyClose();
     elements.analysisTimeFilterNote.textContent = startHour === 0 && endHour === 23 ? '全時間帯' : `${String(startHour).padStart(2, '0')}時台〜${String(endHour).padStart(2, '0')}時台`;
     renderCategoryChart(summary.categories);
     renderCategoryQuantityChart(summary.categories);
     renderDailySalesChart(elements.dailySalesChart, summary.daily);
+    renderInventoryChart();
+    renderWeekdayHeatmap(weekdaySummary);
     renderHourlyAnalysis(summary.hourly, summary.hourlyCategories, summary.hourlyProducts);
     renderChart(summary.products);
+  }
+
+  function renderInventoryChart() {
+    const products = Core.summarizeInventoryAvailability(state.products, state.inventory)
+      .sort((a, b) => a.remainingRatio - b.remainingRatio || a.remaining - b.remaining || a.product.name.localeCompare(b.product.name, 'ja'));
+    if (!products.length) {
+      elements.inventoryChartSummary.textContent = '在庫上限が設定されている商品はありません。';
+      elements.inventoryChart.innerHTML = '<div class="empty-state">商品管理で在庫上限を設定すると、ここに残数が表示されます。</div>';
+      return;
+    }
+    const remainingTotal = products.reduce((sum, item) => sum + item.remaining, 0);
+    const lowStockCount = products.filter((item) => item.remaining <= 3).length;
+    elements.inventoryChartSummary.textContent = `${products.length}商品 · 残り合計 ${remainingTotal}個 · 残り3個以下 ${lowStockCount}商品`;
+    elements.inventoryChart.innerHTML = products.map(({ product, total, remaining, remainingRatio, soldPercent }) => {
+      const lowStock = remaining <= 3;
+      const name = productNameText(product.name);
+      const label = `${product.category} ${name}: 残り${remaining}/${total}個、消化率${soldPercent}%`;
+      return `<div class="inventory-chart-row${lowStock ? ' is-low' : ''}" role="listitem">
+        <span class="inventory-chart-label" title="${escapeHtml(label)}"><strong>${productNameMarkup(product.name)}</strong><small>${escapeHtml(product.category)}</small></span>
+        <span class="inventory-chart-track" role="progressbar" aria-valuemin="0" aria-valuemax="${Math.max(1, total)}" aria-valuenow="${Math.min(remaining, total)}" aria-label="${escapeHtml(label)}"><span class="inventory-chart-bar" style="--bar-width:${Math.round(remainingRatio * 100)}%"></span></span>
+        <strong class="inventory-chart-value">${remaining}<small>/${total}個 · 消化${soldPercent}%</small></strong>
+      </div>`;
+    }).join('');
+  }
+
+  function renderWeekdayHeatmap(summary) {
+    const startHour = Math.min(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
+    const endHour = Math.max(Number(state.hourlyStartHour), Number(state.hourlyEndHour));
+    const hours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+    const days = summary.weekdays || [];
+    const columnCount = hours.length + 1;
+    elements.weekdayHeatmapHead.innerHTML = `<tr><th scope="col">曜日</th>${hours.map((hour) => `<th scope="col">${String(hour).padStart(2, '0')}</th>`).join('')}</tr>`;
+    if (!summary.maxTransactions) {
+      elements.weekdayHeatmapBody.innerHTML = `<tr><td colspan="${columnCount}" class="hourly-empty">この期間・時間帯に会計データがありません。</td></tr>`;
+      return;
+    }
+    elements.weekdayHeatmapBody.innerHTML = days.map((day) => `<tr>
+      <th scope="row">${day.label}</th>
+      ${hours.map((hour) => {
+        const count = Number(day.hours[hour].transactionCount) || 0;
+        const intensity = count ? Math.max(.12, Math.min(.86, count / summary.maxTransactions)) : 0;
+        const label = `${day.label}曜日 ${String(hour).padStart(2, '0')}時台: ${count}件`;
+        return `<td class="weekday-heatmap-cell${count ? ' has-value' : ''}"${count ? ` style="--heatmap-intensity:${intensity.toFixed(2)}"` : ''} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${count || '<span aria-hidden="true">·</span>'}</td>`;
+      }).join('')}
+    </tr>`).join('');
   }
 
   function renderCategoryChart(categories) {
@@ -978,7 +1137,23 @@
   }
 
   function renderHistory() {
-    elements.historyBody.innerHTML = state.transactions.slice(0, 20).map((transaction) => {
+    const keyword = state.historySearch.trim().toLocaleLowerCase('ja');
+    const filtered = state.transactions.filter((transaction) => {
+      const day = localDateInputValue(transaction.recordedAt);
+      if (state.historyFrom && day < state.historyFrom) return false;
+      if (state.historyTo && day > state.historyTo) return false;
+      if (!keyword) return true;
+      const searchable = (transaction.items || []).flatMap((item) => [item.name, item.category]).join(' ').toLocaleLowerCase('ja');
+      return searchable.includes(keyword);
+    });
+    const visible = filtered.slice(0, state.historyVisibleCount);
+    const filteredTotal = filtered.reduce((sum, transaction) => sum + (Number(transaction.total) || 0), 0);
+    elements.historyResults.textContent = filtered.length
+      ? `${filtered.length}件中 ${visible.length}件を表示 · 合計 ${formatYen(filteredTotal)}`
+      : state.transactions.length ? '該当する会計はありません。' : '会計履歴はまだありません。';
+    elements.historyLoadMore.classList.toggle('is-hidden', visible.length >= filtered.length);
+    elements.historyLoadMore.textContent = `さらに20件表示（残り${Math.max(0, filtered.length - visible.length)}件）`;
+    elements.historyBody.innerHTML = visible.map((transaction) => {
       const detail = (transaction.items || []).map((item) => `<div class="history-item"><span class="history-item-name">${productNameMarkup(item.name)}</span><small class="history-item-unit-price">${escapeHtml(formatYen(item.unitPrice))}</small><strong>×${item.quantity}</strong></div>`).join('');
       return `<article class="history-card" role="listitem">
         <div class="history-card-header">
@@ -994,7 +1169,29 @@
           </div>
         </div>
       </article>`;
-    }).join('') || '<div class="empty-state">会計履歴はまだありません。</div>';
+    }).join('') || `<div class="empty-state">${state.transactions.length ? '条件に合う会計がありません。検索条件を変えてください。' : '会計履歴はまだありません。'}</div>`;
+  }
+
+  function renderDailyClose() {
+    if (!elements.dailyCloseDate || !elements.dailyCloseSummary) return;
+    const report = Core.dailyCloseReport(state.transactions, elements.dailyCloseDate.value);
+    elements.dailyCloseSummary.innerHTML = `
+      <div><span>会計数</span><strong>${report.transactionCount}</strong></div>
+      <div><span>販売個数</span><strong>${report.itemCount}</strong></div>
+      <div><span>売上合計</span><strong>${formatYen(report.totalSales)}</strong></div>
+      <div><span>お預かり</span><strong>${formatYen(report.totalReceived)}</strong></div>
+      <div><span>おつり</span><strong>${formatYen(report.totalChange)}</strong></div>`;
+    elements.dailyCloseExport.disabled = report.transactionCount === 0;
+  }
+
+  function exportDailyClose() {
+    const report = Core.dailyCloseReport(state.transactions, elements.dailyCloseDate.value);
+    if (!report.transactionCount) {
+      setStatus('選択した日に確定済みの会計はありません。', 'error');
+      return;
+    }
+    downloadCsvFile(`shirayuri-daily-close-${report.date}.csv`, report.csv);
+    setStatus(`${report.date}の日次締めレポートを保存しました。`, 'success');
   }
 
   function activateTab(tabName) {
@@ -1096,15 +1293,40 @@
     if (root.scrollTo) root.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function deleteTransaction(transactionId) {
-    if (!root.confirm('この会計を削除しますか？')) return;
+  function clearUndoSale() {
+    if (state.undoTimer) root.clearTimeout(state.undoTimer);
+    state.undoTimer = null;
+    state.undoTransactionId = null;
+    if (elements.undoLastSale) elements.undoLastSale.classList.add('is-hidden');
+  }
+
+  function offerUndoForSale(transactionId) {
+    if (state.undoTimer) root.clearTimeout(state.undoTimer);
+    state.undoTransactionId = transactionId;
+    elements.undoLastSale.classList.remove('is-hidden');
+    state.undoTimer = root.setTimeout(clearUndoSale, 10000);
+  }
+
+  function undoLastSale() {
+    const transactionId = state.undoTransactionId;
+    if (!transactionId) return;
+    deleteTransaction(transactionId, { confirm: false, undo: true });
+  }
+
+  function deleteTransaction(transactionId, options = {}) {
+    if (options.confirm !== false && !root.confirm('この会計を削除しますか？')) return;
     try {
+      const previousTransaction = state.transactions.find((item) => item.id === transactionId);
+      if (!previousTransaction) return;
       const nextTransactions = Core.removeTransaction(state.transactions, transactionId);
-      Storage.saveTransactions(storage, nextTransactions);
+      const nextInventory = Core.applyInventoryTransactionChange(state.inventory, previousTransaction, null, state.products);
+      Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory);
       state.transactions = nextTransactions;
+      state.inventory = nextInventory;
+      if (state.undoTransactionId === transactionId) clearUndoSale();
       if (state.editingTransactionId === transactionId) clearCartState();
       renderAll();
-      setStatus('会計を削除しました。', 'success');
+      setStatus(options.undo ? '直前の会計を取り消しました。在庫数も戻しました。' : '会計を削除しました。在庫数も戻しました。', 'success');
     } catch (error) {
       setStatus('会計を削除できませんでした。現在の履歴を維持します。', 'error');
     }
@@ -1123,6 +1345,7 @@
     if (!target) return;
     const productId = target.dataset.productId;
     if (target.dataset.managementAction === 'save') saveProductDetails(productId, target);
+    if (target.dataset.managementAction === 'adjust-stock') adjustProductStock(productId, target);
     if (target.dataset.managementAction === 'icon') {
       elements.iconFile.dataset.targetProductId = productId;
       elements.iconFile.click();
@@ -1152,48 +1375,70 @@
   }
 
   function saveProductDetails(productId, actionTarget) {
-    const product = state.products.find((candidate) => candidate.id === productId);
     const row = actionTarget.closest('.managed-product-row');
-    const nameInput = row && row.querySelector('[data-management-field="name"]');
-    const categoryInput = row && row.querySelector('[data-management-field="category"]');
-    const newCategoryInput = row && row.querySelector('[data-management-field="new-category"]');
-    const priceInput = row && row.querySelector('[data-management-field="price"]');
-    const stockLimitInput = row && row.querySelector('[data-management-field="stock-limit"]');
-    const name = nameInput ? nameInput.value.trim() : '';
-    const selectedCategory = categoryInput ? categoryInput.value.trim() : '';
-    const category = selectedCategory === NEW_CATEGORY_VALUE
-      ? (newCategoryInput ? newCategoryInput.value.trim() : '')
-      : selectedCategory;
-    if (!product || !name || !category || !priceInput || priceInput.value.trim() === '') {
+    const draft = getManagedProductDraft(row, productId);
+    if (!draft || !draft.name || !draft.category || draft.rawPrice === '') {
       setStatus('商品名、カテゴリ、単価を入力してください。', 'error');
       return;
     }
-    const unitPrice = Number(priceInput.value);
-    if (!Number.isFinite(unitPrice)) {
+    if (!Number.isFinite(draft.unitPrice)) {
       setStatus('単価は数値で入力してください。', 'error');
       return;
     }
-    const stockLimit = readOptionalStockLimit(stockLimitInput);
-    if (!stockLimit.valid) {
+    if (!draft.stockLimit.valid) {
       setStatus('在庫上限は0以上の整数で入力してください。空欄の場合は無制限です。', 'error');
       return;
     }
-    if (state.products.some((candidate) => candidate.id !== productId && candidate.category === category && candidate.name === name)) {
+    if (state.products.some((candidate) => candidate.id !== productId && candidate.category === draft.category && candidate.name === draft.name)) {
       setStatus('同じカテゴリと商品名の商品がすでにあります。', 'error');
       return;
     }
     try {
-      const nextProduct = { ...product, name, category, unitPrice };
-      if (stockLimit.value === null) delete nextProduct.stockLimit;
-      else nextProduct.stockLimit = stockLimit.value;
+      const nextProduct = { ...draft.product, name: draft.name, category: draft.category, unitPrice: draft.unitPrice };
+      if (draft.stockLimit.value === null) delete nextProduct.stockLimit;
+      else nextProduct.stockLimit = draft.stockLimit.value;
       const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
-      Storage.saveProducts(storage, nextProducts);
+      const nextInventory = updateInventoryForProductChange(state.inventory, draft.product, nextProduct);
+      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
       state.products = nextProducts;
+      state.inventory = nextInventory;
       if (state.cartProducts.has(productId)) state.cartProducts.set(productId, nextProduct);
       renderAll();
-      setStatus(`${name}の商品情報を反映しました。`, 'success');
+      setStatus(`${draft.name}の商品情報を反映しました。`, 'success');
     } catch (error) {
       setStatus('商品情報を反映できませんでした。現在の商品一覧を維持します。', 'error');
+    }
+  }
+
+  function adjustProductStock(productId, actionTarget) {
+    const row = actionTarget.closest('.managed-product-row');
+    const input = row && row.querySelector('[data-management-field="stock-remaining"]');
+    const product = state.products.find((candidate) => candidate.id === productId);
+    const value = input ? Number(input.value.trim()) : NaN;
+    if (state.editingTransactionId) {
+      setStatus('会計の変更を保存または取り消してから、在庫残数を調整してください。', 'error');
+      return;
+    }
+    if (row && getManagedProductDraft(row)?.hasUncommittedChanges) {
+      setStatus('先に「商品情報を反映」してから、在庫残数を調整してください。', 'error');
+      return;
+    }
+    if (!product || !input || !input.value.trim() || !Number.isInteger(value) || value < 0) {
+      setStatus('実在庫の残数は0以上の整数で入力してください。', 'error');
+      return;
+    }
+    try {
+      const sales = getProductSales(product);
+      const nextProduct = { ...product, stockLimit: sales + value };
+      const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
+      const nextInventory = Core.adjustInventory(state.inventory, productId, product.name, value);
+      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
+      state.products = nextProducts;
+      state.inventory = nextInventory;
+      renderAll();
+      setStatus(`${product.name}の在庫残数を${value}個に調整しました。`, 'success');
+    } catch (error) {
+      setStatus('在庫数を保存できませんでした。現在の在庫を維持します。', 'error');
     }
   }
 
@@ -1220,8 +1465,10 @@
         return;
       }
       const nextProducts = [...state.products, product];
-      Storage.saveProducts(storage, nextProducts);
+      const nextInventory = addInventoryForProduct(state.inventory, product);
+      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
       state.products = nextProducts;
+      state.inventory = nextInventory;
       elements.productAddName.value = '';
       elements.productAddPrice.value = '';
       elements.productAddStockLimit.value = '';
@@ -1292,29 +1539,47 @@
 
   function updateBackupStatus() {
     if (!elements.backupStatus) return;
-    if (!state.settings.autoBackupEnabled) {
-      elements.backupStatus.textContent = '自動バックアップは停止中です。画面を閉じると自動処理も停止します。';
-      return;
-    }
-    if (!root.showDirectoryPicker) {
-      elements.backupStatus.textContent = 'このブラウザはフォルダへの自動保存に対応していません。自動バックアップを利用するにはChromeまたはEdgeをご利用ください。';
-      return;
-    }
-    if (!state.backupDirectoryHandle) {
-      elements.backupStatus.textContent = '保存先フォルダを選択してください。選択後は同じCSVを上書き保存します。';
-      return;
-    }
-    const last = formatBackupDate(state.settings.autoBackupLastAt);
+    const last = formatBackupDate(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt);
+    const lastMessage = last ? `最終バックアップ：${last}` : 'バックアップ履歴はまだありません。';
     const interval = Number(state.settings.autoBackupIntervalMinutes) || 5;
-    elements.backupStatus.textContent = last
-      ? `自動バックアップを有効にしています（${interval}分ごと）。最終出力：${last}`
-      : `自動バックアップを有効にしています（${interval}分ごと）。初回出力を待機中です。`;
+    let mode;
+    if (state.settings.autoBackupEnabled && !root.showDirectoryPicker) {
+      mode = '自動保存はこのブラウザでは使えません。手動CSV保存をご利用ください。';
+    } else if (state.settings.autoBackupEnabled && !state.backupDirectoryHandle) {
+      mode = '自動保存の保存先フォルダを選択してください。';
+    } else if (state.settings.autoBackupEnabled) {
+      mode = `自動保存を有効にしています（${interval}分ごと）。`;
+    } else {
+      mode = '自動保存は停止中です。';
+    }
+    const lastAt = Date.parse(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt || '');
+    const stale = !Number.isFinite(lastAt) || Date.now() - lastAt > 24 * 60 * 60 * 1000;
+    const reminder = stale ? ' 24時間以上バックアップがないため、CSV保存をおすすめします。' : '';
+    const error = state.lastBackupError ? ` 直近の自動保存に失敗しました：${state.lastBackupError}` : '';
+    elements.backupStatus.textContent = `${mode} ${lastMessage}${reminder}${error}`;
   }
 
   function updateUnsupportedFeatureVisibility() {
     const automaticBackupSupported = typeof root.showDirectoryPicker === 'function' && Boolean(root.indexedDB);
     if (elements.backupOptions) elements.backupOptions.hidden = !automaticBackupSupported;
-    if (elements.backupStatus) elements.backupStatus.hidden = !automaticBackupSupported;
+    if (elements.backupStatus) elements.backupStatus.hidden = false;
+  }
+
+  function recordHistoryBackupSuccess(type) {
+    const now = new Date().toISOString();
+    const nextSettings = {
+      ...state.settings,
+      historyBackupLastAt: now,
+      historyBackupLastType: type,
+    };
+    try {
+      Storage.saveSettings(storage, nextSettings);
+      state.settings = nextSettings;
+      state.lastBackupError = '';
+    } catch (error) {
+      state.lastBackupError = 'バックアップ日時を記録できませんでした';
+    }
+    updateBackupStatus();
   }
 
   function persistSettings(settings, successMessage, errorMessage) {
@@ -1530,13 +1795,16 @@
     state.autoBackupInProgress = true;
     try {
       await writeBackupCsv(Core.transactionsToCsv(state.transactions));
-      state.settings = { ...state.settings, autoBackupLastAt: new Date().toISOString() };
+      const now = new Date().toISOString();
+      state.settings = { ...state.settings, autoBackupLastAt: now, historyBackupLastAt: now, historyBackupLastType: 'automatic' };
       Storage.saveSettings(storage, state.settings);
+      state.lastBackupError = '';
       updateBackupStatus();
       if (!automatic) setStatus('販売履歴CSVを保存先フォルダに上書き保存しました。', 'success');
       return true;
     } catch (error) {
       state.backupDirectoryHandle = null;
+      state.lastBackupError = error && error.message ? error.message : '保存先に書き込めませんでした';
       updateBackupStatus();
       if (!automatic) setStatus('保存先フォルダに書き込めませんでした。フォルダを選び直してください。', 'error');
       return false;
@@ -1631,10 +1899,14 @@
         received: Number(state.received),
       });
       const nextTransactions = existing ? Core.upsertTransaction(state.transactions, transaction) : [transaction, ...state.transactions];
-      Storage.saveTransactions(storage, nextTransactions);
+      const nextInventory = Core.applyInventoryTransactionChange(state.inventory, existing || null, transaction, state.products);
+      Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory);
       state.transactions = nextTransactions;
+      state.inventory = nextInventory;
       clearCartState();
       renderAll();
+      if (existing) clearUndoSale();
+      else offerUndoForSale(transaction.id);
       setStatus(existing ? `会計を変更しました。${formatYen(transaction.total)}に更新しました。` : `会計を確定しました。${formatYen(transaction.total)}を記録しました。`, 'success');
     } catch (error) {
       setStatus(error.message || '会計を保存できませんでした。', 'error');
@@ -1668,8 +1940,16 @@
           }
           return merged;
         });
-        Storage.saveProducts(storage, nextProducts);
+        let nextInventory = cloneInventoryLedger();
+        nextProducts.forEach((product) => {
+          const previous = state.products.find((candidate) => candidate.id === product.id);
+          nextInventory = previous
+            ? updateInventoryForProductChange(nextInventory, previous, product)
+            : addInventoryForProduct(nextInventory, product);
+        });
+        Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
         state.products = nextProducts;
+        state.inventory = nextInventory;
         clearCartState();
         renderAll();
         const warningText = parsed.warnings.length ? ` 注意: ${parsed.warnings.join(' ')}` : '';
@@ -1686,6 +1966,7 @@
     const csv = Core.transactionsToCsv(state.transactions);
     const detailCount = state.transactions.reduce((count, transaction) => count + (transaction.items || []).length, 0);
     downloadCsvFile(`shirayuri-sales-history-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+    recordHistoryBackupSuccess('manual');
     setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴をダウンロードしました。`, 'success');
   }
 
@@ -1702,9 +1983,9 @@
   }
 
   function exportSettingsBundle() {
-    const json = Core.settingsBundleToJson(state.products, state.settings);
+    const json = Core.settingsBundleToJson(state.products, state.settings, state.inventory);
     downloadJsonFile(`shirayuri-register-settings-${new Date().toISOString().slice(0, 10)}.json`, json);
-    setStatus(`${state.products.length}件の商品とレジ設定一式をダウンロードしました。販売履歴は含まれません。`, 'success');
+    setStatus(`${state.products.length}件の商品・在庫数・レジ設定をダウンロードしました。販売履歴は含まれません。`, 'success');
   }
 
   function importTransactions(file) {
@@ -1715,11 +1996,18 @@
         setStatus(`会計履歴を復元できませんでした。${parsed.warnings.join(' ')}`, 'error');
         return;
       }
-      if (!root.confirm('現在の会計履歴を、CSVの内容で置き換えますか？')) return;
+      if (!root.confirm('現在の会計履歴を、CSVの内容で置き換えますか？\n在庫数はこの端末の現在値を維持します。新しい端末へ在庫数も移す場合は、先に「レジ設定一式」を復元してください。')) return;
       try {
-        Storage.saveTransactions(storage, parsed.transactions);
+        const hasInventoryActivity = Object.values(state.inventory.salesByProduct || {}).some((quantity) => quantity > 0)
+          || (state.inventory.adjustments || []).length > 0;
+        const nextInventory = !state.transactions.length && !hasInventoryActivity
+          ? Core.createInventoryLedger(state.products, parsed.transactions)
+          : state.inventory;
+        Storage.saveSalesAndInventory(storage, parsed.transactions, nextInventory);
         state.transactions = parsed.transactions;
+        state.inventory = nextInventory;
         migrateLegacyTransactionProductIds();
+        clearUndoSale();
         clearCartState();
         renderAll();
         setStatus(`${parsed.transactions.length}件の会計履歴を復元しました。`, 'success');
@@ -1770,9 +2058,11 @@
         setStatus(`レジ設定一式を復元できませんでした。${parsed.warnings.join(' ')}`, 'error');
         return;
       }
-      if (!root.confirm('現在の商品一覧と制限設定を、設定一式ファイルの内容で置き換えますか？販売履歴は変更されません。')) return;
+      if (!root.confirm('現在の商品一覧・在庫数・制限設定を、設定一式ファイルの内容で置き換えますか？販売履歴は変更されません。')) return;
       const previousProducts = state.products;
       const previousSettings = state.settings;
+      const previousInventory = state.inventory;
+      const nextInventory = parsed.inventory || Core.createInventoryLedger(parsed.products, state.transactions);
       const nextSettings = {
         ...state.settings,
         ...parsed.settings,
@@ -1780,18 +2070,19 @@
         autoBackupLastAt: state.settings.autoBackupLastAt || '',
       };
       try {
-        Storage.saveProducts(storage, parsed.products);
+        Storage.saveProductsAndInventory(storage, parsed.products, nextInventory);
         Storage.saveSettings(storage, nextSettings);
         state.products = parsed.products;
+        state.inventory = nextInventory;
         state.settings = nextSettings;
         applyProductColumnWidth();
         startAutoBackupTimer();
         clearCartState();
         renderAll();
-        setStatus(`${parsed.products.length}件の商品とレジ設定一式を復元しました。販売履歴は変更していません。`, 'success');
+        setStatus(`${parsed.products.length}件の商品・在庫数・レジ設定を復元しました。販売履歴は変更していません。`, 'success');
       } catch (error) {
         try {
-          Storage.saveProducts(storage, previousProducts);
+          Storage.saveProductsAndInventory(storage, previousProducts, previousInventory);
           Storage.saveSettings(storage, previousSettings);
         } catch (restoreError) {
           // 保存先自体が利用できない場合は、現在の画面状態を維持する。
@@ -1805,6 +2096,7 @@
 
   function start() {
     elements.status = $('#status');
+    elements.undoLastSale = $('#undo-last-sale');
     elements.pageShell = document.querySelector('.page-shell');
     elements.productList = $('#product-list');
     elements.productCount = $('#product-count');
@@ -1823,6 +2115,10 @@
     elements.averageTransaction = $('#average-transaction');
     elements.categorySummary = $('#category-summary');
     elements.categoryQuantitySummary = $('#category-quantity-summary');
+    elements.inventoryChartSummary = $('#inventory-chart-summary');
+    elements.inventoryChart = $('#inventory-chart');
+    elements.weekdayHeatmapHead = $('#weekday-heatmap-head');
+    elements.weekdayHeatmapBody = $('#weekday-heatmap-body');
     elements.salesChart = $('#sales-chart');
     elements.quantityChart = $('#quantity-chart');
     elements.shareChart = $('#share-chart');
@@ -1843,6 +2139,15 @@
     elements.hourlySort = $('#hourly-sort');
     elements.hourlyHideEmpty = $('#hourly-hide-empty');
     elements.historyBody = $('#history-body');
+    elements.historySearch = $('#history-search');
+    elements.historyFrom = $('#history-from');
+    elements.historyTo = $('#history-to');
+    elements.historyResults = $('#history-results');
+    elements.historyLoadMore = $('#history-load-more');
+    elements.stockAdjustmentHistory = $('#stock-adjustment-history');
+    elements.dailyCloseDate = $('#daily-close-date');
+    elements.dailyCloseSummary = $('#daily-close-summary');
+    elements.dailyCloseExport = $('#daily-close-export');
     elements.clearCart = $('#clear-cart');
     elements.purchaseLimit = $('#purchase-limit');
     elements.checkoutLimitBadge = $('#checkout-limit-badge');
@@ -1895,6 +2200,30 @@
     $('#cart-list').addEventListener('click', handleProductAction);
     $('#cart-list').addEventListener('change', handleProductAction);
     elements.historyBody.addEventListener('click', handleHistoryAction);
+    const updateHistoryFilters = () => {
+      state.historySearch = elements.historySearch.value;
+      state.historyFrom = elements.historyFrom.value;
+      state.historyTo = elements.historyTo.value;
+      state.historyVisibleCount = 20;
+      renderHistory();
+    };
+    elements.historySearch.addEventListener('input', updateHistoryFilters);
+    elements.historyFrom.addEventListener('change', updateHistoryFilters);
+    elements.historyTo.addEventListener('change', updateHistoryFilters);
+    $('#history-filter-clear').addEventListener('click', () => {
+      elements.historySearch.value = '';
+      elements.historyFrom.value = '';
+      elements.historyTo.value = '';
+      updateHistoryFilters();
+    });
+    elements.historyLoadMore.addEventListener('click', () => {
+      state.historyVisibleCount += 20;
+      renderHistory();
+    });
+    elements.undoLastSale.addEventListener('click', undoLastSale);
+    elements.dailyCloseDate.value = localDateInputValue(new Date());
+    elements.dailyCloseDate.addEventListener('change', renderDailyClose);
+    elements.dailyCloseExport.addEventListener('click', exportDailyClose);
     elements.productManagementList.addEventListener('click', handleProductManagementAction);
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
@@ -1959,7 +2288,10 @@
     elements.backupNow.addEventListener('click', () => { void backupNow(); });
     root.addEventListener('beforeunload', handleBeforeUnload);
     $('#clear-history').addEventListener('click', async () => {
-      if (!state.transactions.length || !root.confirm('会計履歴をすべて消去しますか？')) return;
+      const lastBackup = Date.parse(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt || '');
+      const backupIsFresh = Number.isFinite(lastBackup) && Date.now() - lastBackup <= 24 * 60 * 60 * 1000;
+      const backupWarning = backupIsFresh ? '' : '\n\n最近24時間以内のバックアップがありません。先に販売履歴をダウンロードすることをおすすめします。';
+      if (!state.transactions.length || !root.confirm(`会計履歴をすべて消去しますか？\n在庫残数と在庫調整履歴は維持されます。${backupWarning}`)) return;
       let archiveResult;
       try {
         archiveResult = await archiveSalesHistoryBackup();
@@ -1969,20 +2301,22 @@
       }
       Storage.clearTransactions(storage);
       state.transactions = [];
+      clearUndoSale();
       renderAll();
       const archiveMessage = archiveResult.archived
         ? `バックアップCSVを${archiveResult.filename}としてアーカイブしました。`
         : 'アーカイブ対象のバックアップCSVはありませんでした。';
-      setStatus(`会計履歴を消去しました。商品一覧は残っています。${archiveMessage}`, 'success');
+      setStatus(`会計履歴を消去しました。在庫残数・商品一覧・設定は維持されています。${archiveMessage}`, 'success');
     });
     renderHourlyHourOptions();
     applyProductColumnWidth();
     migrateLegacyTransactionProductIds();
+    const inventoryWarning = initializeInventoryLedger();
     renderAll();
     renderSettings();
     startAutoBackupTimer();
     void restoreBackupDirectory();
-    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, settingsState.warning].filter(Boolean);
+    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, inventoryState.warning, settingsState.warning, inventoryWarning].filter(Boolean);
     setStatus(warnings.join(' '), warnings.length ? 'error' : '');
   }
 

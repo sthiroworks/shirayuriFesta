@@ -63,6 +63,45 @@ test('transactions round-trip and clear without removing products', () => {
   assert.deepEqual(Storage.loadProducts(storage, []).products, DEFAULT_PRODUCTS);
 });
 
+test('inventory ledger survives clearing transaction history', () => {
+  const storage = fakeStorage();
+  const inventory = {
+    salesByProduct: { 'p1': 4 },
+    remainingByProduct: { 'p1': 2 },
+    adjustments: [],
+  };
+  Storage.saveInventory(storage, inventory);
+  Storage.saveTransactions(storage, [{ id: 'tx1', recordedAt: '2026-10-12T03:00:00.000Z', total: 100, received: 100, change: 0, itemCount: 1, items: [] }]);
+  Storage.clearTransactions(storage);
+  assert.deepEqual(Storage.loadTransactions(storage).transactions, []);
+  assert.deepEqual(Storage.loadInventory(storage).inventory, inventory);
+});
+
+test('loadInventory initializes as absent and rejects malformed ledgers with a warning', () => {
+  const storage = fakeStorage();
+  assert.deepEqual(Storage.loadInventory(storage), { inventory: null, warning: null });
+  storage.setItem('shirayuri-inventory-v1', JSON.stringify({ salesByProduct: { p1: -1 }, remainingByProduct: {}, adjustments: [] }));
+  const result = Storage.loadInventory(storage);
+  assert.equal(result.inventory, null);
+  assert.match(result.warning, /在庫台帳/);
+});
+
+test('sales and inventory are rolled back together when saving either fails', () => {
+  const storage = fakeStorage({ 'shirayuri-transactions-v1': '[]', 'shirayuri-inventory-v1': JSON.stringify({ salesByProduct: {}, remainingByProduct: {}, adjustments: [] }) });
+  const originalSet = storage.setItem;
+  let failInventoryOnce = true;
+  storage.setItem = (key, value) => {
+    if (key === 'shirayuri-inventory-v1' && failInventoryOnce) {
+      failInventoryOnce = false;
+      throw new Error('quota');
+    }
+    originalSet(key, value);
+  };
+  assert.throws(() => Storage.saveSalesAndInventory(storage, [{ id: 'new' }], { salesByProduct: {}, remainingByProduct: {}, adjustments: [] }), /quota/);
+  assert.equal(storage.getItem('shirayuri-transactions-v1'), '[]');
+  assert.deepEqual(Storage.loadInventory(storage).inventory, { salesByProduct: {}, remainingByProduct: {}, adjustments: [] });
+});
+
 test('loadTransactions falls back from malformed storage with a warning', () => {
   const storage = fakeStorage({ 'shirayuri-transactions-v1': 'not-json' });
   const result = Storage.loadTransactions(storage);

@@ -357,6 +357,34 @@
     };
   }
 
+  function summarizeWeekdayHours(transactions, period, nowValue, timeRange) {
+    const now = nowValue instanceof Date ? nowValue : new Date(nowValue || Date.now());
+    const labels = ['日', '月', '火', '水', '木', '金', '土'];
+    const weekdays = labels.map((label, weekday) => ({
+      weekday,
+      label,
+      hours: Array.from({ length: 24 }, (_, hour) => ({ hour, transactionCount: 0, itemCount: 0, sales: 0 })),
+    }));
+    const selected = (transactions || []).filter((transaction) => {
+      if (period === 'today') return isSameLocalDay(transaction.recordedAt, now);
+      if (period === 'week') return isSameLocalWeek(transaction.recordedAt, now);
+      if (period === 'month') return isSameLocalMonth(transaction.recordedAt, now);
+      return true;
+    }).filter((transaction) => isWithinLocalHour(transaction.recordedAt, timeRange));
+    selected.forEach((transaction) => {
+      const date = new Date(transaction.recordedAt);
+      if (Number.isNaN(date.getTime())) return;
+      const cell = weekdays[date.getDay()].hours[date.getHours()];
+      cell.transactionCount += 1;
+      cell.itemCount += Number(transaction.itemCount) || 0;
+      cell.sales += Number(transaction.total) || 0;
+    });
+    return {
+      weekdays,
+      maxTransactions: Math.max(0, ...weekdays.flatMap((day) => day.hours.map((hour) => hour.transactionCount))),
+    };
+  }
+
   function csvEscape(value) {
     const text = value == null ? '' : String(value);
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -400,6 +428,146 @@
     return lines.join('\r\n');
   }
 
+  function inventoryKeyForItem(item, products) {
+    if (item && clean(item.productId)) return clean(item.productId);
+    const product = (products || []).find((candidate) => candidate.category === item.category && candidate.name === item.name);
+    return product ? product.id : `${clean(item && item.category)}::${clean(item && item.name)}`;
+  }
+
+  function inventoryCountsForTransaction(transaction, products) {
+    const counts = {};
+    (transaction && transaction.items || []).forEach((item) => {
+      const key = inventoryKeyForItem(item, products);
+      const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      if (!key || !quantity) return;
+      counts[key] = (counts[key] || 0) + quantity;
+    });
+    return counts;
+  }
+
+  function createInventoryLedger(products, transactions) {
+    const ledger = { salesByProduct: {}, remainingByProduct: {}, adjustments: [] };
+    (transactions || []).forEach((transaction) => {
+      const counts = inventoryCountsForTransaction(transaction, products);
+      Object.entries(counts).forEach(([key, quantity]) => {
+        ledger.salesByProduct[key] = (ledger.salesByProduct[key] || 0) + quantity;
+      });
+    });
+    (products || []).forEach((product) => {
+      const limit = Number(product.stockLimit);
+      if (Number.isInteger(limit) && limit >= 0) {
+        ledger.remainingByProduct[product.id] = Math.max(0, limit - (ledger.salesByProduct[product.id] || 0));
+      }
+    });
+    return ledger;
+  }
+
+  function applyInventoryTransactionChange(inventory, previousTransaction, nextTransaction, products) {
+    const source = inventory || {};
+    const ledger = {
+      salesByProduct: { ...(source.salesByProduct || {}) },
+      remainingByProduct: { ...(source.remainingByProduct || {}) },
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const before = inventoryCountsForTransaction(previousTransaction, products);
+    const after = inventoryCountsForTransaction(nextTransaction, products);
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    keys.forEach((key) => {
+      const oldQuantity = before[key] || 0;
+      const newQuantity = after[key] || 0;
+      const delta = newQuantity - oldQuantity;
+      const currentSales = Math.max(0, Math.floor(Number(ledger.salesByProduct[key]) || 0));
+      const product = (products || []).find((candidate) => candidate.id === key);
+      const limit = Number(product && product.stockLimit);
+      if (Number.isInteger(limit) && limit >= 0 && !Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, key)) {
+        ledger.remainingByProduct[key] = Math.max(0, limit - currentSales);
+      }
+      ledger.salesByProduct[key] = Math.max(0, currentSales + delta);
+      if (Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, key)) {
+        ledger.remainingByProduct[key] = Math.max(0, Number(ledger.remainingByProduct[key]) - delta);
+      }
+    });
+    return ledger;
+  }
+
+  function adjustInventory(inventory, productId, productName, remaining, now) {
+    const quantity = Number(remaining);
+    if (!productId || !Number.isInteger(quantity) || quantity < 0) throw new Error('在庫残数は0以上の整数で入力してください');
+    const source = inventory || {};
+    const ledger = {
+      salesByProduct: { ...(source.salesByProduct || {}) },
+      remainingByProduct: { ...(source.remainingByProduct || {}) },
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const previous = Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, productId)
+      ? Math.max(0, Number(ledger.remainingByProduct[productId]) || 0)
+      : null;
+    ledger.remainingByProduct[productId] = quantity;
+    ledger.adjustments.unshift({
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      productId,
+      productName: clean(productName),
+      recordedAt: (now ? new Date(now) : new Date()).toISOString(),
+      before: previous,
+      after: quantity,
+    });
+    ledger.adjustments = ledger.adjustments.slice(0, 50);
+    return ledger;
+  }
+
+  function summarizeInventoryAvailability(products, inventory) {
+    const source = inventory || {};
+    const sales = source.salesByProduct || {};
+    const physical = source.remainingByProduct || {};
+    return (products || []).flatMap((product) => {
+      const limit = Number(product && product.stockLimit);
+      if (!Number.isInteger(limit) || limit < 0) return [];
+      const sold = Math.max(0, Math.floor(Number(sales[product.id]) || 0));
+      const limitRemaining = Math.max(0, limit - sold);
+      const physicalRemaining = Object.prototype.hasOwnProperty.call(physical, product.id)
+        ? Math.max(0, Math.floor(Number(physical[product.id]) || 0))
+        : limitRemaining;
+      const remaining = Math.min(limitRemaining, physicalRemaining);
+      const remainingRatio = limit ? remaining / limit : 0;
+      return [{ product, total: limit, sold, remaining, remainingRatio, soldPercent: limit ? Math.round((1 - remainingRatio) * 100) : 0 }];
+    });
+  }
+
+  function dailyCloseReport(transactions, date) {
+    const targetDate = clean(date);
+    const dailyTransactions = (transactions || []).filter((transaction) => localDateKey(transaction.recordedAt) === targetDate);
+    const totals = dailyTransactions.reduce((result, transaction) => {
+      result.sales += Number(transaction.total) || 0;
+      result.items += Number(transaction.itemCount) || 0;
+      result.received += Number(transaction.received) || 0;
+      result.change += Number(transaction.change) || 0;
+      return result;
+    }, { sales: 0, items: 0, received: 0, change: 0 });
+    const products = new Map();
+    dailyTransactions.forEach((transaction) => (transaction.items || []).forEach((item) => {
+      const key = `${clean(item.productId) || `${clean(item.category)}::${clean(item.name)}`}`;
+      const current = products.get(key) || { category: clean(item.category), name: clean(item.name), quantity: 0, sales: 0 };
+      current.quantity += Number(item.quantity) || 0;
+      current.sales += Number(item.subtotal) || (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+      products.set(key, current);
+    }));
+    const lines = [['区分', '対象日', 'カテゴリ', '商品名', '会計数', '販売個数', '売上', 'お預かり', 'おつり']];
+    lines.push(['日計', targetDate, '', '', dailyTransactions.length, totals.items, totals.sales, totals.received, totals.change]);
+    Array.from(products.values()).sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name, 'ja')).forEach((item) => {
+      lines.push(['商品別', targetDate, item.category, item.name, '', item.quantity, item.sales, '', '']);
+    });
+    return {
+      date: targetDate,
+      transactionCount: dailyTransactions.length,
+      itemCount: totals.items,
+      totalSales: totals.sales,
+      totalReceived: totals.received,
+      totalChange: totals.change,
+      products: Array.from(products.values()),
+      csv: lines.map((row) => row.map(csvEscape).join(',')).join('\r\n'),
+    };
+  }
+
   function productsToCsv(products) {
     const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID'];
     (products || []).forEach((product) => {
@@ -432,7 +600,7 @@
     return lines.join('\r\n');
   }
 
-  function settingsBundleToJson(products, settings) {
+  function settingsBundleToJson(products, settings, inventory) {
     const columnWidth = ['compact', 'standard', 'wide'].includes(settings && settings.productColumnWidth) ? settings.productColumnWidth : 'standard';
     const bundleProducts = (products || []).map((product) => {
       const value = {
@@ -448,9 +616,14 @@
     });
     return JSON.stringify({
       format: 'shirayuri-register-settings',
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       products: bundleProducts,
+      inventory: inventory ? {
+        salesByProduct: { ...(inventory.salesByProduct || {}) },
+        remainingByProduct: { ...(inventory.remainingByProduct || {}) },
+        adjustments: Array.isArray(inventory.adjustments) ? inventory.adjustments.slice(0, 50) : [],
+      } : null,
       settings: {
         enabled: settings && settings.enabled === true,
         category: clean(settings && settings.category) || '古園服',
@@ -470,7 +643,7 @@
     } catch (error) {
       return { products: [], settings: null, warnings: ['設定一式ファイルのJSONを読み込めません。'] };
     }
-    if (!bundle || bundle.format !== 'shirayuri-register-settings' || bundle.version !== 1) {
+    if (!bundle || bundle.format !== 'shirayuri-register-settings' || ![1, 2].includes(bundle.version)) {
       return { products: [], settings: null, warnings: ['対応していない設定一式ファイルです。'] };
     }
     if (!Array.isArray(bundle.products) || !bundle.products.length || !bundle.settings || typeof bundle.settings !== 'object') {
@@ -515,8 +688,28 @@
     if (typeof enabled !== 'boolean' || !category || siblings === null || perSibling === null || !Number.isInteger(siblings) || siblings < 1 || !Number.isInteger(perSibling) || perSibling < 0 || !['compact', 'standard', 'wide'].includes(productColumnWidth) || typeof autoBackupEnabled !== 'boolean' || autoBackupIntervalMinutes === null || !Number.isInteger(autoBackupIntervalMinutes) || autoBackupIntervalMinutes < 1) {
       return { products: [], settings: null, warnings: ['設定一式ファイルの制限、表示またはバックアップ設定が不正です。'] };
     }
+    let inventory = null;
+    if (bundle.inventory != null) {
+      const sourceInventory = bundle.inventory;
+      const validCounts = (value) => value && typeof value === 'object' && !Array.isArray(value)
+        && Object.values(value).every((count) => Number.isInteger(count) && count >= 0);
+      const validAdjustments = Array.isArray(sourceInventory.adjustments) && sourceInventory.adjustments.every((entry) => (
+        entry && typeof entry === 'object' && typeof entry.productId === 'string' && typeof entry.recordedAt === 'string'
+        && Number.isInteger(entry.after) && entry.after >= 0
+        && (entry.before === null || (Number.isInteger(entry.before) && entry.before >= 0))
+      ));
+      if (!validCounts(sourceInventory.salesByProduct) || !validCounts(sourceInventory.remainingByProduct) || !validAdjustments) {
+        return { products: [], settings: null, inventory: null, warnings: ['設定一式ファイルの在庫情報が不正です。'] };
+      }
+      inventory = {
+        salesByProduct: { ...sourceInventory.salesByProduct },
+        remainingByProduct: { ...sourceInventory.remainingByProduct },
+        adjustments: sourceInventory.adjustments.slice(0, 50).map((entry) => ({ ...entry })),
+      };
+    }
     return {
       products,
+      inventory,
       settings: { enabled, category, siblings, perSibling, productColumnWidth, autoBackupEnabled, autoBackupIntervalMinutes },
       warnings: [],
     };
@@ -646,6 +839,6 @@
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };
   }
 
-  return { makeProduct, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, transactionsToCsv, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
+  return { makeProduct, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
 });
 
