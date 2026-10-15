@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 510" role="img" aria-labelledby="title desc">
+  <title id="title">販売レジの画面イメージ</title>
+  <desc id="desc">上部に画面切り替え、左に商品カード、右に会計明細がある販売レジ画面の図。</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="9" flood-color="#153d3b" flood-opacity=".08"/>
+    </filter>
+  </defs>
+  <rect width="1040" height="510" rx="22" fill="#f2f7f5"/>
+  <text x="30" y="42" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="23" font-weight="700">販売レジの画面</text>
+  <text x="30" y="68" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">商品を選びながら、会計内容を確認できます</text>
+
+  <g filter="url(#shadow)">
+    <rect x="22" y="88" width="996" height="382" rx="16" fill="#fff" stroke="#d6e4e1"/>
+    <path d="M38 88h964a16 16 0 0 1 16 16v47H22v-47a16 16 0 0 1 16-16Z" fill="#fbfdfc"/>
+    <path d="M22 151h996" stroke="#e0eae8"/>
+  </g>
+
+  <circle cx="49" cy="119" r="13" fill="#dcefeb"/>
+  <path d="M43 119h12M49 113v12" stroke="#267c75" stroke-width="2" stroke-linecap="round"/>
+  <text x="70" y="116" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="14" font-weight="700">SHIRAYURI FESTA</text>
+  <text x="70" y="134" fill="#68817f" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">販売レジ</text>
+
+  <rect x="478" y="101" width="150" height="35" rx="9" fill="#e5f2ef"/>
+  <text x="553" y="123" text-anchor="middle" fill="#17615b" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13" font-weight="700">商品を選ぶ</text>
+  <text x="710" y="123" text-anchor="middle" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">売上・販売数</text>
+  <text x="881" y="123" text-anchor="middle" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">直近の会計</text>
+
+  <rect x="40" y="165" width="119" height="29" rx="8" fill="#fff" stroke="#d6e4e1"/>
+  <text x="52" y="184" fill="#375d5b" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">商品列幅　標準　⌄</text>
+  <rect x="168" y="165" width="155" height="29" rx="8" fill="#fff" stroke="#d6e4e1"/>
+  <text x="180" y="184" fill="#375d5b" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">カテゴリ表示　3/4　⌄</text>
+
+  <text x="41" y="222" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="15" font-weight="700">商品を選ぶ</text>
+  <text x="40" y="243" fill="#6b8583" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">園グッズ</text>
+  <path d="M104 239h551" stroke="#d9e6e3"/>
+
+  <g font-family="Yu Gothic UI, Meiryo, sans-serif">
+    <g>
+      <rect x="40" y="253" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="54" y="267" width="38" height="38" rx="11" fill="#e8f3f0"/>
+      <path d="M64 278h18l-2 19H66l-2-19Zm4 0v-4a5 5 0 0 1 10 0v4" fill="none" stroke="#38827b" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="102" y="279" fill="#193c3b" font-size="12" font-weight="700">手提げ</text>
+      <text x="102" y="297" fill="#607a79" font-size="11">¥500　残り 12</text>
+      <rect x="184" y="286" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="199" y="305" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+    <g>
+      <rect x="246" y="253" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="260" y="267" width="38" height="38" rx="11" fill="#edf2f8"/>
+      <path d="M271 276h16v21h-16zM275 276v-4h8v4m-8 7h8" fill="none" stroke="#597d9c" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="308" y="279" fill="#193c3b" font-size="12" font-weight="700">上履き袋</text>
+      <text x="308" y="297" fill="#607a79" font-size="11">¥300　残り 8</text>
+      <rect x="390" y="286" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="405" y="305" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+    <g>
+      <rect x="452" y="253" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="466" y="267" width="38" height="38" rx="11" fill="#fff3dc"/>
+      <path d="M475 276h20l-2 20h-16l-2-20Zm4 0v-4a4 4 0 0 1 8 0v4" fill="none" stroke="#bb8a36" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="514" y="279" fill="#193c3b" font-size="12" font-weight="700">コップ袋</text>
+      <text x="514" y="297" fill="#607a79" font-size="11">¥150</text>
+      <rect x="596" y="286" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="611" y="305" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+    <g>
+      <rect x="40" y="341" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="54" y="355" width="38" height="38" rx="11" fill="#f9e9ec"/>
+      <path d="M63 365h20l-2 20H65l-2-20Zm4 0v-4a6 6 0 0 1 12 0v4" fill="none" stroke="#c46c7a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="102" y="367" fill="#193c3b" font-size="12" font-weight="700">お弁当袋</text>
+      <text x="102" y="385" fill="#607a79" font-size="11">¥300</text>
+      <rect x="184" y="374" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="199" y="393" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+    <g>
+      <rect x="246" y="341" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="260" y="355" width="38" height="38" rx="11" fill="#fff5de"/>
+      <path d="m269 363 19 3-3 18-19-3 3-18Zm2 5 13 2m-14 3 12 2m-5-10-2 13" fill="none" stroke="#bb9850" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="308" y="367" fill="#193c3b" font-size="12" font-weight="700">ナフキン</text>
+      <text x="308" y="385" fill="#607a79" font-size="11">¥100</text>
+      <rect x="390" y="374" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="405" y="393" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+    <g>
+      <rect x="452" y="341" width="194" height="78" rx="11" fill="#fcfefd" stroke="#d4e2df"/>
+      <rect x="466" y="355" width="38" height="38" rx="11" fill="#e7f3f8"/>
+      <path d="m480 360 10 3-6 24-10-3 6-24Zm2 5 5 2m-7 5 5 2" fill="none" stroke="#4f94ad" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="514" y="367" fill="#193c3b" font-size="12" font-weight="700">水筒紐カバー</text>
+      <text x="514" y="385" fill="#607a79" font-size="11">¥150</text>
+      <rect x="596" y="374" width="30" height="28" rx="8" fill="#fff" stroke="#cfdfdc"/>
+      <text x="611" y="393" text-anchor="middle" fill="#17615b" font-size="17">＋</text>
+    </g>
+  </g>
+
+  <rect x="672" y="165" width="328" height="283" rx="13" fill="#f8fbfa" stroke="#d9e6e3"/>
+  <text x="692" y="194" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="15" font-weight="700">お会計</text>
+  <text x="976" y="194" text-anchor="end" fill="#6b8583" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">2点</text>
+  <path d="M692 207h288" stroke="#dce7e5"/>
+  <g font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12">
+    <text x="692" y="231" fill="#315755">手提げ</text><text x="978" y="231" text-anchor="end" fill="#607a79">¥500 × 1</text>
+    <text x="692" y="253" fill="#315755">ナフキン</text><text x="978" y="253" text-anchor="end" fill="#607a79">¥100 × 1</text>
+  </g>
+  <path d="M692 268h288" stroke="#dce7e5"/>
+  <text x="692" y="293" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12">合計</text>
+  <text x="978" y="294" text-anchor="end" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="20" font-weight="700">¥600</text>
+  <text x="692" y="321" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">お預かり</text>
+  <rect x="772" y="305" width="208" height="31" rx="8" fill="#fff" stroke="#d6e4e1"/>
+  <text x="787" y="325" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">¥1,000</text>
+  <text x="692" y="355" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">おつり</text>
+  <text x="978" y="355" text-anchor="end" fill="#17615b" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="15" font-weight="700">¥400</text>
+  <rect x="692" y="375" width="288" height="47" rx="10" fill="#176b65"/>
+  <text x="836" y="404" text-anchor="middle" fill="#fff" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="14" font-weight="700">会計を確定する</text>
+
+  <circle cx="34" cy="491" r="9" fill="#dcefeb"/>
+  <path d="M31 491h6m-3-3v6" stroke="#267c75" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="52" y="496" fill="#526f6d" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12">スマートフォンでは、商品一覧の下にお会計欄が表示されます。</text>
+</svg>

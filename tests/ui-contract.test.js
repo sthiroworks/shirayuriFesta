@@ -55,6 +55,12 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /SalesRegisterStorage/);
   assert.match(app, /transactionsToCsv/);
   assert.match(app, /activateTab/);
+  assert.match(app, /function setupTabSwipe\(tabbedResults\)/);
+  assert.match(app, /addEventListener\('touchstart'/);
+  assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false \}\)/);
+  assert.match(app, /Math\.abs\(deltaX\) < 55/);
+  assert.match(app, /activateTab\(tabs\[nextIndex\]\)/);
+  assert.match(app, /\.hourly-product-table-scroll/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);
   assert.match(app, /renderCategoryChart/);

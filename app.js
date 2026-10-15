@@ -1205,6 +1205,50 @@
     });
   }
 
+  function setupTabSwipe(tabbedResults) {
+    if (!tabbedResults) return;
+    const tabs = ['products', 'chart', 'history'];
+    const ignoredTargets = 'button, input, select, textarea, a, [contenteditable="true"], .tab-list, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
+    let touchStart = null;
+
+    tabbedResults.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1) {
+        touchStart = null;
+        return;
+      }
+      if (event.target.closest?.(ignoredTargets)) {
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    }, { passive: true });
+
+    tabbedResults.addEventListener('touchend', (event) => {
+      if (!touchStart || event.changedTouches.length !== 1) {
+        touchStart = null;
+        return;
+      }
+      const start = touchStart;
+      touchStart = null;
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+      if (Date.now() - start.at > 800 || Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+      const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
+      const activeIndex = tabs.indexOf(activeTab);
+      if (activeIndex < 0) return;
+      const nextIndex = activeIndex + (deltaX < 0 ? 1 : -1);
+      if (!tabs[nextIndex]) return;
+
+      if (event.cancelable) event.preventDefault();
+      activateTab(tabs[nextIndex]);
+    }, { passive: false });
+
+    tabbedResults.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+  }
+
   function setAdminMode(isOpen) {
     elements.adminPanel.classList.toggle('is-hidden', !isOpen);
     elements.pageShell.classList.toggle('admin-mode', isOpen);
@@ -2236,6 +2280,7 @@
       const tab = event.target.closest('[data-tab-target]');
       if (tab) activateTab(tab.dataset.tabTarget);
     });
+    setupTabSwipe(document.querySelector('.tabbed-results'));
     elements.received.addEventListener('input', () => { state.received = elements.received.value; renderCart(); });
     elements.checkoutResizeHandle.addEventListener('pointerdown', handleCheckoutResizeStart);
     elements.checkoutResizeHandle.addEventListener('keydown', handleCheckoutResizeKeydown);
