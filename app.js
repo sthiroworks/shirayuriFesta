@@ -1194,14 +1194,21 @@
     setStatus(`${report.date}の日次締めレポートを保存しました。`, 'success');
   }
 
-  function activateTab(tabName) {
+  function activateTab(tabName, swipeEnterFrom = '') {
+    const swipeAnimationClasses = ['is-swipe-enter-from-left', 'is-swipe-enter-from-right'];
     document.querySelectorAll('[data-tab-target]').forEach((tab) => {
       const active = tab.dataset.tabTarget === tabName;
       tab.classList.toggle('is-active', active);
       tab.setAttribute('aria-selected', String(active));
     });
     document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
-      panel.classList.toggle('is-hidden', panel.dataset.tabPanel !== tabName);
+      panel.classList.remove(...swipeAnimationClasses);
+      const active = panel.dataset.tabPanel === tabName;
+      panel.classList.toggle('is-hidden', !active);
+      if (active && ['left', 'right'].includes(swipeEnterFrom)) {
+        void panel.offsetWidth;
+        panel.classList.add(`is-swipe-enter-from-${swipeEnterFrom}`);
+      }
     });
   }
 
@@ -1243,7 +1250,7 @@
       if (!tabs[nextIndex]) return;
 
       if (event.cancelable) event.preventDefault();
-      activateTab(tabs[nextIndex]);
+      activateTab(tabs[nextIndex], deltaX < 0 ? 'right' : 'left');
     }, { passive: false });
 
     tabbedResults.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });

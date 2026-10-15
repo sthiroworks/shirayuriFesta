@@ -59,8 +59,11 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /addEventListener\('touchstart'/);
   assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false \}\)/);
   assert.match(app, /Math\.abs\(deltaX\) < 55/);
-  assert.match(app, /activateTab\(tabs\[nextIndex\]\)/);
   assert.match(app, /\.hourly-product-table-scroll/);
+  assert.match(app, /activateTab\(tabs\[nextIndex\], deltaX < 0 \? 'right' : 'left'\)/);
+  assert.match(css, /\.tab-panel\.is-swipe-enter-from-left \{ animation:/);
+  assert.match(css, /\.tab-panel\.is-swipe-enter-from-right \{ animation:/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);
   assert.match(app, /renderCategoryChart/);
