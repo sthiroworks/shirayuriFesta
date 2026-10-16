@@ -121,6 +121,8 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.doesNotMatch(html.match(/<input id="received"[^>]*>/)?.[0] ?? '', /readonly/);
   assert.match(html, /data-received-add="1000"/);
   assert.match(html, /data-received-action="clear"/);
+  assert.match(html, /class="received-label-row"[\s\S]*?data-received-action="clear"[\s\S]*?<\/div>/);
+  assert.match(html, /class="received-quick-buttons"[\s\S]*?id="exact-total"/);
   assert.match(app, /handleReceivedQuickAction/);
   assert.match(app, /setCheckoutHeight/);
   assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
@@ -138,7 +140,8 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
   assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);
   assert.match(css, /#exact-total \{ border: 1px solid #[\da-f]{6}; color: var\(--teal\); background: #[\da-f]{6}; \}/i);
-  assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-areas: "quick label" "quick received" "quick change" "message message";/);
+  assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-columns: minmax\(0, 2\.2fr\) minmax\(112px, 1fr\); grid-template-areas: "quick label" "quick received" "quick change" "message message";/);
+  assert.match(css, /#checkout-panel \.received-label-row \{ grid-area: label; margin: 0; \}/);
   assert.match(css, /#checkout-panel \.received-quick-buttons \{ grid-area: quick; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); grid-template-rows: repeat\(2, 48px\);/);
   assert.match(css, /\.confirm-button \{ width: 100%; height: 60px;/);
   assert.match(css, /\.site-header \{ align-items: center; flex-direction: row; gap: 16px; \}/);

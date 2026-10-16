@@ -260,10 +260,14 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .text-button { border: 0; color: var(--danger); background: transparent; font-size: .8rem; font-weight: 700; }
 .payment-box { padding: 16px; border-radius: 10px; background: var(--paper); }
 .payment-box label { display: block; margin-bottom: 6px; color: var(--muted); font-size: .8rem; font-weight: 700; }
+.received-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.received-label-row label { margin: 0; }
+.received-clear-button { min-height: 34px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: #fff; font-size: .72rem; font-weight: 700; }
+.received-clear-button:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-light); }
 .received-row input { min-width: 0; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
 #exact-total { border: 1px solid #a9cac5; color: var(--teal); background: #edf6f3; }
 #exact-total:hover { border-color: var(--teal); background: var(--teal-light); }
-.received-quick-buttons { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
+.received-quick-buttons { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
 .received-quick-buttons button { min-width: 0; height: 50px; width: 100%; padding: 5px 4px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
 .received-quick-buttons button[data-received-add] { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 1 1 0; padding: 3px 2px; line-height: 1.05; }
 .received-quick-buttons button[data-received-action] { flex: 0 0 auto; }
@@ -551,11 +555,12 @@ td.money { white-space: nowrap; font-weight: 700; }
   #checkout-panel .checkout-limit-stepper button { width: 26px; height: 26px; font-size: .9rem; }
   #checkout-panel .checkout-limit-stepper input { width: 42px; height: 26px; }
   #checkout-panel .checkout-limit-reset { flex-basis: 100%; text-align: right; }
-  #checkout-panel .payment-box { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); grid-template-areas: "quick label" "quick received" "quick change" "message message"; gap: 4px 8px; align-items: center; padding: 8px; border-radius: 8px; }
-  #checkout-panel .payment-box label { grid-area: label; margin: 0; font-size: .72rem; }
-  #checkout-panel .received-row { display: grid; grid-area: received; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; min-width: 0; }
+  #checkout-panel .payment-box { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(112px, 1fr); grid-template-areas: "quick label" "quick received" "quick change" "message message"; gap: 4px 8px; align-items: center; padding: 8px; border-radius: 8px; }
+  #checkout-panel .received-label-row { grid-area: label; margin: 0; }
+  #checkout-panel .received-label-row label { font-size: .72rem; }
+  #checkout-panel .received-clear-button { min-height: 30px; padding: 3px 8px; font-size: .68rem; }
+  #checkout-panel .received-row { grid-area: received; min-width: 0; }
   #checkout-panel .received-row input { width: 100%; padding: 6px; }
-  #checkout-panel .received-row .button { min-width: 0; padding: 7px 7px; white-space: nowrap; }
   #checkout-panel .received-quick-buttons { grid-area: quick; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, 48px); gap: 4px; margin-top: 0; overflow: visible; }
   #checkout-panel .received-quick-buttons button { flex: 1 1 0; min-width: 0; height: 48px; padding: 4px 2px; font-size: .72rem; }
   #checkout-panel .received-quick-buttons button[data-received-add] { gap: 1px; padding: 2px 1px; font-size: .62rem; }

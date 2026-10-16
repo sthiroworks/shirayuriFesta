@@ -593,7 +593,16 @@
                 </button>
               </div>
               <div class="payment-box">
-                <label for="received">お預かり</label>
+                <div class="received-label-row">
+                  <label for="received">お預かり</label>
+                  <button
+                    class="received-clear-button"
+                    type="button"
+                    data-received-action="clear"
+                  >
+                    クリア
+                  </button>
+                </div>
                 <div class="received-row">
                   <input
                     id="received"
@@ -604,17 +613,10 @@
                     placeholder="0"
                     aria-describedby="received-help"
                   />
-                  <button
-                    id="exact-total"
-                    class="button button-secondary"
-                    type="button"
-                  >
-                    ちょうど
-                  </button>
                 </div>
                 <div
                   class="received-quick-buttons"
-                  aria-label="お預かり金額をタップで加算"
+                  aria-label="お預かり金額の調整"
                 >
                   <button type="button" data-received-add="10">
                     <svg
@@ -870,9 +872,7 @@
                       /></svg
                     >＋1,000
                   </button>
-                  <button type="button" data-received-action="clear">
-                    クリア
-                  </button>
+                  <button id="exact-total" type="button">ちょうど</button>
                 </div>
                 <p id="received-help" class="received-help">
                   金額を直接入力するか、ボタンで加算できます。
