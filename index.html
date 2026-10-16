@@ -882,6 +882,27 @@
                 </div>
                 <p id="payment-message" class="field-message"></p>
               </div>
+              <div class="sale-note">
+                <button
+                  id="sale-note-toggle"
+                  class="sale-note-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="sale-note-field"
+                >
+                  ＋ 会計メモを追加
+                </button>
+                <div id="sale-note-field" class="sale-note-field is-hidden">
+                  <label for="sale-note">会計メモ</label>
+                  <textarea
+                    id="sale-note"
+                    maxlength="200"
+                    rows="2"
+                    placeholder="例：取り置き、特記事項"
+                  ></textarea>
+                  <span id="sale-note-count" class="sale-note-count">0/200</span>
+                </div>
+              </div>
               <div class="undo-sale-anchor">
                 <button
                   id="undo-last-sale"

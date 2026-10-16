@@ -28,7 +28,7 @@ test('index contains the checkout and dashboard interaction contract', () => {
   assert.match(html, /分析対象時間フィルタ/);
   assert.match(html, /時間帯分析フィルタ/);
   assert.match(html, /会計がない時間を隠す/);
-  assert.match(html, /class="tabbed-results" data-sales-interface/);
+  assert.match(html, /class="tabbed-results"\s+data-sales-interface/);
   assert.match(html, /class="product-management-tools"/);
   assert.match(html, /class="backup-history-actions"/);
   assert.match(html, /class="[^"]*data-transfer-panel[^"]*"/);
@@ -125,6 +125,10 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(html, /class="received-quick-buttons"[\s\S]*?id="exact-total"/);
   assert.match(app, /handleReceivedQuickAction/);
   assert.match(app, /setCheckoutHeight/);
+  assert.match(app, /fitCheckoutHeightAfterClear: false/);
+  assert.match(app, /function fitCheckoutHeightToContent\(\) \{[\s\S]*?buttonRect\.bottom - panelRect\.top[\s\S]*?if \(contentHeight < state\.checkoutHeight\) setCheckoutHeight\(contentHeight\);/);
+  assert.match(app, /function clearCartState\(\) \{[\s\S]*?state\.fitCheckoutHeightAfterClear = state\.checkoutHeight != null;/);
+  assert.match(app, /function renderAll\(\) \{[\s\S]*?if \(state\.fitCheckoutHeightAfterClear && fitCheckoutHeightToContent\(\)\) state\.fitCheckoutHeightAfterClear = false;/);
   assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
   assert.match(css, /#checkout-panel \{ position: fixed;/);
   assert.match(css, /height: var\(--checkout-height, 33\.3333dvh\); max-height: 90vh; max-height: 90dvh;/);
@@ -156,10 +160,10 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   for (const id of ['settings-panel', 'settings-enabled', 'settings-siblings', 'settings-per-sibling', 'settings-category', 'product-column-width', 'category-filter-options', 'category-filter-summary-count', 'backup-settings-save', 'icon-file', 'product-add-form', 'product-add-category', 'product-add-new-category-field', 'product-add-new-category', 'product-add-name', 'product-add-price']) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
   }
-  assert.match(html, /<select id="settings-category"><\/select>/);
+  assert.match(html, /<select id="settings-category"><\/select\s*>/);
   assert.match(html, /class="catalog-panel-actions"/);
   assert.match(html, /class="category-filter-control"/);
-  assert.match(html, /<select id="product-add-category" required><\/select>/);
+  assert.match(html, /<select id="product-add-category" required><\/select\s*>/);
   assert.ok(html.indexOf('class="settings-data-actions"') < html.indexOf('class="backup-settings"'), 'restriction file actions stay with restriction settings');
   assert.match(app, /data-history-action/);
   assert.match(app, /data-management-action/);
@@ -228,6 +232,12 @@ test('history, inventory, backup, and daily close improvements are wired into th
   }
   assert.match(app, /filtered\.slice\(0, state\.historyVisibleCount\)/);
   assert.match(app, /function undoLastSale\(\)/);
+  assert.match(html, /id="sale-note-toggle"[\s\S]*?aria-controls="sale-note-field"/);
+  assert.match(html, /<textarea[\s\S]*?id="sale-note"[\s\S]*?maxlength="200"/);
+  assert.match(app, /note: state\.saleNote/);
+  assert.match(app, /escapeHtml\(transaction\.note\)/);
+  assert.match(app, /transaction\.note \|\| ''\]/);
+  assert.match(css, /\.history-note span \{ white-space: pre-wrap;/);
   assert.match(app, /const confirmation = `直前の会計（\$\{formatDate\(transaction\.recordedAt\)\}・\$\{formatYen\(transaction\.total\)\}）を取り消しますか？/);
   assert.match(app, /if \(!root\.confirm\(confirmation\)\) return;/);
   assert.match(app, /elements\.undoLastSale\.classList\.add\('is-fading'\)/);
@@ -239,7 +249,7 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(css, /\.daily-close-panel/);
   assert.match(css, /\.history-tools/);
   assert.match(css, /\.managed-stock-adjustment/);
-  assert.match(html, /<div class="undo-sale-anchor">\s*<button id="undo-last-sale"[\s\S]*?<\/div>\s*<button id="confirm-button"/);
+  assert.match(html, /<div class="undo-sale-anchor">\s*<button[\s\S]*?id="undo-last-sale"[\s\S]*?<\/button>\s*<\/div>\s*<button[\s\S]*?id="confirm-button"/);
   assert.match(css, /\.undo-sale-anchor \{ position: relative; height: 0; margin-top: 14px; \}/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?position: absolute;[\s\S]*?left: 50%;/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?background: rgba\(255, 255, 255, \.97\);/);

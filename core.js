@@ -205,6 +205,7 @@
   function buildTransaction(input) {
     const cart = calculateCart(input.lines);
     const received = Number(input.received);
+    const note = clean(input.note);
     if (cart.total < 0) throw new Error('合計金額がマイナスです');
     if (!Number.isFinite(received) || received < cart.total) throw new Error('お預かりが不足しています');
     return {
@@ -215,6 +216,7 @@
       change: received - cart.total,
       itemCount: cart.itemCount,
       items: cart.lineItems,
+      ...(note ? { note } : {}),
     };
   }
 
@@ -406,7 +408,7 @@
   }
 
   function transactionsToCsv(transactions) {
-    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID'];
+    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID,会計メモ'];
     (transactions || []).forEach((transaction) => {
       const dates = formatExportDate(transaction.recordedAt);
       const items = transaction.items || [];
@@ -427,6 +429,7 @@
           item.quantity,
           item.subtotal,
           item.productId || '',
+          transaction.note || '',
         ].map(csvEscape).join(','));
       });
     });
@@ -815,8 +818,9 @@
       quantity: indexOf('数量'),
       subtotal: indexOf('売上金額'),
       productId: indexOf('商品id'),
+      note: indexOf('会計メモ'),
     };
-    const missing = Object.entries(indexes).filter(([name, index]) => name !== 'productId' && index < 0).map(([name]) => name);
+    const missing = Object.entries(indexes).filter(([name, index]) => name !== 'productId' && name !== 'note' && index < 0).map(([name]) => name);
     if (missing.length) {
       return { transactions: [], warnings: [`会計履歴CSVに必要な列がありません: ${missing.join('、')}`], stats: { accepted: 0, rejected: 0 } };
     }
@@ -843,11 +847,14 @@
         return;
       }
       if (!transactionMap.has(id)) {
-        transactionMap.set(id, { id, recordedAt, total, received, change, itemCount, items: [] });
+        const note = indexes.note >= 0 ? clean(row[indexes.note]) : '';
+        transactionMap.set(id, { id, recordedAt, total, received, change, itemCount, items: [], ...(note ? { note } : {}) });
       }
+      const transaction = transactionMap.get(id);
+      if (!transaction.note && indexes.note >= 0 && clean(row[indexes.note])) transaction.note = clean(row[indexes.note]);
       const item = { category, name, unitPrice, quantity, subtotal };
       if (indexes.productId >= 0 && clean(row[indexes.productId])) item.productId = clean(row[indexes.productId]);
-      transactionMap.get(id).items.push(item);
+      transaction.items.push(item);
     });
 
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };

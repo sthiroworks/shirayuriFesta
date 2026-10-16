@@ -10,6 +10,7 @@
     standard: { desktop: 200, mobile: 145, desktopColumns: 4, mobileColumns: 2, icon: 78, tabletIcon: 66, phoneIcon: 56 },
     wide: { desktop: 230, mobile: 280, desktopColumns: 3, mobileColumns: 1, icon: 88, tabletIcon: 76, phoneIcon: 72 },
   });
+  const SALE_NOTE_MAX_LENGTH = 200;
 
   function normalizeProductColumnWidth(value) {
     const key = String(value || '').trim();
@@ -75,6 +76,7 @@
     cart: new Map(),
     cartProducts: new Map(),
     received: '',
+    saleNote: '',
     period: 'today',
     hourlyMetric: 'transactions',
     hourlyStartHour: 0,
@@ -84,6 +86,7 @@
     collapsedCategories: new Set(),
     hiddenCategories: new Set(),
     checkoutHeight: null,
+    fitCheckoutHeightAfterClear: false,
     editingTransactionId: null,
     statusTimer: null,
     autoBackupTimer: null,
@@ -353,13 +356,30 @@
     renderCart();
   }
 
+  function setSaleNote(note, expanded) {
+    const value = String(note || '').slice(0, SALE_NOTE_MAX_LENGTH);
+    state.saleNote = value;
+    if (!elements.saleNote || !elements.saleNoteField || !elements.saleNoteToggle) return;
+    elements.saleNote.value = value;
+    const isExpanded = typeof expanded === 'boolean' ? expanded : Boolean(value);
+    elements.saleNoteField.classList.toggle('is-hidden', !isExpanded);
+    elements.saleNoteToggle.setAttribute('aria-expanded', String(isExpanded));
+    elements.saleNoteToggle.textContent = isExpanded ? '− メモを閉じる' : value ? 'メモを表示' : '＋ 会計メモを追加';
+    elements.saleNoteCount.textContent = `${value.length}/${SALE_NOTE_MAX_LENGTH}`;
+  }
+
   function clearCartState() {
+    state.fitCheckoutHeightAfterClear = state.checkoutHeight != null;
     state.cart.clear();
     state.cartProducts.clear();
     state.received = '';
+    setSaleNote('', false);
     state.editingTransactionId = null;
     state.temporaryCheckoutSiblings = null;
     if (elements.received) elements.received.value = '';
+    if (state.fitCheckoutHeightAfterClear && elements.checkoutPanel) {
+      elements.checkoutPanel.querySelector('.checkout-scroll-area').scrollTop = 0;
+    }
   }
 
   function checkoutHeightBounds() {
@@ -378,6 +398,19 @@
     elements.checkoutResizeHandle.setAttribute('aria-valuemax', String(bounds.maximum));
     elements.checkoutResizeHandle.setAttribute('aria-valuenow', String(nextHeight));
     elements.checkoutResizeHandle.setAttribute('aria-valuetext', `${nextHeight}px`);
+  }
+
+  function fitCheckoutHeightToContent() {
+    if (state.checkoutHeight == null) return true;
+    const panelRect = elements.checkoutPanel.getBoundingClientRect();
+    const buttonRect = elements.confirmButton.getBoundingClientRect();
+    if (!panelRect.height || !buttonRect.height) return false;
+    const panelStyle = root.getComputedStyle(elements.checkoutPanel);
+    const bottomPadding = Number.parseFloat(panelStyle.paddingBottom) || 0;
+    const bottomBorder = Number.parseFloat(panelStyle.borderBottomWidth) || 0;
+    const contentHeight = Math.ceil(buttonRect.bottom - panelRect.top + bottomPadding + bottomBorder);
+    if (contentHeight < state.checkoutHeight) setCheckoutHeight(contentHeight);
+    return true;
   }
 
   function handleCheckoutResizeStart(event) {
@@ -583,6 +616,7 @@
     // カートだけでなく、管理画面の未保存フォームもページ離脱警告の対象にする。
     return state.cart.size > 0
       || state.received !== ''
+      || Boolean(state.saleNote.trim())
       || Boolean(state.editingTransactionId)
       || hasSettingsFormChanges()
       || hasBackupSettingsFormChanges()
@@ -1150,7 +1184,7 @@
       if (state.historyFrom && day < state.historyFrom) return false;
       if (state.historyTo && day > state.historyTo) return false;
       if (!keyword) return true;
-      const searchable = (transaction.items || []).flatMap((item) => [item.name, item.category]).join(' ').toLocaleLowerCase('ja');
+      const searchable = [...(transaction.items || []).flatMap((item) => [item.name, item.category]), transaction.note || ''].join(' ').toLocaleLowerCase('ja');
       return searchable.includes(keyword);
     });
     const visible = filtered.slice(0, state.historyVisibleCount);
@@ -1162,13 +1196,14 @@
     elements.historyLoadMore.textContent = `さらに20件表示（残り${Math.max(0, filtered.length - visible.length)}件）`;
     elements.historyBody.innerHTML = visible.map((transaction) => {
       const detail = (transaction.items || []).map((item) => `<div class="history-item"><span class="history-item-name">${productNameMarkup(item.name)}</span><small class="history-item-unit-price">${escapeHtml(formatYen(item.unitPrice))}</small><strong>×${item.quantity}</strong></div>`).join('');
+      const note = transaction.note ? `<div class="history-note"><strong>メモ</strong><span>${escapeHtml(transaction.note)}</span></div>` : '';
       return `<article class="history-card" role="listitem">
         <div class="history-card-header">
           <div class="history-time"><span>${escapeHtml(formatDate(transaction.recordedAt))}</span><small>${transaction.itemCount}点</small></div>
           <div class="history-card-actions"><button type="button" data-history-action="edit" data-transaction-id="${escapeHtml(transaction.id)}">変更</button><button type="button" data-history-action="delete" data-transaction-id="${escapeHtml(transaction.id)}">削除</button></div>
         </div>
         <div class="history-card-body">
-          <div class="history-items">${detail || '<span class="muted-label">明細なし</span>'}</div>
+          <div class="history-items">${detail || '<span class="muted-label">明細なし</span>'}${note}</div>
           <div class="history-money">
             <div><span>合計</span><strong>${formatYen(transaction.total)}</strong></div>
             <div><span>お預かり</span><b>${formatYen(transaction.received)}</b></div>
@@ -1222,6 +1257,11 @@
         animationTarget.classList.add(`is-swipe-enter-from-${swipeEnterFrom}`);
       }
     });
+    if (tabName === 'products' && state.fitCheckoutHeightAfterClear) {
+      root.requestAnimationFrame(() => {
+        if (fitCheckoutHeightToContent()) state.fitCheckoutHeightAfterClear = false;
+      });
+    }
   }
 
   function setupTabSwipe(tabbedResults) {
@@ -1372,6 +1412,7 @@
     renderCart();
     renderDashboard();
     renderHistory();
+    if (state.fitCheckoutHeightAfterClear && fitCheckoutHeightToContent()) state.fitCheckoutHeightAfterClear = false;
   }
 
   function handleProductAction(event) {
@@ -1441,6 +1482,7 @@
     });
     state.received = String(transaction.received);
     elements.received.value = state.received;
+    setSaleNote(transaction.note || '', Boolean(transaction.note));
     activateTab('products');
     renderAll();
     setStatus('会計を変更中です。内容を直して「変更を保存」を押してください。', '');
@@ -2067,6 +2109,7 @@
         recordedAt: existing ? existing.recordedAt : new Date().toISOString(),
         lines,
         received: Number(state.received),
+        note: state.saleNote,
       });
       const nextTransactions = existing ? Core.upsertTransaction(state.transactions, transaction) : [transaction, ...state.transactions];
       const nextInventory = Core.applyInventoryTransactionChange(state.inventory, existing || null, transaction, state.products);
@@ -2277,6 +2320,10 @@
     elements.paymentBox = document.querySelector('.payment-box');
     elements.cartTotal = $('#cart-total');
     elements.received = $('#received');
+    elements.saleNoteToggle = $('#sale-note-toggle');
+    elements.saleNoteField = $('#sale-note-field');
+    elements.saleNote = $('#sale-note');
+    elements.saleNoteCount = $('#sale-note-count');
     elements.change = $('#change');
     elements.paymentMessage = $('#payment-message');
     elements.confirmButton = $('#confirm-button');
@@ -2409,6 +2456,15 @@
     });
     setupTabSwipe(document.querySelector('.tabbed-results'));
     elements.received.addEventListener('input', () => { state.received = elements.received.value; renderCart(); });
+    elements.saleNoteToggle.addEventListener('click', () => {
+      const opening = elements.saleNoteField.classList.contains('is-hidden');
+      setSaleNote(state.saleNote, opening);
+      if (opening) elements.saleNote.focus();
+    });
+    elements.saleNote.addEventListener('input', () => {
+      state.saleNote = elements.saleNote.value;
+      elements.saleNoteCount.textContent = `${state.saleNote.length}/${SALE_NOTE_MAX_LENGTH}`;
+    });
     elements.checkoutResizeHandle.addEventListener('pointerdown', handleCheckoutResizeStart);
     elements.checkoutResizeHandle.addEventListener('keydown', handleCheckoutResizeKeydown);
     root.addEventListener('resize', () => { if (state.checkoutHeight) setCheckoutHeight(state.checkoutHeight); });

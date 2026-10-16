@@ -259,6 +259,13 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .checkout-limit-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; color: #fff; background: var(--danger); font-size: .68rem; vertical-align: middle; }
 .text-button { border: 0; color: var(--danger); background: transparent; font-size: .8rem; font-weight: 700; }
 .payment-box { padding: 16px; border-radius: 10px; background: var(--paper); }
+.sale-note { margin-top: 8px; }
+.sale-note-toggle { padding: 4px 0; border: 0; color: var(--teal); background: transparent; font-size: .76rem; font-weight: 700; }
+.sale-note-toggle:hover { color: var(--ink); text-decoration: underline; }
+.sale-note-field { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fbfdfc; }
+.sale-note-field label { grid-column: 1 / -1; color: var(--muted); font-size: .74rem; font-weight: 700; }
+.sale-note-field textarea { width: 100%; min-width: 0; min-height: 48px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; font: inherit; font-size: .82rem; resize: vertical; }
+.sale-note-count { align-self: end; padding-bottom: 3px; color: var(--muted); font-size: .68rem; white-space: nowrap; }
 .payment-box label { display: block; margin-bottom: 6px; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .received-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .received-label-row label { margin: 0; }
@@ -441,6 +448,9 @@ td.money { white-space: nowrap; font-weight: 700; }
 .history-card-actions button:last-child { color: var(--danger); }
 .history-card-body { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; padding-top: 12px; }
 .history-items { display: grid; gap: 4px; align-content: start; }
+.history-note { display: grid; gap: 2px; margin-top: 4px; padding: 7px 9px; border-left: 3px solid #a9cac5; border-radius: 0 6px 6px 0; color: var(--ink); background: #f0f6f4; font-size: .76rem; }
+.history-note strong { color: var(--muted); font-size: .68rem; }
+.history-note span { white-space: pre-wrap; overflow-wrap: anywhere; }
 .history-item { display: flex; justify-content: space-between; gap: 12px; max-width: 420px; color: var(--ink); font-size: .82rem; }
 .history-item strong { color: var(--muted); font-size: .78rem; }
 .history-money { display: grid; grid-template-columns: repeat(3, minmax(78px, auto)); gap: 18px; align-items: start; }

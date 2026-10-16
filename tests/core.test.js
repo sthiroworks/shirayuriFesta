@@ -152,6 +152,12 @@ test('buildTransaction calculates change and rejects insufficient payment', () =
   assert.equal(transaction.total, 1000);
   assert.equal(transaction.received, 1200);
   assert.equal(transaction.change, 200);
+  assert.equal(Core.buildTransaction({
+    id: 'tx-note', recordedAt: transaction.recordedAt, lines, received: 1000, note: '  取り置き  ',
+  }).note, '取り置き');
+  assert.equal(Object.hasOwn(Core.buildTransaction({
+    id: 'tx-no-note', recordedAt: transaction.recordedAt, lines, received: 1000, note: '   ',
+  }), 'note'), false);
   assert.throws(() => Core.buildTransaction({
     id: 'tx-2', recordedAt: transaction.recordedAt, lines, received: 999,
   }), /不足/);
@@ -233,7 +239,7 @@ test('summarizeWeekdayHours groups transactions by local weekday and hour with p
 
 test('transactionsToCsv creates one aggregation-friendly row per item', () => {
   const csv = Core.transactionsToCsv([{
-    id: 'tx,1', recordedAt: '2026-10-12T12:00:00.000Z', total: 200, received: 200, change: 0, itemCount: 2,
+    id: 'tx,1', recordedAt: '2026-10-12T12:00:00.000Z', total: 200, received: 200, change: 0, itemCount: 2, note: '取り置き, "午後"',
     items: [
       { category: 'カテゴリ', name: '商品, "限定"', unitPrice: 100, quantity: 1, subtotal: 100, productId: 'product-1' },
       { category: 'カテゴリ2', name: '別商品', unitPrice: 50, quantity: 2, subtotal: 100, productId: 'product-2' },
@@ -242,15 +248,15 @@ test('transactionsToCsv creates one aggregation-friendly row per item', () => {
 
   const lines = csv.split('\r\n');
   assert.equal(lines.length, 3);
-  assert.equal(lines[0], '会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID');
+  assert.equal(lines[0], '会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID,会計メモ');
   assert.match(lines[1], /^"tx,1",2026-10-12T12:00:00\.000Z,2026-10-12,2026-10-12,200,200,0,2,1,カテゴリ,/);
-  assert.match(lines[1], /"商品, ""限定""",100,1,100,product-1$/);
-  assert.match(lines[2], /,200,200,0,2,2,カテゴリ2,別商品,50,2,100,product-2$/);
+  assert.match(lines[1], /"商品, ""限定""",100,1,100,product-1,"取り置き, ""午後"""$/);
+  assert.match(lines[2], /,200,200,0,2,2,カテゴリ2,別商品,50,2,100,product-2,"取り置き, ""午後"""$/);
 });
 
 test('parseTransactionCsv restores complete transactions from exported CSV', () => {
   const source = [{
-    id: 'tx-restore', recordedAt: '2026-10-12T12:00:00.000Z', total: 200, received: 300, change: 100, itemCount: 3,
+    id: 'tx-restore', recordedAt: '2026-10-12T12:00:00.000Z', total: 200, received: 300, change: 100, itemCount: 3, note: 'あとで受け取り\n袋を渡す',
     items: [
       { category: 'カテゴリ', name: '商品A', unitPrice: 100, quantity: 1, subtotal: 100 },
       { category: 'カテゴリ', name: '商品B', unitPrice: 50, quantity: 2, subtotal: 100 },
@@ -258,6 +264,20 @@ test('parseTransactionCsv restores complete transactions from exported CSV', () 
   }];
 
   const parsed = Core.parseTransactionCsv(Core.transactionsToCsv(source));
+  assert.deepEqual(parsed.warnings, []);
+  assert.deepEqual(parsed.transactions, source);
+});
+
+test('parseTransactionCsv remains compatible with older exports without a memo column', () => {
+  const source = [{
+    id: 'tx-legacy', recordedAt: '2026-10-12T12:00:00.000Z', total: 100, received: 100, change: 0, itemCount: 1,
+    items: [{ category: 'カテゴリ', name: '商品A', unitPrice: 100, quantity: 1, subtotal: 100 }],
+  }];
+  const rows = Core.transactionsToCsv(source).split('\r\n');
+  rows[0] = rows[0].replace(',会計メモ', '');
+  rows.splice(1, rows.length - 1, ...rows.slice(1).map((row) => row.replace(/,$/, '')));
+
+  const parsed = Core.parseTransactionCsv(rows.join('\r\n'));
   assert.deepEqual(parsed.warnings, []);
   assert.deepEqual(parsed.transactions, source);
 });
