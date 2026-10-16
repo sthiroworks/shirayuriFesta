@@ -220,6 +220,7 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(app, /function undoLastSale\(\)/);
   assert.match(app, /const confirmation = `直前の会計（\$\{formatDate\(transaction\.recordedAt\)\}・\$\{formatYen\(transaction\.total\)\}）を取り消しますか？/);
   assert.match(app, /if \(!root\.confirm\(confirmation\)\) return;/);
+  assert.match(app, /elements\.undoLastSale\.classList\.add\('is-fading'\)/);
   assert.match(app, /setTimeout\(clearUndoSale, 5000\)/);
   assert.match(app, /saveSalesAndInventory/);
   assert.match(app, /function adjustProductStock\(/);
@@ -229,6 +230,8 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(css, /\.history-tools/);
   assert.match(css, /\.managed-stock-adjustment/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?background: rgba\(255, 255, 255, \.97\);/);
+  assert.match(css, /\.undo-last-sale\.is-fading \{ animation: undo-last-sale-fade 5s linear forwards; \}/);
+  assert.match(css, /@keyframes undo-last-sale-fade/);
 });
 
 test('inventory remaining chart and weekday-by-hour heatmap are wired into analytics', () => {

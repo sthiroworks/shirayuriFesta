@@ -1448,6 +1448,9 @@
     if (state.undoTimer) root.clearTimeout(state.undoTimer);
     state.undoTransactionId = transactionId;
     elements.undoLastSale.classList.remove('is-hidden');
+    elements.undoLastSale.classList.remove('is-fading');
+    void elements.undoLastSale.offsetWidth;
+    elements.undoLastSale.classList.add('is-fading');
     state.undoTimer = root.setTimeout(clearUndoSale, 5000);
   }
 

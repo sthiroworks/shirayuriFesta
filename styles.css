@@ -1100,8 +1100,20 @@ td.money { white-space: nowrap; font-weight: 700; }
   font-size: .76rem;
   font-weight: 700;
   cursor: pointer;
+  opacity: 1;
+  transition: opacity .6s ease;
 }
 .undo-last-sale:hover { border-color: #8ab9b2; background: #f2faf8; }
+.undo-last-sale.is-fading { animation: undo-last-sale-fade 5s linear forwards; }
+@keyframes undo-last-sale-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .undo-last-sale { transition: none; }
+  .undo-last-sale.is-fading { animation: none; opacity: 1; }
+}
 
 .history-tools {
   display: grid;
