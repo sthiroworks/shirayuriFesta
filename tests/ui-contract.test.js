@@ -76,8 +76,11 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(distApp, /function setupTabSwipe\(tabbedResults\)/);
   assert.match(app, /\.hourly-product-table-scroll/);
   assert.match(app, /activateTab\(tabs\[nextIndex\], deltaX < 0 \? 'right' : 'left'\)/);
-  assert.match(css, /\.tab-panel\.is-swipe-enter-from-left \{ animation:/);
-  assert.match(css, /\.tab-panel\.is-swipe-enter-from-right \{ animation:/);
+  assert.match(app, /const animationTarget = panel\.dataset\.tabPanel === 'products'[\s\S]*?panel\.querySelector\('\.catalog-panel'\)/);
+  assert.match(app, /animationTarget\.classList\.add\(`is-swipe-enter-from-\$\{swipeEnterFrom\}`\)/);
+  assert.match(css, /\.tab-panel \.is-swipe-enter-from-left \{ animation:/);
+  assert.match(css, /\.tab-panel \.is-swipe-enter-from-right \{ animation:/);
+  assert.doesNotMatch(css, /\.tab-panel\.is-swipe-enter-from-(?:left|right)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);

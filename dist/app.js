@@ -910,12 +910,15 @@
       tab.setAttribute('aria-selected', String(active));
     });
     document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
-      panel.classList.remove(...swipeAnimationClasses);
       const active = panel.dataset.tabPanel === tabName;
+      const animationTarget = panel.dataset.tabPanel === 'products'
+        ? panel.querySelector('.catalog-panel')
+        : panel.firstElementChild;
+      animationTarget?.classList.remove(...swipeAnimationClasses);
       panel.classList.toggle('is-hidden', !active);
-      if (active && ['left', 'right'].includes(swipeEnterFrom)) {
-        void panel.offsetWidth;
-        panel.classList.add(`is-swipe-enter-from-${swipeEnterFrom}`);
+      if (active && animationTarget && ['left', 'right'].includes(swipeEnterFrom)) {
+        void animationTarget.offsetWidth;
+        animationTarget.classList.add(`is-swipe-enter-from-${swipeEnterFrom}`);
       }
     });
   }
@@ -970,7 +973,7 @@
     };
 
     tabbedResults.addEventListener('animationend', (event) => {
-      if (!event.target.matches?.('[data-tab-panel]')) return;
+      if (!event.target.matches?.('.is-swipe-enter-from-left, .is-swipe-enter-from-right')) return;
       event.target.classList.remove('is-swipe-enter-from-left', 'is-swipe-enter-from-right');
     });
 
