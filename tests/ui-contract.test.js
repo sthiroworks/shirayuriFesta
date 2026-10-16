@@ -49,7 +49,8 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /\.product-list \{ display: grid; grid-template-columns: repeat\(var\(--product-grid-columns\), minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-list \{ grid-template-columns: repeat\(var\(--product-grid-columns-mobile\), minmax\(0, 1fr\)\); gap: 7px;/);
   assert.match(css, /\.product-add-grid \{ grid-template-columns: 1fr; gap: 8px; \}/);
-  assert.match(css, /\.page-shell:has\(> \.status:empty\) \{ padding-top: 0; \}/);
+  assert.match(css, /\.status \{ position: fixed;/);
+  assert.doesNotMatch(css, /\.page-shell:has\(> \.status:empty\)/);
   assert.match(css, /\.admin-panel \.button, \.admin-panel \.managed-product-action \{ display: inline-flex;/);
   assert.match(app, /SalesRegisterCore/);
   assert.match(app, /SalesRegisterStorage/);

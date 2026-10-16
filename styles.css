@@ -43,9 +43,9 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .button-primary { color: #fff; background: var(--teal); }
 .button-quiet { color: rgba(255,255,255,.75); background: transparent; border: 1px solid rgba(255,255,255,.35); }
 .page-shell { width: min(2100px, 100%); margin: 0 auto; padding: 26px clamp(16px, 4vw, 54px) 48px; }
+/* 通知は固定表示なので、空の時も含めて表示切替で本文の余白を変えない。 */
 .status { position: fixed; right: clamp(16px, 4vw, 54px); bottom: 18px; z-index: 60; max-width: min(460px, calc(100vw - 32px)); margin: 0; padding: 10px 14px; border: 1px solid #b9d8d3; border-radius: 10px; color: var(--teal); background: rgba(255,255,255,.97); box-shadow: 0 10px 24px rgba(25, 50, 53, .16); font-size: .88rem; pointer-events: none; }
 .status:empty { display: none; }
-.page-shell:has(> .status:empty) { padding-top: 0; }
 .status.error { border-color: #e6aaa5; color: var(--danger); background: rgba(255,240,238,.98); }
 .status.success { border-color: #a9cfca; color: #26724f; background: rgba(233,245,239,.98); }
 .page-shell.admin-mode [data-sales-interface] { display: none; }
