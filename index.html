@@ -22,7 +22,6 @@
 
   <main class="page-shell" data-active-tab="products">
     <div id="status" class="status" role="status" aria-live="polite"></div>
-    <button id="undo-last-sale" class="undo-last-sale is-hidden" type="button">直前の会計を取り消す</button>
 
     <section id="admin-panel" class="panel admin-panel is-hidden" aria-labelledby="admin-title">
       <div class="panel-heading">
@@ -316,6 +315,9 @@
           <p id="received-help" class="received-help">金額を直接入力するか、ボタンで加算できます。</p>
           <div class="change-row"><span>おつり</span><strong id="change">¥0</strong></div>
           <p id="payment-message" class="field-message"></p>
+        </div>
+        <div class="undo-sale-anchor">
+          <button id="undo-last-sale" class="undo-last-sale is-hidden" type="button">直前の会計を取り消す</button>
         </div>
         <button id="confirm-button" class="confirm-button" type="button" disabled>会計を確定する</button>
       </section>

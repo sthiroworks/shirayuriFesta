@@ -230,6 +230,9 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(css, /\.daily-close-panel/);
   assert.match(css, /\.history-tools/);
   assert.match(css, /\.managed-stock-adjustment/);
+  assert.match(html, /<div class="undo-sale-anchor">\s*<button id="undo-last-sale"[\s\S]*?<\/div>\s*<button id="confirm-button"/);
+  assert.match(css, /\.undo-sale-anchor \{ position: relative; height: 0; margin-top: 14px; \}/);
+  assert.match(css, /\.undo-last-sale \{[\s\S]*?position: absolute;[\s\S]*?left: 50%;/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?background: rgba\(255, 255, 255, \.97\);/);
   assert.match(css, /\.undo-last-sale\.is-fading \{ animation: undo-last-sale-fade 5s linear forwards; \}/);
   assert.match(css, /@keyframes undo-last-sale-fade/);
