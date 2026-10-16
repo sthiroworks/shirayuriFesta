@@ -1,4 +1,5 @@
 (function (root) {
+  // 初回起動時の商品定義。商品IDはカテゴリと商品名から作り、アイコン本体は相対パスで参照する。
   const products = [
     ["園グッズ", "手提げ", 800, "tote-bag.png"],
     ["園グッズ", "上履き袋", 500, "shoe-bag.png"],
@@ -44,6 +45,7 @@
     name,
     unitPrice,
     iconPath: `assets/icons/${iconFile}`,
+    // ブレスレット体験は各時間枠15個を初期在庫として設定する。
     ...(name.startsWith("ブレスレット作り") ? { stockLimit: 15 } : {})
   }));
 

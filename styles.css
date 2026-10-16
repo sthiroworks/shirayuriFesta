@@ -149,6 +149,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .tab-button.is-active { border-bottom-color: var(--teal); color: var(--teal); }
 .tab-button:hover { color: var(--teal); }
 .tab-panel > .panel { min-height: 280px; }
+/* ドラッグ中の位置はJSが追従させ、解放後の戻りやタブ切替にCSSの動きを使う。 */
 .tab-panel .is-swipe-enter-from-left { animation: tab-panel-enter-from-left 220ms cubic-bezier(.2, .7, .25, 1) both; }
 .tab-panel .is-swipe-enter-from-right { animation: tab-panel-enter-from-right 220ms cubic-bezier(.2, .7, .25, 1) both; }
 .is-swipe-dragging { transition: none !important; will-change: transform, opacity; }
@@ -503,6 +504,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
   .status { top: calc(env(safe-area-inset-top) + 12px); right: auto; bottom: auto; left: 50%; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
+  /* 会計は画面下部に固定するため商品タブだけ高さを予約し、他タブの末尾に空白を残さない。 */
   .page-shell { padding: 18px 12px calc(var(--checkout-space, 33.3333vh) + 18px + env(safe-area-inset-bottom)); padding: 18px 12px calc(var(--checkout-space, 33.3333dvh) + 18px + env(safe-area-inset-bottom)); }
   .page-shell.admin-mode,
   .page-shell[data-active-tab="chart"],
@@ -669,7 +671,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   :root[data-product-column-width="wide"] .product-background-icon .product-icon-sprite { width: 64px; height: 64px; }
 }
 
-/* Central background icon variant: keep all product information in front. */
+/* 共通の中央背景アイコン配置。列幅別レイアウトの後に置き、商品情報を前面に重ねる。 */
 .product-card {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: auto auto !important;

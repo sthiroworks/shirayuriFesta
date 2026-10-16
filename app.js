@@ -1,6 +1,7 @@
 (function (root) {
   'use strict';
 
+  // 画面表示とユーザー操作を担当する。集計・会計計算は Core、永続化は Storage に委譲する。
   const Core = root.SalesRegisterCore;
   const Storage = root.SalesRegisterStorage;
   const fallbackProducts = root.DEFAULT_PRODUCTS || [];
@@ -198,6 +199,8 @@
   }
 
   function getProductStockInfo(product) {
+    // 在庫残数と購入制限の残りを別々に計算し、厳しい方を販売可能数にする。
+    // 会計編集中は、その会計分を一時的に戻してから新しい数量を判定する。
     const hasLimit = Number.isInteger(product && product.stockLimit) && product.stockLimit >= 0;
     const sold = getProductSales(product, state.editingTransactionId);
     const editingQuantity = getEditingProductQuantity(product);
@@ -224,6 +227,7 @@
   }
 
   function updateInventoryForProductChange(ledger, previousProduct, nextProduct) {
+    // 上限変更分だけ残数を動かす。販売数や手動で調整した残数を再計算で消さない。
     const next = {
       salesByProduct: { ...(ledger.salesByProduct || {}) },
       remainingByProduct: { ...(ledger.remainingByProduct || {}) },
@@ -286,6 +290,7 @@
   }
 
   function initializeInventoryLedger() {
+    // 台帳がない初回だけ履歴から作り、既存台帳の物理在庫は履歴削除後も維持する。
     if (!state.inventory) state.inventory = Core.createInventoryLedger(state.products, state.transactions);
     const nextInventory = cloneInventoryLedger();
     state.products.forEach((product) => {
@@ -305,6 +310,7 @@
   }
 
   function getCheckoutLimitSettings() {
+    // この会計だけの例外値を優先する。state.settings 自体は変更・保存しない。
     if (state.temporaryCheckoutSiblings == null) return state.settings;
     return { ...state.settings, siblings: state.temporaryCheckoutSiblings };
   }
@@ -574,6 +580,7 @@
   }
 
   function hasUnconfirmedChanges() {
+    // カートだけでなく、管理画面の未保存フォームもページ離脱警告の対象にする。
     return state.cart.size > 0
       || state.received !== ''
       || Boolean(state.editingTransactionId)
@@ -1195,6 +1202,7 @@
   }
 
   function activateTab(tabName, swipeEnterFrom = '') {
+    // 商品タブ全体を動かすとスマホで固定表示される会計パネルまで動くため、内側だけをアニメーションする。
     const swipeAnimationClasses = ['is-swipe-enter-from-left', 'is-swipe-enter-from-right'];
     elements.pageShell.dataset.activeTab = tabName;
     document.querySelectorAll('[data-tab-target]').forEach((tab) => {
@@ -1218,6 +1226,8 @@
 
   function setupTabSwipe(tabbedResults) {
     if (!tabbedResults) return;
+    // 入力欄・横スクロール表ではジェスチャーを奪わず、縦スクロールと判定した動きも無視する。
+    // 商品タブはカタログだけを動かし、画面下部に固定された会計パネルはその場に残す。
     const tabs = ['products', 'chart', 'history'];
     const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
     let touchStart = null;
@@ -1445,6 +1455,7 @@
   }
 
   function offerUndoForSale(transactionId) {
+    // 続けて確定した場合にも5秒の表示時間をリセットし、CSSのフェードを先頭から再生する。
     if (state.undoTimer) root.clearTimeout(state.undoTimer);
     state.undoTransactionId = transactionId;
     elements.undoLastSale.classList.remove('is-hidden');
@@ -1842,6 +1853,7 @@
   }
 
   function openBackupHandleDatabase() {
+    // フォルダーハンドルは localStorage に入れられないため IndexedDB に保存する。
     if (!root.indexedDB) return Promise.resolve(null);
     return new Promise((resolve, reject) => {
       const request = root.indexedDB.open('shirayuri-backup-v1', 1);
@@ -1884,12 +1896,14 @@
   }
 
   async function hasBackupDirectoryPermission(handle) {
+    // ブラウザは保存済みハンドルの書き込み権限を後から失効させることがある。
     if (!handle) return false;
     if (typeof handle.queryPermission !== 'function') return true;
     return (await handle.queryPermission({ mode: 'readwrite' })) === 'granted';
   }
 
   async function writeBackupCsv(csv) {
+    // close() で書き込みを確定し、失敗時は abort() して途中までのCSVを残さない。
     const fileHandle = await state.backupDirectoryHandle.getFileHandle('shirayuri-sales-history.csv', { create: true });
     const writable = await fileHandle.createWritable();
     try {
@@ -1902,6 +1916,7 @@
   }
 
   async function archiveSalesHistoryBackup() {
+    // 履歴消去前に現在のCSVを別名で複製する。複製失敗時は呼び出し元が消去を中止する。
     if (!state.backupDirectoryHandle) return { archived: false, filename: '' };
     if (!(await hasBackupDirectoryPermission(state.backupDirectoryHandle))) {
       state.backupDirectoryHandle = null;
@@ -2036,6 +2051,7 @@
 
   function confirmSale() {
     const lines = getCartLines();
+    // 履歴と在庫の次状態を両方保存してから画面上の state を更新し、保存失敗時の表示を食い違わせない。
     try {
       const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
       if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
@@ -2235,6 +2251,7 @@
         renderAll();
         setStatus(`${parsed.products.length}件の商品・在庫数・レジ設定を復元しました。販売履歴は変更していません。`, 'success');
       } catch (error) {
+        // 商品・在庫と設定は別キーなので、片方だけ保存できた場合は読み込み前の組み合わせへ戻す。
         try {
           Storage.saveProductsAndInventory(storage, previousProducts, previousInventory);
           Storage.saveSettings(storage, previousSettings);

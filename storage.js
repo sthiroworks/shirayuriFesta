@@ -5,6 +5,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
+  // localStorage の読み込み検証と永続化を集約し、UI 側にキー名や復旧手順を漏らさない。
   const PRODUCT_KEY = 'shirayuri-products-v1';
   const TRANSACTION_KEY = 'shirayuri-transactions-v1';
   const SETTINGS_KEY = 'shirayuri-settings-v1';
@@ -103,6 +104,7 @@
   }
 
   function saveProductsAndInventory(storage, products, inventory) {
+    // localStorage に複数キーの一括トランザクションはないため、先に退避して部分更新を巻き戻す。
     const previousProducts = storage.getItem(PRODUCT_KEY);
     const previousInventory = storage.getItem(INVENTORY_KEY);
     try {
@@ -122,6 +124,7 @@
   }
 
   function saveSalesAndInventory(storage, transactions, inventory) {
+    // 会計履歴と在庫台帳も同じ更新として扱い、片方だけの保存で数字が食い違うのを防ぐ。
     const previousTransactions = storage.getItem(TRANSACTION_KEY);
     const previousInventory = storage.getItem(INVENTORY_KEY);
     try {

@@ -5,6 +5,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
+  // DOM やブラウザ保存領域に依存しない計算・変換処理。Node のテストからも同じ関数を使う。
   function clean(value) {
     return value == null ? '' : String(value).replace(/^\uFEFF/, '').trim();
   }
@@ -36,6 +37,7 @@
   }
 
   function parseRows(text, delimiter) {
+    // 引用符の内側では区切り文字・改行をセルの値として扱い、二重引用符は1文字に戻す。
     const rows = [];
     let row = [];
     let field = '';
@@ -217,6 +219,7 @@
   }
 
   function calculatePurchaseLimit(lines, settings) {
+    // 制限対象カテゴリだけを合算する。設定には会計単位の一時上書きも渡せる。
     const enabled = Boolean(settings && settings.enabled);
     const category = clean(settings && settings.category);
     const siblings = Math.max(1, Math.floor(Number(settings && settings.siblings) || 1));
@@ -245,6 +248,7 @@
   }
 
   function isSameLocalWeek(dateValue, now) {
+    // 集計期間は端末のローカル時刻で扱い、週は月曜開始・翌週月曜未満とする。
     const date = new Date(dateValue);
     if (Number.isNaN(date.getTime())) return false;
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -279,6 +283,7 @@
   }
 
   function summarizeTransactions(transactions, period, nowValue, timeRange) {
+    // 期間と時間帯を先に絞り、その同じ対象集合から全ての集計表・グラフ用データを作る。
     const now = nowValue instanceof Date ? nowValue : new Date(nowValue || Date.now());
     const selected = (transactions || []).filter((transaction) => {
       if (period === 'today') return isSameLocalDay(transaction.recordedAt, now);
@@ -446,6 +451,7 @@
   }
 
   function createInventoryLedger(products, transactions) {
+    // 販売累計は履歴から集計する一方、物理残数は上限から初期化して別々に保持する。
     const ledger = { salesByProduct: {}, remainingByProduct: {}, adjustments: [] };
     (transactions || []).forEach((transaction) => {
       const counts = inventoryCountsForTransaction(transaction, products);
@@ -463,6 +469,8 @@
   }
 
   function applyInventoryTransactionChange(inventory, previousTransaction, nextTransaction, products) {
+    // 新旧会計の差分だけを反映するため、編集・取消でも過去分を二重に加減算しない。
+    // 販売累計と物理残数は別軸で更新し、在庫調整履歴はそのまま引き継ぐ。
     const source = inventory || {};
     const ledger = {
       salesByProduct: { ...(source.salesByProduct || {}) },
@@ -491,6 +499,7 @@
   }
 
   function adjustInventory(inventory, productId, productName, remaining, now) {
+    // 手動調整は現在残数だけを置き換え、販売累計には触れず、直近50件の変更履歴を残す。
     const quantity = Number(remaining);
     if (!productId || !Number.isInteger(quantity) || quantity < 0) throw new Error('在庫残数は0以上の整数で入力してください');
     const source = inventory || {};
@@ -534,6 +543,8 @@
   }
 
   function dailyCloseReport(transactions, date) {
+    // 指定日のローカル日付で締め、CSVには日計1行と商品別明細を出す。
+    // 商品IDのない古い会計はカテゴリ名と商品名の組でまとめる。
     const targetDate = clean(date);
     const dailyTransactions = (transactions || []).filter((transaction) => localDateKey(transaction.recordedAt) === targetDate);
     const totals = dailyTransactions.reduce((result, transaction) => {
@@ -601,6 +612,7 @@
   }
 
   function settingsBundleToJson(products, settings, inventory) {
+    // 設定一式は商品・在庫・設定の移行用。販売履歴や端末固有の保存先ハンドルは含めない。
     const columnWidth = ['compact', 'standard', 'wide'].includes(settings && settings.productColumnWidth) ? settings.productColumnWidth : 'standard';
     const bundleProducts = (products || []).map((product) => {
       const value = {
@@ -643,6 +655,7 @@
     } catch (error) {
       return { products: [], settings: null, warnings: ['設定一式ファイルのJSONを読み込めません。'] };
     }
+    // version 1 の既存バックアップも読み込み、項目追加後の version 2 と共存させる。
     if (!bundle || bundle.format !== 'shirayuri-register-settings' || ![1, 2].includes(bundle.version)) {
       return { products: [], settings: null, warnings: ['対応していない設定一式ファイルです。'] };
     }
@@ -808,6 +821,7 @@
       return { transactions: [], warnings: [`会計履歴CSVに必要な列がありません: ${missing.join('、')}`], stats: { accepted: 0, rejected: 0 } };
     }
 
+    // CSVは会計明細ごとに複数行になるため、会計IDで再結合する。商品ID列は旧形式では省略可。
     const transactionMap = new Map();
     let rejected = 0;
     nonEmptyRows.slice(headerIndex + 1).forEach((row, offset) => {
