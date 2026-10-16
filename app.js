@@ -1218,6 +1218,49 @@
     const tabs = ['products', 'chart', 'history'];
     const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
     let touchStart = null;
+    let returnAnimationTarget = null;
+    let returnAnimationTimer = null;
+    let returnAnimationCleanup = null;
+
+    const getSwipeTarget = (tabName) => {
+      const panel = tabbedResults.querySelector(`[data-tab-panel="${tabName}"]`);
+      return tabName === 'products' ? panel?.querySelector('.catalog-panel') : panel?.firstElementChild;
+    };
+
+    const cancelReturnAnimation = () => {
+      if (returnAnimationTimer != null) root.clearTimeout(returnAnimationTimer);
+      if (returnAnimationTarget && returnAnimationCleanup) {
+        returnAnimationTarget.removeEventListener('transitionend', returnAnimationCleanup);
+        returnAnimationTarget.classList.remove('is-swipe-settling');
+      }
+      returnAnimationTarget = null;
+      returnAnimationTimer = null;
+      returnAnimationCleanup = null;
+    };
+
+    const resetSwipeTarget = (target, animateReturn) => {
+      if (!target) return;
+      target.classList.remove('is-swipe-dragging');
+      if (!animateReturn) {
+        if (returnAnimationTarget === target) cancelReturnAnimation();
+        target.classList.remove('is-swipe-settling');
+        target.style.removeProperty('transform');
+        target.style.removeProperty('opacity');
+        return;
+      }
+
+      cancelReturnAnimation();
+      target.classList.add('is-swipe-settling');
+      target.style.removeProperty('transform');
+      target.style.removeProperty('opacity');
+      returnAnimationTarget = target;
+      returnAnimationCleanup = (event) => {
+        if (event && (event.target !== target || event.propertyName !== 'transform')) return;
+        cancelReturnAnimation();
+      };
+      target.addEventListener('transitionend', returnAnimationCleanup);
+      returnAnimationTimer = root.setTimeout(() => returnAnimationCleanup(), 220);
+    };
 
     tabbedResults.addEventListener('animationend', (event) => {
       if (!event.target.matches?.('[data-tab-panel]')) return;
@@ -1234,8 +1277,40 @@
         return;
       }
       const touch = event.touches[0];
-      touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+      cancelReturnAnimation();
+      touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now(), horizontal: false, visualTarget: null };
     }, { passive: true });
+
+    tabbedResults.addEventListener('touchmove', (event) => {
+      if (!touchStart || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const deltaX = touch.clientX - touchStart.x;
+      const deltaY = touch.clientY - touchStart.y;
+
+      if (!touchStart.horizontal) {
+        if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 10) return;
+        if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.15) {
+          if (Math.abs(deltaY) >= 10) touchStart = null;
+          return;
+        }
+
+        touchStart.horizontal = true;
+        const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
+        const activeIndex = tabs.indexOf(activeTab);
+        const nextIndex = activeIndex + (deltaX < 0 ? 1 : -1);
+        if (activeIndex < 0 || !tabs[nextIndex]) return;
+        touchStart.visualTarget = getSwipeTarget(activeTab);
+      }
+
+      if (!touchStart.visualTarget) return;
+      if (event.cancelable) event.preventDefault();
+      const width = tabbedResults.clientWidth || root.innerWidth || 320;
+      const offset = Math.sign(deltaX) * Math.min(Math.abs(deltaX) * .88, width * .52);
+      touchStart.visualTarget.classList.remove('is-swipe-settling');
+      touchStart.visualTarget.classList.add('is-swipe-dragging');
+      touchStart.visualTarget.style.transform = `translate3d(${offset}px, 0, 0)`;
+      touchStart.visualTarget.style.opacity = String(1 - Math.min(Math.abs(offset) / width * .22, .22));
+    }, { passive: false });
 
     tabbedResults.addEventListener('touchend', (event) => {
       if (!touchStart || event.changedTouches.length !== 1) {
@@ -1247,19 +1322,28 @@
       const touch = event.changedTouches[0];
       const deltaX = touch.clientX - start.x;
       const deltaY = touch.clientY - start.y;
-      if (Date.now() - start.at > 1000 || Math.abs(deltaX) < 36 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
-
       const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
       const activeIndex = tabs.indexOf(activeTab);
-      if (activeIndex < 0) return;
       const nextIndex = activeIndex + (deltaX < 0 ? 1 : -1);
-      if (!tabs[nextIndex]) return;
+      const shouldNavigate = Date.now() - start.at <= 1000
+        && Math.abs(deltaX) >= 36
+        && Math.abs(deltaX) >= Math.abs(deltaY) * 1.15
+        && activeIndex >= 0
+        && Boolean(tabs[nextIndex]);
 
-      if (event.cancelable) event.preventDefault();
-      activateTab(tabs[nextIndex], deltaX < 0 ? 'right' : 'left');
+      if (shouldNavigate) {
+        if (event.cancelable) event.preventDefault();
+        resetSwipeTarget(start.visualTarget, false);
+        activateTab(tabs[nextIndex], deltaX < 0 ? 'right' : 'left');
+      } else {
+        resetSwipeTarget(start.visualTarget, true);
+      }
     }, { passive: false });
 
-    tabbedResults.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+    tabbedResults.addEventListener('touchcancel', () => {
+      resetSwipeTarget(touchStart?.visualTarget, true);
+      touchStart = null;
+    }, { passive: true });
   }
 
   function setAdminMode(isOpen) {
