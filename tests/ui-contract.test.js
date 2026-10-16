@@ -137,6 +137,9 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{[^}]*flex: 1 1 0;/);
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
   assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);
+  assert.match(css, /#exact-total \{ border: 1px solid #[\da-f]{6}; color: var\(--teal\); background: #[\da-f]{6}; \}/i);
+  assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-areas: "quick label" "quick received" "quick change" "message message";/);
+  assert.match(css, /#checkout-panel \.received-quick-buttons \{ grid-area: quick; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); grid-template-rows: repeat\(2, 48px\);/);
   assert.match(css, /\.confirm-button \{ width: 100%; height: 60px;/);
   assert.match(css, /\.site-header \{ align-items: center; flex-direction: row; gap: 16px; \}/);
   assert.match(css, /\.header-actions \{ flex: 0 0 auto; justify-content: flex-end; margin-left: auto; \}/);
