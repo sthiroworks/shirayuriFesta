@@ -1196,6 +1196,7 @@
 
   function activateTab(tabName, swipeEnterFrom = '') {
     const swipeAnimationClasses = ['is-swipe-enter-from-left', 'is-swipe-enter-from-right'];
+    elements.pageShell.dataset.activeTab = tabName;
     document.querySelectorAll('[data-tab-target]').forEach((tab) => {
       const active = tab.dataset.tabTarget === tabName;
       tab.classList.toggle('is-active', active);
@@ -1215,8 +1216,13 @@
   function setupTabSwipe(tabbedResults) {
     if (!tabbedResults) return;
     const tabs = ['products', 'chart', 'history'];
-    const ignoredTargets = 'button, input, select, textarea, a, [contenteditable="true"], .tab-list, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
+    const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
     let touchStart = null;
+
+    tabbedResults.addEventListener('animationend', (event) => {
+      if (!event.target.matches?.('[data-tab-panel]')) return;
+      event.target.classList.remove('is-swipe-enter-from-left', 'is-swipe-enter-from-right');
+    });
 
     tabbedResults.addEventListener('touchstart', (event) => {
       if (event.touches.length !== 1) {
@@ -1241,7 +1247,7 @@
       const touch = event.changedTouches[0];
       const deltaX = touch.clientX - start.x;
       const deltaY = touch.clientY - start.y;
-      if (Date.now() - start.at > 800 || Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      if (Date.now() - start.at > 1000 || Math.abs(deltaX) < 36 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
 
       const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
       const activeIndex = tabs.indexOf(activeTab);

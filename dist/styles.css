@@ -411,7 +411,8 @@ td.money { white-space: nowrap; font-weight: 700; }
   .status { top: calc(env(safe-area-inset-top) + 12px); right: auto; bottom: auto; left: 50%; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
   .page-shell { padding: 18px 12px calc(var(--checkout-space, 33.3333vh) + 18px + env(safe-area-inset-bottom)); padding: 18px 12px calc(var(--checkout-space, 33.3333dvh) + 18px + env(safe-area-inset-bottom)); }
   .page-shell.admin-mode,
-  .page-shell:not(:has(#tab-products.is-active)) { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+  .page-shell[data-active-tab="chart"],
+  .page-shell[data-active-tab="history"] { padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
   .summary-grid { grid-template-columns: 1fr; gap: 7px; }
   .summary-cards-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
   .summary-card { min-height: 66px; padding: 8px 10px; }

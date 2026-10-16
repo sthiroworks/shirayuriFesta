@@ -58,7 +58,16 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /function setupTabSwipe\(tabbedResults\)/);
   assert.match(app, /addEventListener\('touchstart'/);
   assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false \}\)/);
-  assert.match(app, /Math\.abs\(deltaX\) < 55/);
+  assert.match(app, /Math\.abs\(deltaX\) < 36/);
+  assert.match(app, /Math\.abs\(deltaX\) < Math\.abs\(deltaY\) \* 1\.15/);
+  assert.match(app, /button:not\(\.product-add\)/);
+  assert.match(app, /elements\.pageShell\.dataset\.activeTab = tabName/);
+  assert.match(app, /tabbedResults\.addEventListener\('animationend'/);
+  assert.match(app, /event\.target\.classList\.remove\('is-swipe-enter-from-left', 'is-swipe-enter-from-right'\)/);
+  assert.match(css, /\.page-shell\[data-active-tab="chart"\]/);
+  assert.match(css, /\.page-shell\[data-active-tab="history"\]/);
+  const distApp = read('dist/app.js');
+  assert.match(distApp, /function setupTabSwipe\(tabbedResults\)/);
   assert.match(app, /\.hourly-product-table-scroll/);
   assert.match(app, /activateTab\(tabs\[nextIndex\], deltaX < 0 \? 'right' : 'left'\)/);
   assert.match(css, /\.tab-panel\.is-swipe-enter-from-left \{ animation:/);

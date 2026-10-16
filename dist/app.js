@@ -901,15 +901,68 @@
     }).join('') || '<div class="empty-state">会計履歴はまだありません。</div>';
   }
 
-  function activateTab(tabName) {
+  function activateTab(tabName, swipeEnterFrom = '') {
+    const swipeAnimationClasses = ['is-swipe-enter-from-left', 'is-swipe-enter-from-right'];
+    elements.pageShell.dataset.activeTab = tabName;
     document.querySelectorAll('[data-tab-target]').forEach((tab) => {
       const active = tab.dataset.tabTarget === tabName;
       tab.classList.toggle('is-active', active);
       tab.setAttribute('aria-selected', String(active));
     });
     document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
-      panel.classList.toggle('is-hidden', panel.dataset.tabPanel !== tabName);
+      panel.classList.remove(...swipeAnimationClasses);
+      const active = panel.dataset.tabPanel === tabName;
+      panel.classList.toggle('is-hidden', !active);
+      if (active && ['left', 'right'].includes(swipeEnterFrom)) {
+        void panel.offsetWidth;
+        panel.classList.add(`is-swipe-enter-from-${swipeEnterFrom}`);
+      }
     });
+  }
+
+  function setupTabSwipe(tabbedResults) {
+    if (!tabbedResults) return;
+    const tabs = ['products', 'chart', 'history'];
+    const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
+    let touchStart = null;
+
+    tabbedResults.addEventListener('animationend', (event) => {
+      if (!event.target.matches?.('[data-tab-panel]')) return;
+      event.target.classList.remove('is-swipe-enter-from-left', 'is-swipe-enter-from-right');
+    });
+
+    tabbedResults.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1 || event.target.closest?.(ignoredTargets)) {
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+    }, { passive: true });
+
+    tabbedResults.addEventListener('touchend', (event) => {
+      if (!touchStart || event.changedTouches.length !== 1) {
+        touchStart = null;
+        return;
+      }
+      const start = touchStart;
+      touchStart = null;
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+      if (Date.now() - start.at > 1000 || Math.abs(deltaX) < 36 || Math.abs(deltaX) < Math.abs(deltaY) * 1.15) return;
+
+      const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
+      const activeIndex = tabs.indexOf(activeTab);
+      if (activeIndex < 0) return;
+      const nextIndex = activeIndex + (deltaX < 0 ? 1 : -1);
+      if (!tabs[nextIndex]) return;
+
+      if (event.cancelable) event.preventDefault();
+      activateTab(tabs[nextIndex], deltaX < 0 ? 'right' : 'left');
+    }, { passive: false });
+
+    tabbedResults.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
   }
 
   function setAdminMode(isOpen) {
@@ -1773,6 +1826,7 @@
       const tab = event.target.closest('[data-tab-target]');
       if (tab) activateTab(tab.dataset.tabTarget);
     });
+    setupTabSwipe(document.querySelector('.tabbed-results'));
     elements.received.addEventListener('input', () => { state.received = elements.received.value; renderCart(); });
     elements.checkoutResizeHandle.addEventListener('pointerdown', handleCheckoutResizeStart);
     elements.checkoutResizeHandle.addEventListener('keydown', handleCheckoutResizeKeydown);
