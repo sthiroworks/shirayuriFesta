@@ -1090,18 +1090,18 @@ td.money { white-space: nowrap; font-weight: 700; }
   right: clamp(16px, 4vw, 54px);
   bottom: 70px;
   z-index: 61;
-  padding: 9px 13px;
-  border: 1px solid #2f8f89;
-  border-radius: 999px;
-  color: #fff;
-  background: #174c4f;
-  box-shadow: 0 8px 20px rgba(25, 50, 53, .2);
+  padding: 7px 11px;
+  border: 1px solid #b9d8d3;
+  border-radius: 9px;
+  color: var(--teal);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 3px 10px rgba(25, 50, 53, .12);
   font: inherit;
-  font-size: .82rem;
-  font-weight: 800;
+  font-size: .76rem;
+  font-weight: 700;
   cursor: pointer;
 }
-.undo-last-sale:hover { background: #23696b; }
+.undo-last-sale:hover { border-color: #8ab9b2; background: #f2faf8; }
 
 .history-tools {
   display: grid;

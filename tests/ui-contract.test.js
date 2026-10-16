@@ -218,6 +218,9 @@ test('history, inventory, backup, and daily close improvements are wired into th
   }
   assert.match(app, /filtered\.slice\(0, state\.historyVisibleCount\)/);
   assert.match(app, /function undoLastSale\(\)/);
+  assert.match(app, /const confirmation = `直前の会計（\$\{formatDate\(transaction\.recordedAt\)\}・\$\{formatYen\(transaction\.total\)\}）を取り消しますか？/);
+  assert.match(app, /if \(!root\.confirm\(confirmation\)\) return;/);
+  assert.match(app, /setTimeout\(clearUndoSale, 5000\)/);
   assert.match(app, /saveSalesAndInventory/);
   assert.match(app, /function adjustProductStock\(/);
   assert.match(app, /Core\.dailyCloseReport/);
@@ -225,6 +228,7 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(css, /\.daily-close-panel/);
   assert.match(css, /\.history-tools/);
   assert.match(css, /\.managed-stock-adjustment/);
+  assert.match(css, /\.undo-last-sale \{[\s\S]*?background: rgba\(255, 255, 255, \.97\);/);
 });
 
 test('inventory remaining chart and weekday-by-hour heatmap are wired into analytics', () => {

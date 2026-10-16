@@ -1448,12 +1448,19 @@
     if (state.undoTimer) root.clearTimeout(state.undoTimer);
     state.undoTransactionId = transactionId;
     elements.undoLastSale.classList.remove('is-hidden');
-    state.undoTimer = root.setTimeout(clearUndoSale, 10000);
+    state.undoTimer = root.setTimeout(clearUndoSale, 5000);
   }
 
   function undoLastSale() {
     const transactionId = state.undoTransactionId;
     if (!transactionId) return;
+    const transaction = state.transactions.find((item) => item.id === transactionId);
+    if (!transaction) {
+      clearUndoSale();
+      return;
+    }
+    const confirmation = `直前の会計（${formatDate(transaction.recordedAt)}・${formatYen(transaction.total)}）を取り消しますか？\n販売履歴から削除され、在庫数も戻ります。`;
+    if (!root.confirm(confirmation)) return;
     deleteTransaction(transactionId, { confirm: false, undo: true });
   }
 
