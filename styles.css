@@ -522,9 +522,12 @@ td.money { white-space: nowrap; font-weight: 700; }
   .period-control select { width: auto; min-width: 132px; flex: 1; padding: 7px 8px; }
   .catalog-panel, .checkout-panel, .chart-panel, .ranking-panel, .history-panel { padding: 16px; }
   .product-list { grid-template-columns: repeat(var(--product-grid-columns-mobile), minmax(0, 1fr)); gap: 7px; }
-  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; height: var(--checkout-height, 33.3333vh); height: var(--checkout-height, 33.3333dvh); max-height: 90vh; max-height: 90dvh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow-y: auto; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
-  .checkout-resize-handle { display: block; width: 48px; height: 4px; margin: -1px auto 5px; padding: 0; border: 0; border-radius: 999px; background: var(--line); touch-action: none; }
+  #checkout-panel { position: fixed; right: 0; bottom: 0; left: 0; z-index: 30; display: flex; flex-direction: column; height: var(--checkout-height, 33.3333vh); height: var(--checkout-height, 33.3333dvh); max-height: 90vh; max-height: 90dvh; margin: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); overflow: hidden; border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(25, 50, 53, .18); }
+  .checkout-resize-handle { position: fixed; bottom: calc(var(--checkout-height, 33.3333dvh) - 21px); left: 50%; z-index: 35; display: block; width: 48px; height: 16px; margin: 0; padding: 0; border: 0; border-radius: 0 0 999px 999px; background: inherit; touch-action: none; transform: translateX(-50%); }
+  .checkout-resize-handle::before { position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; border-radius: 999px; background: var(--line); content: ""; transform: translateX(-50%); }
+  .checkout-resize-handle:hover::before { background: var(--teal); }
   .checkout-resize-handle:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 3px; }
+  .checkout-scroll-area { flex: 1 1 auto; min-height: 0; padding-top: 18px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   #checkout-panel .panel-heading { margin-bottom: 4px; }
   #checkout-panel .section-kicker { display: none; }
   #checkout-panel h2 { font-size: 1rem; }

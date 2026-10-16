@@ -126,7 +126,10 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
   assert.match(css, /#checkout-panel \{ position: fixed;/);
   assert.match(css, /height: var\(--checkout-height, 33\.3333dvh\); max-height: 90vh; max-height: 90dvh;/);
-  assert.match(css, /\.checkout-resize-handle \{ display: block;/);
+  assert.match(css, /\.checkout-resize-handle \{[^}]*display: block;/);
+  assert.match(css, /\.checkout-resize-handle \{ position: fixed; bottom: calc\(var\(--checkout-height, 33\.3333dvh\) - 21px\);/);
+  assert.match(css, /\.checkout-scroll-area \{[^}]*padding-top: 18px;[^}]*overflow-y: auto;/);
+  assert.match(html, /id="checkout-resize-handle"[\s\S]*?<\/button>\s*<div class="checkout-scroll-area">/);
   assert.match(css, /padding: 18px 12px calc\(var\(--checkout-space, 33\.3333dvh\)/);
   assert.match(css, /@media \(min-width: 901px\)/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(420px, 1\.05fr\); \}/);
