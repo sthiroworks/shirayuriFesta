@@ -140,6 +140,7 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /@media \(min-width: 901px\)/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(420px, 1\.05fr\); \}/);
   assert.match(css, /\.checkout-panel \.cart-line \{ gap: 8px; padding: 8px 0;/);
+  assert.match(css, /\.received-quick-buttons \{ display: grid; grid-template-columns: repeat\(6, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{[^}]*flex: 1 1 0;/);
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
   assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);

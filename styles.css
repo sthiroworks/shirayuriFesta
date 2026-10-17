@@ -274,7 +274,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .received-row input { min-width: 0; flex: 1; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
 #exact-total { border: 1px solid #a9cac5; color: var(--teal); background: #edf6f3; }
 #exact-total:hover { border-color: var(--teal); background: var(--teal-light); }
-.received-quick-buttons { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
+.received-quick-buttons { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin-top: 7px; }
 .received-quick-buttons button { min-width: 0; height: 50px; width: 100%; padding: 5px 4px; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; font-size: .78rem; font-weight: 700; white-space: nowrap; }
 .received-quick-buttons button[data-received-add] { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 1 1 0; padding: 3px 2px; line-height: 1.05; }
 .received-quick-buttons button[data-received-action] { flex: 0 0 auto; }
