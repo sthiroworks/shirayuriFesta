@@ -1215,3 +1215,37 @@ td.money { white-space: nowrap; font-weight: 700; }
   .stock-adjustment-list { grid-template-columns: 1fr; }
 }
 
+/* 400px前後では商品見出しと幅・カテゴリ操作が横並びになり切らないため、操作を次段へ送る。 */
+@media (max-width: 400px) {
+  .catalog-panel .panel-heading { flex-wrap: wrap; gap: 8px; }
+  .catalog-panel .panel-heading > div:first-child { flex: 1 1 100%; }
+  .catalog-panel-actions { width: 100%; justify-content: flex-start; gap: 6px; }
+  .product-column-control { gap: 4px; }
+}
+
+/* 最小幅のスマートフォンでは、数字・操作子・商品名が互いに幅を奪わないよう配置を組み替える。 */
+@media (max-width: 360px) {
+  .site-header { gap: 8px; padding-right: 10px; padding-left: 10px; }
+  .site-header h1 { font-size: 1.5rem; }
+  .header-actions .button { padding-right: 9px; padding-left: 9px; }
+  .page-shell { padding-right: 8px; padding-left: 8px; }
+  .summary-cards-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .summary-card { min-width: 0; min-height: 58px; padding: 7px 9px; }
+  .summary-card strong { font-size: 1.2rem; }
+  .catalog-panel, .checkout-panel, .chart-panel, .analytics-panel, .ranking-panel, .history-panel { padding: 12px; }
+  :root[data-product-column-width="compact"] .product-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-card { height: auto !important; min-height: 92px !important; padding-top: 18px !important; padding-bottom: 6px !important; }
+  .product-card .product-title-row { padding-right: 50px !important; }
+  .product-card .product-background-icon,
+  .product-card .product-background-icon .product-icon-sprite { width: 44px !important; height: 44px !important; }
+  #checkout-panel .checkout-limit-adjustment-copy { flex-basis: 125px; }
+  #checkout-panel .payment-box { grid-template-columns: minmax(0, 1.5fr) minmax(100px, 1fr); gap: 4px 6px; }
+  #checkout-panel .received-quick-buttons { min-width: 0; grid-template-rows: repeat(2, 44px); }
+  #checkout-panel .received-quick-buttons button[data-received-add] { font-size: .58rem; }
+  #checkout-panel .received-coin,
+  #checkout-panel .received-banknote-1000 { flex-basis: 19px; width: 30px; height: 19px; }
+  .history-money { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .history-money strong, .history-money b { font-size: .88rem; }
+  .daily-close-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+}
+

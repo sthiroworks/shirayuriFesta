@@ -275,3 +275,13 @@ test('inventory remaining chart and weekday-by-hour heatmap are wired into analy
   assert.match(css, /\.inventory-chart-row\.is-low \.inventory-chart-bar/);
 });
 
+test('very small phone layouts wrap controls and prevent fixed-width overflow', () => {
+  const css = read('styles.css');
+  assert.match(css, /@media \(max-width: 400px\) \{[\s\S]*?\.catalog-panel \.panel-heading \{ flex-wrap: wrap;/);
+  assert.match(css, /@media \(max-width: 360px\) \{[\s\S]*?\.summary-cards-row \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(css, /\.product-card \{ height: auto !important; min-height: 92px !important;/);
+  assert.match(css, /#checkout-panel \.payment-box \{ grid-template-columns: minmax\(0, 1\.5fr\) minmax\(100px, 1fr\);/);
+  assert.match(css, /#checkout-panel \.received-quick-buttons \{ min-width: 0;/);
+  assert.match(css, /\.history-money \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+});
+
