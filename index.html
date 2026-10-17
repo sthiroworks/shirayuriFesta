@@ -533,9 +533,19 @@
                     >
                   </h2>
                 </div>
-                <button id="clear-cart" class="text-button" type="button">
-                  すべて取消
-                </button>
+                <div class="checkout-heading-actions">
+                  <button
+                    id="mobile-checkout-close"
+                    class="checkout-mobile-close"
+                    type="button"
+                    aria-label="商品選択に戻る"
+                  >
+                    ← 商品を選ぶ
+                  </button>
+                  <button id="clear-cart" class="text-button" type="button">
+                    すべて取消
+                  </button>
+                </div>
               </div>
               <div id="cart-list" class="cart-list"></div>
               <div class="total-row">
@@ -1249,6 +1259,23 @@
               さらに20件表示
             </button>
           </section>
+        </div>
+
+        <div id="mobile-checkout-bar" class="mobile-checkout-bar">
+          <div class="mobile-checkout-total" aria-live="polite">
+            <span>お会計合計</span>
+            <strong id="mobile-cart-total">¥0</strong>
+          </div>
+          <button
+            id="mobile-checkout-open"
+            class="mobile-checkout-open button-primary"
+            type="button"
+            aria-expanded="false"
+            aria-controls="checkout-panel"
+          >
+            会計に進む
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
       </section>
     </main>

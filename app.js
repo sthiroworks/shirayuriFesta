@@ -87,6 +87,7 @@
     hiddenCategories: new Set(),
     checkoutHeight: null,
     fitCheckoutHeightAfterClear: false,
+    mobileCheckoutOpen: false,
     editingTransactionId: null,
     statusTimer: null,
     autoBackupTimer: null,
@@ -398,6 +399,54 @@
     elements.checkoutResizeHandle.setAttribute('aria-valuemax', String(bounds.maximum));
     elements.checkoutResizeHandle.setAttribute('aria-valuenow', String(nextHeight));
     elements.checkoutResizeHandle.setAttribute('aria-valuetext', `${nextHeight}px`);
+  }
+
+  function isMobileCheckoutViewport() {
+    return root.matchMedia ? root.matchMedia('(max-width: 560px)').matches : root.innerWidth <= 560;
+  }
+
+  function setMobileCheckoutOpen(isOpen, { restoreFocus = true } = {}) {
+    const nextOpen = Boolean(isOpen && isMobileCheckoutViewport());
+    const wasOpen = state.mobileCheckoutOpen;
+    state.mobileCheckoutOpen = nextOpen;
+    elements.checkoutPanel.classList.toggle('is-mobile-open', nextOpen);
+    elements.pageShell.classList.toggle('mobile-checkout-open', nextOpen);
+    root.document.body.classList.toggle('mobile-checkout-open', nextOpen);
+    elements.mobileCheckoutOpen.setAttribute('aria-expanded', String(nextOpen));
+    if (nextOpen) {
+      elements.checkoutPanel.setAttribute('role', 'dialog');
+      elements.checkoutPanel.setAttribute('aria-modal', 'true');
+      elements.checkoutPanel.querySelector('.checkout-scroll-area').scrollTop = 0;
+      elements.mobileCheckoutClose.focus();
+    } else {
+      elements.checkoutPanel.removeAttribute('role');
+      elements.checkoutPanel.removeAttribute('aria-modal');
+      if (wasOpen && restoreFocus) elements.mobileCheckoutOpen.focus();
+    }
+  }
+
+  function handleMobileCheckoutKeydown(event) {
+    if (!state.mobileCheckoutOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setMobileCheckoutOpen(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = [...elements.checkoutPanel.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter((element) => element.getClientRects().length > 0);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) {
+      event.preventDefault();
+      elements.mobileCheckoutClose.focus();
+    } else if (event.shiftKey && root.document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && root.document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   function fitCheckoutHeightToContent() {
@@ -753,6 +802,7 @@
     const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
     const temporarySiblings = state.temporaryCheckoutSiblings;
     elements.cartTotal.textContent = formatYen(cart.total);
+    elements.mobileCartTotal.textContent = formatYen(cart.total);
     elements.checkoutPanel.classList.toggle('is-limit-exceeded', limit.exceeded);
     elements.checkoutLimitBadge.classList.toggle('is-hidden', !limit.exceeded);
     elements.purchaseLimit.textContent = state.settings.enabled && limit.category
@@ -1239,6 +1289,7 @@
   function activateTab(tabName, swipeEnterFrom = '') {
     // 商品タブ全体を動かすとスマホで固定表示される会計パネルまで動くため、内側だけをアニメーションする。
     const swipeAnimationClasses = ['is-swipe-enter-from-left', 'is-swipe-enter-from-right'];
+    if (tabName !== 'products') setMobileCheckoutOpen(false, { restoreFocus: false });
     elements.pageShell.dataset.activeTab = tabName;
     document.querySelectorAll('[data-tab-target]').forEach((tab) => {
       const active = tab.dataset.tabTarget === tabName;
@@ -1400,6 +1451,7 @@
   }
 
   function setAdminMode(isOpen) {
+    if (isOpen) setMobileCheckoutOpen(false, { restoreFocus: false });
     elements.adminPanel.classList.toggle('is-hidden', !isOpen);
     elements.pageShell.classList.toggle('admin-mode', isOpen);
     elements.adminToggle.setAttribute('aria-expanded', String(isOpen));
@@ -2118,6 +2170,7 @@
       state.inventory = nextInventory;
       clearCartState();
       renderAll();
+      setMobileCheckoutOpen(false, { restoreFocus: false });
       if (existing) clearUndoSale();
       else offerUndoForSale(transaction.id);
       setStatus(existing ? `会計を変更しました。${formatYen(transaction.total)}に更新しました。` : `会計を確定しました。${formatYen(transaction.total)}を記録しました。`, 'success');
@@ -2317,6 +2370,9 @@
     elements.cartList = $('#cart-list');
     elements.checkoutPanel = $('#checkout-panel');
     elements.checkoutResizeHandle = $('#checkout-resize-handle');
+    elements.mobileCheckoutOpen = $('#mobile-checkout-open');
+    elements.mobileCheckoutClose = $('#mobile-checkout-close');
+    elements.mobileCartTotal = $('#mobile-cart-total');
     elements.paymentBox = document.querySelector('.payment-box');
     elements.cartTotal = $('#cart-total');
     elements.received = $('#received');
@@ -2467,7 +2523,13 @@
     });
     elements.checkoutResizeHandle.addEventListener('pointerdown', handleCheckoutResizeStart);
     elements.checkoutResizeHandle.addEventListener('keydown', handleCheckoutResizeKeydown);
-    root.addEventListener('resize', () => { if (state.checkoutHeight) setCheckoutHeight(state.checkoutHeight); });
+    elements.mobileCheckoutOpen.addEventListener('click', () => setMobileCheckoutOpen(true));
+    elements.mobileCheckoutClose.addEventListener('click', () => setMobileCheckoutOpen(false));
+    root.document.addEventListener('keydown', handleMobileCheckoutKeydown);
+    root.addEventListener('resize', () => {
+      if (state.checkoutHeight) setCheckoutHeight(state.checkoutHeight);
+      if (state.mobileCheckoutOpen && !isMobileCheckoutViewport()) setMobileCheckoutOpen(false, { restoreFocus: false });
+    });
     elements.paymentBox.addEventListener('click', handleReceivedQuickAction);
     elements.checkoutLimitAdjustment.addEventListener('click', handleCheckoutLimitAdjustment);
     elements.checkoutLimitAdjustment.addEventListener('change', handleCheckoutLimitAdjustmentChange);
