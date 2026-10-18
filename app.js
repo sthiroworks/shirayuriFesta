@@ -2219,9 +2219,10 @@
       Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory);
       state.transactions = nextTransactions;
       state.inventory = nextInventory;
+      // Persist successfully before dismissing the mobile checkout; keep it open when validation or storage fails.
+      setMobileCheckoutOpen(false, { restoreFocus: false });
       clearCartState();
       renderAll();
-      setMobileCheckoutOpen(false, { restoreFocus: false });
       if (existing) clearUndoSale();
       else offerUndoForSale(transaction.id);
       setStatus(existing ? `会計を変更しました。${formatYen(transaction.total)}に更新しました。` : `会計を確定しました。${formatYen(transaction.total)}を記録しました。`, 'success');
