@@ -161,7 +161,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
 .catalog-panel, .checkout-panel, .chart-panel, .analytics-panel, .ranking-panel, .history-panel { padding: 22px; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.catalog-panel-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.catalog-panel-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; touch-action: pan-y; }
 .product-column-control { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .72rem; font-weight: 700; white-space: nowrap; }
 .product-column-control select { padding: 6px 24px 6px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; font: inherit; }
 .category-filter-control { position: relative; color: var(--muted); font-size: .72rem; font-weight: 700; white-space: nowrap; }

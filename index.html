@@ -533,19 +533,6 @@
                     >
                   </h2>
                 </div>
-                <div class="checkout-heading-actions">
-                  <button
-                    id="mobile-checkout-close"
-                    class="checkout-mobile-close"
-                    type="button"
-                    aria-label="商品選択に戻る"
-                  >
-                    ← 商品を選ぶ
-                  </button>
-                  <button id="clear-cart" class="text-button" type="button">
-                    すべて取消
-                  </button>
-                </div>
               </div>
               <div id="cart-list" class="cart-list"></div>
               <div class="total-row">
@@ -922,14 +909,33 @@
                   直前の会計を取り消す
                 </button>
               </div>
-              <button
-                id="confirm-button"
-                class="confirm-button"
-                type="button"
-                disabled
-              >
-                会計を確定する
-              </button>
+              </div>
+              <div class="checkout-actions-footer">
+                <button
+                  id="confirm-button"
+                  class="confirm-button"
+                  type="button"
+                  disabled
+                >
+                  会計を確定する
+                </button>
+                <div class="checkout-footer-secondary">
+                  <button
+                    id="mobile-checkout-close"
+                    class="checkout-mobile-close"
+                    type="button"
+                    aria-label="商品選択に戻る"
+                  >
+                    ← 商品を選ぶ
+                  </button>
+                  <button
+                    id="clear-cart"
+                    class="checkout-clear-button"
+                    type="button"
+                  >
+                    すべて取り消す
+                  </button>
+                </div>
               </div>
             </section>
           </div>
@@ -1279,6 +1285,29 @@
         </div>
       </section>
     </main>
+
+    <dialog
+      id="clear-cart-dialog"
+      class="confirmation-dialog"
+      aria-labelledby="clear-cart-dialog-title"
+      aria-describedby="clear-cart-dialog-message"
+    >
+      <div class="confirmation-dialog-content">
+        <span class="confirmation-dialog-icon" aria-hidden="true">!</span>
+        <h2 id="clear-cart-dialog-title">会計をすべて取り消しますか？</h2>
+        <p id="clear-cart-dialog-message">
+          選択中の商品と入力内容が消えます。確定済みの会計履歴は削除されません。
+        </p>
+        <div class="confirmation-dialog-actions">
+          <button id="clear-cart-dialog-cancel" class="button button-secondary" type="button">
+            キャンセル
+          </button>
+          <button id="clear-cart-dialog-confirm" class="button button-danger" type="button">
+            すべて取り消す
+          </button>
+        </div>
+      </div>
+    </dialog>
 
     <script src="core.js"></script>
     <script src="storage.js"></script>

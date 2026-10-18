@@ -65,6 +65,8 @@ test('styles and app files are present and app uses the core and storage APIs', 
   const ignoredSwipeTargets = app.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
   assert.doesNotMatch(ignoredSwipeTargets, /select|catalog-panel-actions/);
   assert.match(ignoredSwipeTargets, /input:not\(\[type="checkbox"\]\)/);
+  assert.match(css, /\.catalog-panel-actions \{[^}]*touch-action: pan-y;/);
+  assert.match(read('dist/styles.css'), /\.catalog-panel-actions \{[^}]*touch-action: pan-y;/);
   assert.match(app, /elements\.pageShell\.dataset\.activeTab = tabName/);
   assert.match(app, /tabbedResults\.addEventListener\('animationend'/);
   assert.match(app, /tabbedResults\.addEventListener\('touchmove'/);
@@ -127,6 +129,8 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(html, /class="received-label-row"[\s\S]*?data-received-action="clear"[\s\S]*?<\/div>/);
   assert.match(html, /class="received-quick-buttons"[\s\S]*?id="exact-total"/);
   assert.match(html, /id="mobile-checkout-bar"[\s\S]*?id="mobile-checkout-open"[\s\S]*?会計に進む/);
+  assert.match(html, /class="checkout-actions-footer"[\s\S]*?id="confirm-button"[\s\S]*?id="mobile-checkout-close"[\s\S]*?id="clear-cart"/);
+  assert.match(html, /id="clear-cart-dialog"[\s\S]*?id="clear-cart-dialog-cancel"[\s\S]*?id="clear-cart-dialog-confirm"/);
   assert.match(app, /function setMobileCheckoutOpen\(/);
   assert.match(app, /function handleMobileCheckoutKeydown\(/);
   assert.match(app, /elements\.mobileCartTotal\.textContent = formatYen\(cart\.total\)/);
@@ -138,8 +142,16 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(app, /function renderAll\(\) \{[\s\S]*?if \(state\.fitCheckoutHeightAfterClear && fitCheckoutHeightToContent\(\)\) state\.fitCheckoutHeightAfterClear = false;/);
   assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
   assert.match(css, /#checkout-panel\.is-mobile-open \{ position: fixed; inset: 0;[^}]*height: 100vh; height: 100dvh;/);
+  assert.match(css, /#checkout-panel\.is-mobile-open \{[^}]*flex-direction: column;/);
+  assert.match(css, /\.checkout-actions-footer \{ flex: 0 0 auto;[^}]*safe-area-inset-bottom/);
+  assert.match(css, /\.checkout-actions-footer \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2\.2fr\); grid-template-rows: repeat\(2, minmax\(38px, 1fr\)\)/);
+  assert.match(css, /\.checkout-footer-secondary \{ display: grid; grid-column: 1; grid-row: 1 \/ span 2;/);
+  assert.match(css, /#checkout-panel \.checkout-actions-footer \.confirm-button \{ grid-column: 2; grid-row: 1 \/ span 2; height: auto; min-height: 81px;/);
+  assert.match(css, /#checkout-panel \.payment-box \{ display: grid; grid-template-columns: minmax\(112px, 1fr\) minmax\(0, 2\.2fr\); grid-template-areas: "label quick" "received quick" "change quick"/);
+  assert.match(css, /#checkout-panel \.change-row span \{ font-size: \.72rem; \}/);
   assert.match(css, /\.checkout-resize-handle \{ display: none; \}/);
-  assert.match(css, /\.checkout-scroll-area \{[^}]*overflow-y: auto;/);
+  assert.match(css, /\.checkout-scroll-area \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;/);
+  assert.match(css, /#checkout-panel\.is-mobile-open #cart-list \{ flex: 1 1 0; min-height: 44px; overflow-y: auto;/);
   assert.match(html, /id="checkout-resize-handle"[\s\S]*?<\/button>\s*<div class="checkout-scroll-area">/);
   assert.match(css, /\.page-shell \{ padding: 18px 12px calc\(82px \+ env\(safe-area-inset-bottom\)\); \}/);
   assert.match(css, /\.page-shell\.mobile-checkout-open \.mobile-checkout-bar \{ display: none; \}/);
@@ -154,7 +166,7 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
   assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);
   assert.match(css, /#exact-total \{ border: 1px solid #[\da-f]{6}; color: var\(--teal\); background: #[\da-f]{6}; \}/i);
-  assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-columns: minmax\(0, 2\.2fr\) minmax\(112px, 1fr\); grid-template-areas: "quick label" "quick received" "quick change" "message message";/);
+  assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-columns: minmax\(112px, 1fr\) minmax\(0, 2\.2fr\); grid-template-areas: "label quick" "received quick" "change quick" "message message";/);
   assert.match(css, /#checkout-panel \.received-label-row \{ grid-area: label; margin: 0; \}/);
   assert.match(css, /#checkout-panel \.received-quick-buttons \{ grid-area: quick; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); grid-template-rows: repeat\(2, 48px\);/);
   assert.match(css, /\.confirm-button \{ width: 100%; height: 60px;/);
@@ -259,7 +271,10 @@ test('history, inventory, backup, and daily close improvements are wired into th
   assert.match(css, /\.daily-close-panel/);
   assert.match(css, /\.history-tools/);
   assert.match(css, /\.managed-stock-adjustment/);
-  assert.match(html, /<div class="undo-sale-anchor">\s*<button[\s\S]*?id="undo-last-sale"[\s\S]*?<\/button>\s*<\/div>\s*<button[\s\S]*?id="confirm-button"/);
+  assert.match(html, /<div class="undo-sale-anchor">\s*<button[\s\S]*?id="undo-last-sale"[\s\S]*?<\/button>\s*<\/div>\s*<\/div>\s*<div class="checkout-actions-footer">\s*<button[\s\S]*?id="confirm-button"/);
+  assert.match(app, /function requestClearCart\(\)[\s\S]*?elements\.clearCartDialog\.showModal\(\)/);
+  assert.match(app, /elements\.clearCart\.addEventListener\('click', requestClearCart\)/);
+  assert.match(app, /elements\.clearCartDialogConfirm\.addEventListener\('click', confirmClearCart\)/);
   assert.match(css, /\.undo-sale-anchor \{ position: relative; height: 0; margin-top: 14px; \}/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?position: absolute;[\s\S]*?left: 50%;/);
   assert.match(css, /\.undo-last-sale \{[\s\S]*?background: rgba\(255, 255, 255, \.97\);/);
@@ -290,7 +305,7 @@ test('very small phone layouts wrap controls and prevent fixed-width overflow', 
   assert.match(css, /@media \(max-width: 400px\) \{[\s\S]*?\.catalog-panel \.panel-heading \{ flex-wrap: wrap;/);
   assert.match(css, /@media \(max-width: 360px\) \{[\s\S]*?\.summary-cards-row \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-card \{ height: auto !important; min-height: 92px !important;/);
-  assert.match(css, /#checkout-panel \.payment-box \{ grid-template-columns: minmax\(0, 1\.5fr\) minmax\(100px, 1fr\);/);
+  assert.match(css, /#checkout-panel \.payment-box \{ grid-template-columns: minmax\(100px, 1fr\) minmax\(0, 1\.5fr\);/);
   assert.match(css, /#checkout-panel \.received-quick-buttons \{ min-width: 0;/);
   assert.match(css, /\.history-money \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
 });

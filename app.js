@@ -383,6 +383,31 @@
     }
   }
 
+  function requestClearCart() {
+    const editing = Boolean(state.editingTransactionId);
+    elements.clearCartDialogTitle.textContent = editing
+      ? '変更内容を取り消しますか？'
+      : '会計をすべて取り消しますか？';
+    elements.clearCartDialogMessage.textContent = editing
+      ? '編集中の内容を破棄して、編集前の会計に戻ります。確定済みの会計は変更されません。'
+      : '選択中の商品、お預かり金額、会計メモを消します。確定済みの会計履歴は削除されません。';
+    elements.clearCartDialogConfirm.textContent = editing ? '変更を取り消す' : 'すべて取り消す';
+
+    if (typeof elements.clearCartDialog.showModal === 'function') {
+      elements.clearCartDialog.showModal();
+      return;
+    }
+    if (root.confirm(`${elements.clearCartDialogTitle.textContent}\n${elements.clearCartDialogMessage.textContent}`)) {
+      confirmClearCart();
+    }
+  }
+
+  function confirmClearCart() {
+    if (elements.clearCartDialog.open) elements.clearCartDialog.close();
+    clearCartState();
+    renderAll();
+  }
+
   function checkoutHeightBounds() {
     const minimum = 170;
     const maximum = Math.max(minimum, Math.floor((root.innerHeight || 700) * 0.9));
@@ -816,7 +841,7 @@
       ? '保存済みの制限設定は変更されません。'
       : `この会計のみ${temporarySiblings}人として計算中。保存済みの設定は変更されません。`;
     elements.checkoutLimitReset.classList.toggle('is-hidden', temporarySiblings == null);
-    elements.clearCart.textContent = state.editingTransactionId ? '変更を取消' : 'すべて取消';
+    elements.clearCart.textContent = state.editingTransactionId ? '変更を取り消す' : 'すべて取り消す';
     elements.confirmButton.textContent = state.editingTransactionId ? '変更を保存' : '会計を確定する';
     elements.editingBadge.classList.toggle('is-hidden', !state.editingTransactionId);
     if (!cart.lineItems.length) {
@@ -2426,6 +2451,11 @@
     elements.dailyCloseSummary = $('#daily-close-summary');
     elements.dailyCloseExport = $('#daily-close-export');
     elements.clearCart = $('#clear-cart');
+    elements.clearCartDialog = $('#clear-cart-dialog');
+    elements.clearCartDialogTitle = $('#clear-cart-dialog-title');
+    elements.clearCartDialogMessage = $('#clear-cart-dialog-message');
+    elements.clearCartDialogCancel = $('#clear-cart-dialog-cancel');
+    elements.clearCartDialogConfirm = $('#clear-cart-dialog-confirm');
     elements.purchaseLimit = $('#purchase-limit');
     elements.checkoutLimitBadge = $('#checkout-limit-badge');
     elements.checkoutLimitAdjustment = $('#checkout-limit-adjustment');
@@ -2539,7 +2569,9 @@
     elements.checkoutLimitReset.addEventListener('click', () => setTemporaryCheckoutSiblings(state.settings.siblings));
     $('#exact-total').addEventListener('click', () => { state.received = String(Core.calculateCart(getCartLines()).total); elements.received.value = state.received; renderCart(); });
     elements.confirmButton.addEventListener('click', confirmSale);
-    elements.clearCart.addEventListener('click', () => { clearCartState(); renderAll(); });
+    elements.clearCart.addEventListener('click', requestClearCart);
+    elements.clearCartDialogCancel.addEventListener('click', () => elements.clearCartDialog.close());
+    elements.clearCartDialogConfirm.addEventListener('click', confirmClearCart);
     $('#period-select').addEventListener('change', (event) => { state.period = event.target.value; renderDashboard(); });
     elements.hourlyMetric.addEventListener('change', (event) => { state.hourlyMetric = event.target.value; renderDashboard(); });
     elements.hourlyStartHour.addEventListener('change', (event) => { state.hourlyStartHour = Number(event.target.value); renderDashboard(); });
