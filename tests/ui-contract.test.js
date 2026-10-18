@@ -58,7 +58,9 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /activateTab/);
   assert.match(app, /function setupTabSwipe\(tabbedResults\)/);
   assert.match(app, /addEventListener\('touchstart'/);
-  assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false \}\)/);
+  assert.match(app, /addEventListener\('touchstart',[\s\S]*?\{ passive: true, capture: true \}\)/);
+  assert.match(app, /addEventListener\('touchmove',[\s\S]*?\{ passive: false, capture: true \}\)/);
+  assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false, capture: true \}\)/);
   assert.match(app, /Math\.abs\(deltaX\) >= 36/);
   assert.match(app, /Math\.abs\(deltaX\) >= Math\.abs\(deltaY\) \* 1\.15/);
   const ignoredSwipeTargets = app.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
@@ -92,7 +94,10 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);
-  assert.match(app, /function renderHorizontalChart\(element, products, metric, valueLabel\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  const horizontalChart = app.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '';
+  assert.match(horizontalChart, /\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  assert.match(horizontalChart, /element\.innerHTML = [\s\S]*?\$\{rows\}/);
+  assert.doesNotMatch(horizontalChart, /\$\{bars\}/);
   assert.doesNotMatch(app.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '', /\.slice\(0, 8\)/);
   assert.doesNotMatch(app.match(/function renderShareChart\([\s\S]*?\n  function polarPoint/)?.[0] ?? '', /\.slice\(0, 7\)|その他/);
   assert.match(app, /function renderShareChart\(element, products\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
@@ -119,10 +124,24 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /\.weekday-heatmap-card \{ grid-column: 1 \/ -1; \}/);
   assert.match(css, /\.inventory-chart-row\.is-low \.inventory-chart-bar/);
   assert.match(css, /\.inventory-chart-label strong \{[^}]*overflow-wrap: anywhere;/);
-  assert.match(distApp, /function renderHorizontalChart\(element, products, metric, valueLabel\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  const distHorizontalChart = distApp.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '';
+  assert.match(distHorizontalChart, /\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  assert.match(distHorizontalChart, /element\.innerHTML = [\s\S]*?\$\{rows\}/);
+  assert.doesNotMatch(distHorizontalChart, /\$\{bars\}/);
   assert.match(distApp, /if \(Math\.abs\(deltaX\) < 18\) return;/);
   const distIgnoredSwipeTargets = distApp.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
   assert.doesNotMatch(distIgnoredSwipeTargets, /button|input|select/);
+});
+
+test('checkout limit reset sits immediately before the sibling stepper', () => {
+  for (const directory of ['', 'dist/']) {
+    const html = read(`${directory}index.html`);
+    const adjustmentStart = html.indexOf('id="checkout-limit-adjustment"');
+    const resetIndex = html.indexOf('id="checkout-limit-reset"', adjustmentStart);
+    const stepperIndex = html.indexOf('class="checkout-limit-stepper"', adjustmentStart);
+    assert.ok(adjustmentStart >= 0 && resetIndex > adjustmentStart && resetIndex < stepperIndex);
+    assert.doesNotMatch(read(`${directory}styles.css`), /#checkout-panel \.checkout-limit-reset \{[^}]*flex-basis:\s*100%/);
+  }
 });
 
 test('app warns when browser persistence is unavailable and resets payment on import', () => {

@@ -844,7 +844,7 @@
     }).join('');
     const height = rowTop + 8;
     element.setAttribute('viewBox', `0 0 ${chartWidth} ${height}`);
-    element.innerHTML = `<line class="grid-line" x1="${barX}" y1="16" x2="${barX}" y2="${height - 12}"/>${bars}`;
+    element.innerHTML = `<line class="grid-line" x1="${barX}" y1="16" x2="${barX}" y2="${height - 12}"/>${rows}`;
   }
 
   function renderChart(products) {
@@ -1008,7 +1008,7 @@
       const touch = event.touches[0];
       cancelReturnAnimation();
       touchStart = { x: touch.clientX, y: touch.clientY, at: Date.now(), horizontal: false, visualTarget: null };
-    }, { passive: true });
+    }, { passive: true, capture: true });
 
     tabbedResults.addEventListener('touchmove', (event) => {
       if (!touchStart || event.touches.length !== 1) return;
@@ -1019,9 +1019,10 @@
       if (!touchStart.horizontal) {
         if (Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 10) return;
         if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.15) {
-          if (Math.abs(deltaY) >= 10) touchStart = null;
+          if (Math.abs(deltaY) >= 24) touchStart = null;
           return;
         }
+        if (Math.abs(deltaX) < 10) return;
 
         touchStart.horizontal = true;
         const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
@@ -1039,7 +1040,7 @@
       touchStart.visualTarget.classList.add('is-swipe-dragging');
       touchStart.visualTarget.style.transform = `translate3d(${offset}px, 0, 0)`;
       touchStart.visualTarget.style.opacity = String(1 - Math.min(Math.abs(offset) / width * .22, .22));
-    }, { passive: false });
+    }, { passive: false, capture: true });
 
     tabbedResults.addEventListener('touchend', (event) => {
       if (!touchStart || event.changedTouches.length !== 1) {
@@ -1067,12 +1068,12 @@
       } else {
         resetSwipeTarget(start.visualTarget, true);
       }
-    }, { passive: false });
+    }, { passive: false, capture: true });
 
     tabbedResults.addEventListener('touchcancel', () => {
       resetSwipeTarget(touchStart?.visualTarget, true);
       touchStart = null;
-    }, { passive: true });
+    }, { passive: true, capture: true });
   }
 
   function setAdminMode(isOpen) {

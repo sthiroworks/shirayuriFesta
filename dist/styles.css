@@ -459,7 +459,6 @@ td.money { white-space: nowrap; font-weight: 700; }
   #checkout-panel .checkout-limit-stepper { grid-template-columns: 26px 42px 26px; gap: 3px; }
   #checkout-panel .checkout-limit-stepper button { width: 26px; height: 26px; font-size: .9rem; }
   #checkout-panel .checkout-limit-stepper input { width: 42px; height: 26px; }
-  #checkout-panel .checkout-limit-reset { flex-basis: 100%; text-align: right; }
   #checkout-panel .payment-box { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 8px; align-items: center; padding: 6px 8px; border-radius: 8px; }
   #checkout-panel .payment-box label { grid-column: 1; margin: 0; font-size: .72rem; }
   #checkout-panel .received-row { grid-column: 2; }
