@@ -142,6 +142,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .workspace-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(280px, .7fr); gap: 18px; margin-bottom: 18px; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .8fr); gap: 18px; margin-bottom: 18px; }
 .tabbed-results { margin-bottom: 18px; }
+.tabbed-results button, .tabbed-results input, .tabbed-results select, .tabbed-results textarea, .tabbed-results a { touch-action: pan-y; }
 .tab-list { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding: 0 2px; border-bottom: 1px solid var(--line); }
 .tab-button { flex: 0 0 auto; padding: 11px 16px; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font-size: .84rem; font-weight: 800; white-space: nowrap; }
 .tab-button.is-active { border-bottom-color: var(--teal); color: var(--teal); }
@@ -281,6 +282,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .hourly-check input { accent-color: var(--teal); }
 #sales-chart, #quantity-chart, #share-chart { display: block; width: 100%; min-width: 560px; height: 360px; }
 #sales-chart, #quantity-chart { min-width: 0; }
+#sales-chart, #quantity-chart, #share-chart { height: auto; }
 #daily-sales-chart, #hourly-chart { display: block; width: 100%; min-width: 560px; height: 300px; }
 #sales-chart .grid-line { stroke: var(--line); stroke-width: 1; }
 #sales-chart .bar { fill: #2f8f89; }

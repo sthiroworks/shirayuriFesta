@@ -61,10 +61,12 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /addEventListener\('touchend',[\s\S]*?\{ passive: false \}\)/);
   assert.match(app, /Math\.abs\(deltaX\) >= 36/);
   assert.match(app, /Math\.abs\(deltaX\) >= Math\.abs\(deltaY\) \* 1\.15/);
-  assert.match(app, /button:not\(\.product-add\)/);
   const ignoredSwipeTargets = app.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
   assert.doesNotMatch(ignoredSwipeTargets, /select|catalog-panel-actions/);
-  assert.match(ignoredSwipeTargets, /input:not\(\[type="checkbox"\]\)/);
+  assert.doesNotMatch(ignoredSwipeTargets, /button|input|select|(?:^|,\s*)a(?:,|$)/);
+  assert.match(ignoredSwipeTargets, /\.chart-wrap/);
+  assert.match(css, /\.tabbed-results button, \.tabbed-results input, \.tabbed-results select, \.tabbed-results textarea, \.tabbed-results a \{ touch-action: pan-y; \}/);
+  assert.match(app, /if \(Math\.abs\(deltaX\) < 18\) return;/);
   assert.match(css, /\.catalog-panel-actions \{[^}]*touch-action: pan-y;/);
   assert.match(read('dist/styles.css'), /\.catalog-panel-actions \{[^}]*touch-action: pan-y;/);
   assert.match(app, /elements\.pageShell\.dataset\.activeTab = tabName/);
@@ -90,6 +92,11 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);
+  assert.match(app, /function renderHorizontalChart\(element, products, metric, valueLabel\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  assert.doesNotMatch(app.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '', /\.slice\(0, 8\)/);
+  assert.doesNotMatch(app.match(/function renderShareChart\([\s\S]*?\n  function polarPoint/)?.[0] ?? '', /\.slice\(0, 7\)|その他/);
+  assert.match(app, /function renderShareChart\(element, products\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  assert.match(app, /function chartLabelLines\(/);
   assert.match(app, /renderCategoryChart/);
   assert.match(app, /renderCategoryQuantityChart/);
   assert.match(app, /renderDailySalesChart/);
@@ -111,6 +118,11 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(html, /class="weekday-heatmap-scroll"/);
   assert.match(css, /\.weekday-heatmap-card \{ grid-column: 1 \/ -1; \}/);
   assert.match(css, /\.inventory-chart-row\.is-low \.inventory-chart-bar/);
+  assert.match(css, /\.inventory-chart-label strong \{[^}]*overflow-wrap: anywhere;/);
+  assert.match(distApp, /function renderHorizontalChart\(element, products, metric, valueLabel\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
+  assert.match(distApp, /if \(Math\.abs\(deltaX\) < 18\) return;/);
+  const distIgnoredSwipeTargets = distApp.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
+  assert.doesNotMatch(distIgnoredSwipeTargets, /button|input|select/);
 });
 
 test('app warns when browser persistence is unavailable and resets payment on import', () => {

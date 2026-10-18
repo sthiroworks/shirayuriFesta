@@ -95,6 +95,23 @@
     return String(value == null ? '' : value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
   }
 
+  function chartLabelText(value) {
+    return String(value == null ? '' : value).replace(/\\n|\r?\n/g, ' ').trim();
+  }
+
+  function chartLabelLines(value, maxCharacters = 12) {
+    return String(value == null ? '' : value)
+      .replace(/\\n|\r?\n/g, '\n')
+      .split('\n')
+      .flatMap((line) => {
+        const characters = Array.from(line);
+        const lines = [];
+        while (characters.length > maxCharacters) lines.push(characters.splice(0, maxCharacters).join(''));
+        if (characters.length || !lines.length) lines.push(characters.join(''));
+        return lines;
+      });
+  }
+
   function formatYen(value) {
     return `¥${Math.round(Number(value) || 0).toLocaleString('ja-JP')}`;
   }
@@ -795,7 +812,9 @@
   }
 
   function renderHorizontalChart(element, products, metric, valueLabel) {
-    const top = [...products].sort((a, b) => (Number(b[metric]) || 0) - (Number(a[metric]) || 0) || b.sales - a.sales || a.name.localeCompare(b.name, 'ja')).slice(0, 8);
+    const top = [...products]
+      .filter((product) => Number(product.quantity) > 0)
+      .sort((a, b) => (Number(b[metric]) || 0) - (Number(a[metric]) || 0) || b.sales - a.sales || a.name.localeCompare(b.name, 'ja'));
     const chartWidth = 600;
     if (!top.length) {
       element.setAttribute('viewBox', `0 0 ${chartWidth} 360`);
@@ -806,22 +825,24 @@
     const labelX = 180;
     const barX = 196;
     const barMaxWidth = 340;
-    const rowHeight = 40;
-    const firstY = 34;
-    const bars = top.map((product, index) => {
+    let rowTop = 16;
+    const bars = top.map((product) => {
       const value = Math.max(0, Number(product[metric]) || 0);
       const barWidth = Math.round(value / max * barMaxWidth);
-      const y = firstY + index * rowHeight;
-      const label = product.name.length > 14 ? `${product.name.slice(0, 14)}…` : product.name;
+      const labelLines = chartLabelLines(product.name);
+      const rowHeight = Math.max(40, labelLines.length * 14 + 12);
+      const y = rowTop + rowHeight / 2;
+      rowTop += rowHeight;
       const valueText = valueLabel === 'quantity'
         ? `${product.quantity}個`
         : valueLabel === 'share'
           ? `${value.toFixed(value >= 10 ? 0 : 1)}%`
           : formatYen(product.sales);
       const barClass = valueLabel === 'quantity' ? 'quantity-bar' : valueLabel === 'share' ? 'share-bar' : '';
-      return `<text class="chart-label" x="${labelX}" y="${y + 5}" text-anchor="end">${escapeHtml(label)}</text><rect class="bar ${barClass}" x="${barX}" y="${y - 14}" width="${barWidth}" height="26" rx="5"/><text class="chart-value" x="${Math.min(chartWidth - 8, barX + barWidth + 8)}" y="${y + 5}">${escapeHtml(valueText)}</text>`;
+      const labelMarkup = labelLines.map((line, index) => `<tspan x="${labelX}" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
+      return `<text class="chart-label" x="${labelX}" y="${y + 5}" text-anchor="end"><title>${escapeHtml(chartLabelText(product.name))}</title>${labelMarkup}</text><rect class="bar ${barClass}" x="${barX}" y="${y - 13}" width="${barWidth}" height="26" rx="5"/><text class="chart-value" x="${Math.min(chartWidth - 8, barX + barWidth + 8)}" y="${y + 5}">${escapeHtml(valueText)}</text>`;
     }).join('');
-    const height = firstY + top.length * rowHeight + 8;
+    const height = rowTop + 8;
     element.setAttribute('viewBox', `0 0 ${chartWidth} ${height}`);
     element.innerHTML = `<line class="grid-line" x1="${barX}" y1="16" x2="${barX}" y2="${height - 12}"/>${bars}`;
   }
@@ -833,25 +854,22 @@
   }
 
   function renderShareChart(element, products) {
-    const positiveProducts = products
-      .filter((product) => Number(product.sales) > 0)
+    const soldProducts = products
+      .filter((product) => Number(product.quantity) > 0)
       .sort((a, b) => Number(b.sales) - Number(a.sales) || a.name.localeCompare(b.name, 'ja'));
-    const totalSales = positiveProducts.reduce((total, product) => total + Number(product.sales), 0);
-    if (!totalSales) {
+    const totalSales = soldProducts.reduce((total, product) => total + Math.max(0, Number(product.sales) || 0), 0);
+    if (!soldProducts.length) {
       element.innerHTML = '<text x="380" y="180" text-anchor="middle">確定した会計がここに表示されます</text>';
       return;
     }
-    const visibleProducts = positiveProducts.slice(0, 7);
-    const otherSales = positiveProducts.slice(7).reduce((total, product) => total + Number(product.sales), 0);
-    if (otherSales > 0) visibleProducts.push({ name: 'その他', sales: otherSales });
     const colors = ['#2f8f89', '#d48632', '#c39a39', '#6d8fbe', '#a26795', '#709e60', '#cc6b50', '#687279'];
     const centerX = 180;
     const centerY = 180;
     const radius = 132;
     const innerRadius = 76;
     let angle = -90;
-    const slices = visibleProducts.map((product, index) => {
-      const share = Number(product.sales) / totalSales;
+    const slices = soldProducts.map((product, index) => {
+      const share = totalSales > 0 ? Math.max(0, Number(product.sales) || 0) / totalSales : 0;
       const nextAngle = angle + share * 360;
       const start = polarPoint(centerX, centerY, radius, angle);
       const end = polarPoint(centerX, centerY, radius, nextAngle);
@@ -863,16 +881,21 @@
       angle = nextAngle;
       return result;
     });
-    const legend = slices.map((slice, index) => {
-      const y = 34 + index * 38;
-      const label = slice.name.length > 14 ? `${slice.name.slice(0, 14)}…` : slice.name;
+    let legendTop = 15;
+    const legend = slices.map((slice) => {
+      const labelLines = chartLabelLines(slice.name, 24);
+      const rowHeight = Math.max(38, labelLines.length * 14 + 10);
+      const y = legendTop + rowHeight / 2;
+      legendTop += rowHeight;
+      const labelMarkup = labelLines.map((line, index) => `<tspan x="384" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
       const shareText = `${slice.share.toFixed(slice.share >= 10 ? 0 : 1)}%`;
-      return `<rect class="share-legend-swatch" x="360" y="${y - 11}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y}">${escapeHtml(label)}</text><text class="share-legend-value" x="710" y="${y}" text-anchor="end">${shareText}</text>`;
+      return `<rect class="share-legend-swatch" x="360" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="710" y="${y + 4}" text-anchor="end">${shareText}</text>`;
     }).join('');
-    const sliceMarkup = slices.length === 1
-      ? `<circle class="share-slice" cx="${centerX}" cy="${centerY}" r="${radius}" fill="${slices[0].color}"/>`
-      : slices.map((slice) => `<path class="share-slice" d="${slice.path}" fill="${slice.color}"/>`).join('');
-    element.setAttribute('viewBox', '0 0 760 360');
+    const positiveSlices = slices.filter((slice) => Number(slice.sales) > 0);
+    const sliceMarkup = positiveSlices.length === 1
+      ? `<circle class="share-slice" cx="${centerX}" cy="${centerY}" r="${radius}" fill="${positiveSlices[0].color}"/>`
+      : positiveSlices.map((slice) => `<path class="share-slice" d="${slice.path}" fill="${slice.color}"/>`).join('');
+    element.setAttribute('viewBox', `0 0 760 ${Math.max(360, legendTop + 8)}`);
     element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/><text class="share-total-label" x="180" y="174" text-anchor="middle">売上合計</text><text class="share-total-value" x="180" y="198" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
   }
 
@@ -926,7 +949,7 @@
   function setupTabSwipe(tabbedResults) {
     if (!tabbedResults) return;
     const tabs = ['products', 'chart', 'history'];
-    const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
+    const ignoredTargets = 'textarea, [contenteditable="true"], .tab-list, #checkout-panel, .chart-wrap, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
     let touchStart = null;
     let returnAnimationTarget = null;
     let returnAnimationTimer = null;
@@ -1004,12 +1027,12 @@
         const activeTab = document.querySelector('.tab-button.is-active')?.dataset.tabTarget;
         const activeIndex = tabs.indexOf(activeTab);
         const nextIndex = activeIndex + (deltaX < 0 ? 1 : -1);
-        if (activeIndex < 0 || !tabs[nextIndex]) return;
-        touchStart.visualTarget = getSwipeTarget(activeTab);
+        touchStart.visualTarget = activeIndex >= 0 && tabs[nextIndex] ? getSwipeTarget(activeTab) : null;
       }
 
-      if (!touchStart.visualTarget) return;
+      if (Math.abs(deltaX) < 18) return;
       if (event.cancelable) event.preventDefault();
+      if (!touchStart.visualTarget) return;
       const width = tabbedResults.clientWidth || root.innerWidth || 320;
       const offset = Math.sign(deltaX) * Math.min(Math.abs(deltaX) * .88, width * .52);
       touchStart.visualTarget.classList.remove('is-swipe-settling');
