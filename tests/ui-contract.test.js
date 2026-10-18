@@ -62,6 +62,9 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(app, /Math\.abs\(deltaX\) >= 36/);
   assert.match(app, /Math\.abs\(deltaX\) >= Math\.abs\(deltaY\) \* 1\.15/);
   assert.match(app, /button:not\(\.product-add\)/);
+  const ignoredSwipeTargets = app.match(/const ignoredTargets = '([^']+)';/)?.[1] ?? '';
+  assert.doesNotMatch(ignoredSwipeTargets, /select|catalog-panel-actions/);
+  assert.match(ignoredSwipeTargets, /input:not\(\[type="checkbox"\]\)/);
   assert.match(app, /elements\.pageShell\.dataset\.activeTab = tabName/);
   assert.match(app, /tabbedResults\.addEventListener\('animationend'/);
   assert.match(app, /tabbedResults\.addEventListener\('touchmove'/);
@@ -143,6 +146,9 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /@media \(min-width: 901px\)/);
   assert.match(css, /\.workspace-grid \{ grid-template-columns: minmax\(0, 3fr\) minmax\(420px, 1\.05fr\); \}/);
   assert.match(css, /\.checkout-panel \.cart-line \{ gap: 8px; padding: 8px 0;/);
+  assert.match(app, /class="cart-line-icon" aria-hidden="true"/);
+  assert.match(app, /const itemName = productNameText\(item\.name\) \? item\.name : \(cartProduct && cartProduct\.name\) \|\| '商品'/);
+  assert.match(css, /\.cart-line-icon \{ display: grid; flex: 0 0 38px;/);
   assert.match(css, /\.received-quick-buttons \{ display: grid; grid-template-columns: repeat\(6, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{[^}]*flex: 1 1 0;/);
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);

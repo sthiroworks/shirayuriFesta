@@ -823,11 +823,14 @@
       elements.cartList.innerHTML = '<div class="empty-state">商品を選ぶと、ここに明細が表示されます。</div>';
     } else {
       elements.cartList.innerHTML = cart.lineItems.map((item) => {
-        const product = state.products.find((candidate) => candidate.category === item.category && candidate.name === item.name);
-        const id = product ? product.id : `${item.category}::${item.name}`;
+        const cartProduct = state.products.find((candidate) => candidate.id === item.productId)
+          || state.products.find((candidate) => candidate.category === item.category && candidate.name === item.name)
+          || [...state.cartProducts.values()].find((candidate) => candidate.id === item.productId || (candidate.category === item.category && candidate.name === item.name));
+        const id = item.productId || (cartProduct ? cartProduct.id : `${item.category}::${item.name}`);
+        const itemName = productNameText(item.name) ? item.name : (cartProduct && cartProduct.name) || '商品';
         const lineLimitExceeded = limit.exceeded && item.category === limit.category;
         return `<div class="cart-line${lineLimitExceeded ? ' is-limit-exceeded' : ''}">
-          <div><div class="cart-line-name">${productNameMarkup(item.name)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div>
+          <div class="cart-line-product"><span class="cart-line-icon" aria-hidden="true">${iconMarkup(cartProduct || { category: item.category })}</span><div class="cart-line-content"><div class="cart-line-name">${productNameMarkup(itemName)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div></div>
           <div><div class="cart-line-total">${formatYen(item.subtotal)}</div><div class="stepper"><button type="button" data-action="decrement" data-product-id="${escapeHtml(id)}">−</button><input type="number" min="0" step="1" value="${item.quantity}" data-action="quantity" data-product-id="${escapeHtml(id)}"><button type="button" data-action="increment" data-product-id="${escapeHtml(id)}">＋</button></div></div>
         </div>`;
       }).join('');
@@ -1317,10 +1320,10 @@
 
   function setupTabSwipe(tabbedResults) {
     if (!tabbedResults) return;
-    // 入力欄・横スクロール表ではジェスチャーを奪わず、縦スクロールと判定した動きも無視する。
+    // プルダウンやカテゴリフィルター上でも横スワイプを受け付け、縦スクロールは従来どおり操作できるようにする。
     // 商品タブはカタログだけを動かし、画面下部に固定された会計パネルはその場に残す。
     const tabs = ['products', 'chart', 'history'];
-    const ignoredTargets = 'button:not(.product-add), input, select, textarea, a, [contenteditable="true"], .tab-list, .catalog-panel-actions, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
+    const ignoredTargets = 'button:not(.product-add), input:not([type="checkbox"]), textarea, a, [contenteditable="true"], .tab-list, #checkout-panel, .table-scroll, .weekday-heatmap-scroll, .hourly-table-scroll, .hourly-category-table-scroll, .hourly-product-table-scroll';
     let touchStart = null;
     let returnAnimationTarget = null;
     let returnAnimationTimer = null;
