@@ -95,6 +95,7 @@
     backupDirectoryHandle: null,
     temporaryCheckoutSiblings: null,
     pendingProductCopy: null,
+    productOrderSaving: false,
     historySearch: '',
     historyFrom: '',
     historyTo: '',
@@ -611,7 +612,8 @@
     const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
     if (!product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return null;
 
-    const name = nameInput.value.trim();
+    const inputName = nameInput.value.trim();
+    const name = inputName === String(product.name).replace(/\r?\n/g, '\\n') ? product.name : inputName;
     const selectedCategory = categoryInput.value.trim();
     const category = selectedCategory === NEW_CATEGORY_VALUE
       ? (newCategoryInput ? newCategoryInput.value.trim() : '')
@@ -809,11 +811,17 @@
     renderProductAddCategories();
     const categories = getProductCategories();
     elements.productManagementList.innerHTML = state.products.map((product) => `
-      <div class="managed-product-row">
-        <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
+      <div class="managed-product-row" data-managed-product-id="${escapeHtml(product.id)}">
+        <div class="managed-product-visual">
+          <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
+          <div class="managed-product-order" role="group" aria-label="${escapeHtml(productNameText(product.name))}の並び順">
+            <button class="managed-product-action" type="button" data-management-action="move-up" data-product-id="${escapeHtml(product.id)}" title="上へ" aria-label="${escapeHtml(productNameText(product.name))}を上へ移動">↑</button>
+            <button class="managed-product-action" type="button" data-management-action="move-down" data-product-id="${escapeHtml(product.id)}" title="下へ" aria-label="${escapeHtml(productNameText(product.name))}を下へ移動">↓</button>
+          </div>
+        </div>
         <div class="managed-product-info">
           <div class="managed-product-fields">
-          <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(product.name)}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品名"></label>
+          <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(String(product.name).replace(/\r?\n/g, '\\n'))}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品名"></label>
             <label class="managed-product-category">カテゴリ<select data-management-field="category" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}のカテゴリ">${categories.map((category) => `<option value="${escapeHtml(category)}"${category === product.category ? ' selected' : ''}>${escapeHtml(category)}</option>`).join('')}<option value="${NEW_CATEGORY_VALUE}">＋新しいカテゴリを追加</option></select></label>
             <label class="managed-product-price">単価<input type="number" step="1" value="${escapeHtml(product.unitPrice)}" data-management-field="price" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の単価"></label>
             <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${getProductStockInfo(product).remaining}` : '上限なし'}</small></label>
@@ -831,6 +839,7 @@
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
         </div>
       </div>`).join('') || '<div class="empty-state">商品がありません。</div>';
+    updateProductOrderActions();
     if (elements.stockAdjustmentHistory) {
       const adjustments = (state.inventory && state.inventory.adjustments || []).slice(0, 10);
       elements.stockAdjustmentHistory.innerHTML = adjustments.length
@@ -1670,6 +1679,8 @@
     const target = event.target.closest('[data-management-action]');
     if (!target) return;
     const productId = target.dataset.productId;
+    if (target.dataset.managementAction === 'move-up') void moveProduct(productId, -1);
+    if (target.dataset.managementAction === 'move-down') void moveProduct(productId, 1);
     if (target.dataset.managementAction === 'save') saveProductDetails(productId, target);
     if (target.dataset.managementAction === 'adjust-stock') adjustProductStock(productId, target);
     if (target.dataset.managementAction === 'copy') prepareProductCopy(productId, target.closest('.managed-product-row'));
@@ -1699,6 +1710,60 @@
 
   function handleProductManagementInput(event) {
     updateManagedProductSaveState(event.target.closest('.managed-product-row'));
+  }
+
+  function updateProductOrderActions() {
+    const positions = new Map(state.products.map((product, index) => [product.id, index]));
+    elements.productManagementList.querySelectorAll('.managed-product-order button').forEach((button) => {
+      const index = positions.get(button.dataset.productId);
+      const direction = button.dataset.managementAction === 'move-up' ? -1 : 1;
+      button.disabled = state.productOrderSaving || index == null || index + direction < 0 || index + direction >= state.products.length;
+    });
+  }
+
+  async function moveProduct(productId, direction) {
+    if (state.productOrderSaving) return;
+    if (hasManagedProductChanges()) {
+      setStatus('入力中の商品情報・在庫残数を反映してから、並び順を変更してください。', 'error');
+      return;
+    }
+    const index = state.products.findIndex((product) => product.id === productId);
+    const destination = index + direction;
+    if (index < 0 || destination < 0 || destination >= state.products.length) return;
+    const nextProducts = state.products.slice();
+    const [product] = nextProducts.splice(index, 1);
+    nextProducts.splice(destination, 0, product);
+    const scrollTop = elements.productManagementList.scrollTop;
+    state.productOrderSaving = true;
+    elements.productManagementList.inert = true;
+    elements.productManagementList.setAttribute('aria-busy', 'true');
+    updateProductOrderActions();
+    try {
+      Storage.saveProducts(storage, nextProducts);
+      state.products = nextProducts;
+      renderCatalog();
+      renderProductManagement();
+      elements.productManagementList.scrollTop = scrollTop;
+      setStatus('商品の並び順を保存しました。', 'success');
+    } catch (error) {
+      setStatus(error.message || '商品の並び順を保存できませんでした。もう一度お試しください。', 'error');
+    } finally {
+      state.productOrderSaving = false;
+      elements.productManagementList.inert = false;
+      elements.productManagementList.removeAttribute('aria-busy');
+      updateProductOrderActions();
+    }
+    const row = [...elements.productManagementList.querySelectorAll('[data-managed-product-id]')]
+      .find((candidate) => candidate.dataset.managedProductId === productId);
+    if (row) {
+      const action = direction < 0 ? 'move-up' : 'move-down';
+      const preferred = row.querySelector(`[data-management-action="${action}"]`);
+      (preferred && !preferred.disabled ? preferred : row.querySelector('.managed-product-order button:not(:disabled)'))?.focus({ preventScroll: true });
+      const rowRect = row.getBoundingClientRect();
+      const listRect = elements.productManagementList.getBoundingClientRect();
+      if (rowRect.top < listRect.top) elements.productManagementList.scrollTop += rowRect.top - listRect.top;
+      else if (rowRect.bottom > listRect.bottom) elements.productManagementList.scrollTop += rowRect.bottom - listRect.bottom;
+    }
   }
 
   function prepareProductCopy(productId, row) {
