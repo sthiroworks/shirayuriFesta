@@ -2435,7 +2435,8 @@
 
   function shareSettingsBundle() {
     const json = Core.settingsBundleToJson(state.products, state.settings, state.inventory);
-    return shareExportFile(`shirayuri-register-settings-${new Date().toISOString().slice(0, 10)}.json`, json, 'application/json', 'レジ設定');
+    // Chromium は Web Share の .json / application/json を拒否するため、同じ JSON を .txt で渡す。
+    return shareExportFile(`shirayuri-register-settings-${new Date().toISOString().slice(0, 10)}.txt`, json, 'text/plain', 'レジ設定');
   }
 
   function importTransactions(file) {

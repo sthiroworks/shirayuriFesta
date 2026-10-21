@@ -407,7 +407,7 @@
             <div class="settings-data-copy">
               <strong>レジ設定一式</strong>
               <span
-                >商品・アイコン・在庫残数・購入制限をまとめて移行します。販売履歴とバックアップ先は含みません。</span
+                >商品・アイコン・在庫残数・購入制限をまとめて移行します。販売履歴とバックアップ先は含みません。共有時は復元可能な .txt ファイルで送ります。</span
               >
             </div>
             <div class="data-transfer-actions">
@@ -420,7 +420,7 @@
                 id="import-settings-bundle-file"
                 class="visually-hidden"
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.txt,application/json,text/plain"
               />
               <button
                 id="export-settings-bundle"
@@ -1383,6 +1383,6 @@
     <script src="core.js?v=20261021-copy-product"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js?v=20261021-copy-product"></script>
+    <script src="app.js?v=20261022-settings-share"></script>
   </body>
 </html>
