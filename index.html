@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261022-header-order" />
+    <link rel="stylesheet" href="styles.css?v=20261022-category-order" />
   </head>
   <body>
     <header class="site-header">
@@ -363,12 +363,17 @@
                 </button>
               </div>
             </form>
+            <section class="category-order-panel" aria-labelledby="category-order-title">
+              <h3 id="category-order-title">カテゴリの並び順</h3>
+              <p>↑↓で販売画面のカテゴリ順を変更できます。変更はすぐに保存されます。</p>
+              <div id="category-order-list" class="category-order-list"></div>
+            </section>
             <div
               class="product-management-subheading product-management-list-heading"
             >
               <strong>登録済み商品</strong>
               <span
-                >内容を変更したら、同じ行の「商品情報を反映」を押してください。↑↓で並び順を変更するとすぐに保存されます。販売画面ではカテゴリごとにこの順で表示されます。</span
+                >内容を変更したら、同じ行の「商品情報を反映」を押してください。↑↓で同じカテゴリ内の並び順を変更するとすぐに保存されます。</span
               >
             </div>
             <input
@@ -1383,6 +1388,6 @@
     <script src="core.js?v=20261021-copy-product"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js?v=20261022-header-order"></script>
+    <script src="app.js?v=20261022-category-order"></script>
   </body>
 </html>

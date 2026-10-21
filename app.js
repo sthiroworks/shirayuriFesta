@@ -810,7 +810,16 @@
   function renderProductManagement() {
     renderProductAddCategories();
     const categories = getProductCategories();
-    elements.productManagementList.innerHTML = state.products.map((product) => `
+    elements.categoryOrderList.innerHTML = categories.map((category) => `
+      <div class="category-order-row">
+        <span class="category-order-name">${escapeHtml(category)}</span>
+        <div class="category-order-actions" role="group" aria-label="${escapeHtml(category)}カテゴリの並び順">
+          <button class="managed-product-action" type="button" data-category-order="-1" data-category="${escapeHtml(category)}" title="上へ" aria-label="${escapeHtml(category)}カテゴリを上へ移動">↑</button>
+          <button class="managed-product-action" type="button" data-category-order="1" data-category="${escapeHtml(category)}" title="下へ" aria-label="${escapeHtml(category)}カテゴリを下へ移動">↓</button>
+        </div>
+      </div>`).join('') || '<p class="muted-label">カテゴリがありません。</p>';
+    const groupedProducts = categories.flatMap((category) => state.products.filter((product) => product.category === category));
+    elements.productManagementList.innerHTML = groupedProducts.map((product) => `
       <div class="managed-product-row" data-managed-product-id="${escapeHtml(product.id)}">
         <div class="managed-product-visual">
           <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
@@ -1712,29 +1721,39 @@
     updateManagedProductSaveState(event.target.closest('.managed-product-row'));
   }
 
+  function handleCategoryOrderAction(event) {
+    const button = event.target.closest('[data-category-order]');
+    if (button) void moveCategory(button.dataset.category, Number(button.dataset.categoryOrder));
+  }
+
   function updateProductOrderActions() {
-    const positions = new Map(state.products.map((product, index) => [product.id, index]));
+    const categories = getProductCategories();
+    const positions = new Map();
+    categories.forEach((category) => {
+      const products = state.products.filter((product) => product.category === category);
+      products.forEach((product, index) => positions.set(product.id, { index, length: products.length }));
+    });
     elements.productManagementList.querySelectorAll('.managed-product-order button').forEach((button) => {
-      const index = positions.get(button.dataset.productId);
+      const position = positions.get(button.dataset.productId);
       const direction = button.dataset.managementAction === 'move-up' ? -1 : 1;
-      button.disabled = state.productOrderSaving || index == null || index + direction < 0 || index + direction >= state.products.length;
+      button.disabled = state.productOrderSaving || !position || position.index + direction < 0 || position.index + direction >= position.length;
+    });
+    elements.categoryOrderList.querySelectorAll('[data-category-order]').forEach((button) => {
+      const index = categories.indexOf(button.dataset.category);
+      const destination = index + Number(button.dataset.categoryOrder);
+      button.disabled = state.productOrderSaving || index < 0 || destination < 0 || destination >= categories.length;
     });
   }
 
-  async function moveProduct(productId, direction) {
-    if (state.productOrderSaving) return;
+  async function saveProductOrder(nextProducts, message) {
+    if (state.productOrderSaving) return false;
     if (hasManagedProductChanges()) {
       setStatus('入力中の商品情報・在庫残数を反映してから、並び順を変更してください。', 'error');
-      return;
+      return false;
     }
-    const index = state.products.findIndex((product) => product.id === productId);
-    const destination = index + direction;
-    if (index < 0 || destination < 0 || destination >= state.products.length) return;
-    const nextProducts = state.products.slice();
-    const [product] = nextProducts.splice(index, 1);
-    nextProducts.splice(destination, 0, product);
     const scrollTop = elements.productManagementList.scrollTop;
     state.productOrderSaving = true;
+    elements.categoryOrderList.inert = true;
     elements.productManagementList.inert = true;
     elements.productManagementList.setAttribute('aria-busy', 'true');
     updateProductOrderActions();
@@ -1744,15 +1763,46 @@
       renderCatalog();
       renderProductManagement();
       elements.productManagementList.scrollTop = scrollTop;
-      setStatus('商品の並び順を保存しました。', 'success');
+      setStatus(message, 'success');
+      return true;
     } catch (error) {
-      setStatus(error.message || '商品の並び順を保存できませんでした。もう一度お試しください。', 'error');
+      setStatus(error.message || '並び順を保存できませんでした。もう一度お試しください。', 'error');
+      return false;
     } finally {
       state.productOrderSaving = false;
+      elements.categoryOrderList.inert = false;
       elements.productManagementList.inert = false;
       elements.productManagementList.removeAttribute('aria-busy');
       updateProductOrderActions();
     }
+  }
+
+  async function moveCategory(category, direction) {
+    const categories = getProductCategories();
+    const index = categories.indexOf(category);
+    const destination = index + direction;
+    if (index < 0 || ![-1, 1].includes(direction) || destination < 0 || destination >= categories.length) return;
+    [categories[index], categories[destination]] = [categories[destination], categories[index]];
+    const nextProducts = categories.flatMap((name) => state.products.filter((product) => product.category === name));
+    if (!(await saveProductOrder(nextProducts, 'カテゴリの並び順を保存しました。'))) return;
+    const buttons = [...elements.categoryOrderList.querySelectorAll('[data-category-order]')]
+      .filter((button) => button.dataset.category === category);
+    (buttons.find((button) => Number(button.dataset.categoryOrder) === direction && !button.disabled)
+      || buttons.find((button) => !button.disabled))?.focus({ preventScroll: true });
+  }
+
+  async function moveProduct(productId, direction) {
+    const product = state.products.find((candidate) => candidate.id === productId);
+    if (!product || ![-1, 1].includes(direction)) return;
+    const siblings = state.products.filter((candidate) => candidate.category === product.category);
+    const index = siblings.findIndex((candidate) => candidate.id === productId);
+    const destination = index + direction;
+    if (destination < 0 || destination >= siblings.length) return;
+    const nextProducts = state.products.slice();
+    const from = nextProducts.indexOf(product);
+    const to = nextProducts.indexOf(siblings[destination]);
+    [nextProducts[from], nextProducts[to]] = [nextProducts[to], nextProducts[from]];
+    if (!(await saveProductOrder(nextProducts, '商品の並び順を保存しました。'))) return;
     const row = [...elements.productManagementList.querySelectorAll('[data-managed-product-id]')]
       .find((candidate) => candidate.dataset.managedProductId === productId);
     if (row) {
@@ -2723,6 +2773,7 @@
     elements.categoryFilterSummaryCount = $('#category-filter-summary-count');
     elements.productManagementPanel = $('#product-management-panel');
     elements.productManagementList = $('#product-management-list');
+    elements.categoryOrderList = $('#category-order-list');
     $('#product-list').addEventListener('click', handleProductListClick);
     $('#product-list').addEventListener('change', handleProductAction);
     $('#product-list').addEventListener('keydown', handleProductCardKeydown);
@@ -2758,6 +2809,7 @@
     elements.dailyCloseExport.addEventListener('click', exportDailyClose);
     elements.dailyCloseShare.addEventListener('click', shareDailyClose);
     elements.productManagementList.addEventListener('click', handleProductManagementAction);
+    elements.categoryOrderList.addEventListener('click', handleCategoryOrderAction);
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
     elements.productAddForm.addEventListener('submit', addProduct);

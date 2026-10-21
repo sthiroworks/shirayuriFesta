@@ -114,6 +114,13 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .product-management-subheading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: var(--muted); font-size: .74rem; }
 .product-management-subheading strong { color: var(--ink); font-size: .86rem; }
 .product-management-list-heading { margin-top: 18px; }
+.category-order-panel { margin: 16px 0; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+.category-order-panel h3 { margin: 0 0 4px; font-size: .86rem; }
+.category-order-panel p { margin: 0 0 10px; color: var(--muted); font-size: .72rem; }
+.category-order-list { display: grid; gap: 6px; }
+.category-order-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
+.category-order-name { flex: 1; min-width: 0; overflow-wrap: anywhere; color: var(--ink); font-size: .78rem; font-weight: 700; }
+.category-order-actions { display: flex; flex: none; gap: 4px; }
 .managed-product-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: #fbfdfc; }
 .managed-product-visual { display: grid; justify-items: center; align-self: start; gap: 8px; min-width: 0; }
 .managed-product-order { display: grid; gap: 4px; }
@@ -137,6 +144,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .managed-product-delete { color: var(--danger); }
 .admin-panel .button, .admin-panel .managed-product-action { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 8px 12px; border-radius: 7px; font-size: .76rem; line-height: 1.25; }
 .admin-panel .managed-product-order .managed-product-action { width: 40px; min-height: 36px; padding: 4px; font-size: 1rem; line-height: 1; }
+.admin-panel .category-order-actions .managed-product-action { width: 36px; min-height: 36px; padding: 4px; font-size: 1rem; line-height: 1; }
 .admin-panel input[type="text"], .admin-panel input[type="number"], .admin-panel select { min-height: 36px; }
 .managed-product-fields input, .managed-product-fields select { min-height: 36px; padding: 7px 9px; }
 .summary-grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(160px, .8fr); gap: 12px; margin-bottom: 18px; }
