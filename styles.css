@@ -85,6 +85,8 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .backup-history-copy span { color: var(--muted); font-size: .72rem; }
 .backup-history-buttons { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .backup-history-buttons .button { padding: 8px 10px; font-size: .74rem; }
+#share-csv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+#share-csv svg { width: 1.2em; height: 1.2em; flex: none; }
 .backup-options { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; grid-column: 1 / -1; }
 .backup-options .setting-check { min-height: 40px; }
 .backup-interval-label { display: grid; gap: 5px; color: var(--muted); font-size: .8rem; font-weight: 700; }
