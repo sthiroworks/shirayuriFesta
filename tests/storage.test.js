@@ -16,12 +16,15 @@ function fakeStorage(initial = {}) {
 }
 
 test('default products contain current-day categories and ticket', () => {
+  assert.equal(DEFAULT_PRODUCTS.length, 40);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '園グッズ').length, 10);
-  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 10);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 9);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服【その他】').length, 1);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売【予約】').length, 7);
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === 'ありがとうチケット').unitPrice, -50);
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === '手提げ').iconPath, 'assets/icons/tote-bag.png');
   assert.equal(DEFAULT_PRODUCTS.every((product) => typeof product.iconPath === 'string'), true);
-  assert.equal(new Set(DEFAULT_PRODUCTS.map((product) => product.iconPath)).size, DEFAULT_PRODUCTS.length);
+  assert.equal(new Set(DEFAULT_PRODUCTS.map((product) => product.id)).size, DEFAULT_PRODUCTS.length);
   assert.equal(new Set(DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売').map((product) => product.iconPath)).size, 12);
   assert.equal(DEFAULT_PRODUCTS.every((product) => fs.existsSync(path.join(__dirname, '..', product.iconPath))), true);
 });

@@ -50,6 +50,7 @@
     productColumnWidth: 'standard',
     autoBackupEnabled: false,
     autoBackupIntervalMinutes: 5,
+    ...(root.DEFAULT_SETTINGS || {}),
     autoBackupLastAt: '',
     historyBackupLastAt: '',
   };

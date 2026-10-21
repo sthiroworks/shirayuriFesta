@@ -1,5 +1,6 @@
 (function (root) {
-  // 初回起動時の商品定義。商品IDはカテゴリと商品名から作り、アイコン本体は相対パスで参照する。
+  // 2026-10-21 のレジ設定を初回起動用に採用。商品ID・並び順・価格・在庫上限を保持する。
+  // 販売済み数と会計履歴は含めず、保存済みの端末データも上書きしない。
   const products = [
     ["園グッズ", "手提げ", 800, "tote-bag.png"],
     ["園グッズ", "上履き袋", 500, "shoe-bag.png"],
@@ -20,40 +21,47 @@
     ["古園服", "体操服・半袖", 300, "gym-short.png"],
     ["古園服", "カーディガン", 200, "cardigan.png"],
     ["古園服", "タイツ・レギンス", 100, "tights-leggings.png"],
-    ["古園服", "お買い得品（一律）", 50, "bargain-tag.png"],
+    ["古園服【その他】", "お買い得品（一律）", 50, "bargain-tag.png", "古園服::お買い得品（一律）"],
     ["チケット販売", "おまとめチケット", 500, "ticket-bundle.png"],
     ["チケット販売", "もぐらたたき&\nたこ焼きビンゴ", 100, "mole-whack.png"],
     ["チケット販売", "お魚釣り(お菓子)", 150, "candy-fishing.png"],
     ["チケット販売", "お宝すくい", 150, "treasure-scoop.png"],
     ["チケット販売", "先生スタンプラリー", 100, "takoyaki-bingo.png"],
-    ["チケット販売", "A ブレスレット作り(09:20〜)", 200, "bracelet-coral.png", "ブレスレット作り(09:20〜)"],
-    ["チケット販売", "B ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png", "ブレスレット作り(09:40〜)"],
-    ["チケット販売", "C ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png", "ブレスレット作り(10:00〜)"],
-    ["チケット販売", "D ブレスレット作り(10:20〜)", 200, "bracelet-mint.png", "ブレスレット作り(10:20〜)"],
-    [
-      "チケット販売",
-      "E ブレスレット作り(10:40〜)",
-      200,
-      "bracelet-pink-aqua.png",
-      "ブレスレット作り(10:40〜)"
-    ],
-    ["チケット販売", "F ブレスレット作り(11:00〜)", 200, "bracelet-orange.png", "ブレスレット作り(11:00〜)"],
-    ["チケット販売", "G ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png", "ブレスレット作り(11:20〜)"],
+    ["チケット販売", "A ブレスレット作り(09:20〜)", 200, "bracelet-coral.png", "チケット販売::ブレスレット作り(09:20〜)", 13],
+    ["チケット販売", "B ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png", "チケット販売::ブレスレット作り(09:40〜)", 13],
+    ["チケット販売", "C ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png", "チケット販売::ブレスレット作り(10:00〜)", 13],
+    ["チケット販売", "D ブレスレット作り(10:20〜)", 200, "bracelet-mint.png", "チケット販売::ブレスレット作り(10:20〜)", 13],
+    ["チケット販売", "E ブレスレット作り(10:40〜)", 200, "bracelet-pink-aqua.png", "チケット販売::ブレスレット作り(10:40〜)", 13],
+    ["チケット販売", "F ブレスレット作り(11:00〜)", 200, "bracelet-orange.png", "チケット販売::ブレスレット作り(11:00〜)", 13],
+    ["チケット販売", "G ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png", "チケット販売::ブレスレット作り(11:20〜)", 13],
+    ["チケット販売【予約】", "【予約】A ブレスレット作り(09:20〜)", 100, "bracelet-coral.png", "園グッズ::【予約】A ブレスレット作り(09:20〜)", 2],
+    ["チケット販売【予約】", "【予約】B ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png", "90d55210-502d-4946-a965-152887a6aa28", 2],
+    ["チケット販売【予約】", "【予約】C ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png", "969a390e-023e-4296-8c58-687ce8898931", 2],
+    ["チケット販売【予約】", "【予約】D ブレスレット作り(10:20〜)", 200, "bracelet-mint.png", "51d8d3e1-630f-4be6-901a-8f2d39a56e9d", 2],
+    ["チケット販売【予約】", "【予約】E ブレスレット作り(10:40〜)", 200, "bracelet-pink-aqua.png", "d43ae7e3-0d9e-43a6-9f48-c3ed7c91d2ab", 2],
+    ["チケット販売【予約】", "【予約】F ブレスレット作り(11:00〜)", 200, "bracelet-orange.png", "ce16ba16-6307-4b6a-ab8f-5cad1b12f292", 2],
+    ["チケット販売【予約】", "【予約】G ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png", "666f73cd-167a-4751-8191-52c1ad6c9ae3", 2],
     ["他", "ありがとうチケット", -50, "thank-you-ticket.png"]
-  ].map(([category, name, unitPrice, iconFile, idName]) => {
-    const identityName = idName || name;
-    return {
-      id: `${category}::${identityName}`,
-      category,
-      name,
-      unitPrice,
-      iconPath: `assets/icons/${iconFile}`,
-      // ブレスレット体験は各時間枠15個を初期在庫として設定する。
-      ...(identityName.startsWith("ブレスレット作り") ? { stockLimit: 15 } : {})
-    };
+  ].map(([category, name, unitPrice, iconFile, id, stockLimit]) => ({
+    id: id || `${category}::${name}`,
+    category,
+    name,
+    unitPrice,
+    iconPath: `assets/icons/${iconFile}`,
+    ...(stockLimit === undefined ? {} : { stockLimit })
+  }));
+  const settings = Object.freeze({
+    "enabled": true,
+    "category": "古園服",
+    "siblings": 1,
+    "perSibling": 4,
+    "productColumnWidth": "standard",
+    "autoBackupEnabled": false,
+    "autoBackupIntervalMinutes": 5
   });
 
   root.DEFAULT_PRODUCTS = products;
+  root.DEFAULT_SETTINGS = settings;
   if (typeof module !== "undefined" && module.exports)
-    module.exports = { DEFAULT_PRODUCTS: products };
+    module.exports = { DEFAULT_PRODUCTS: products, DEFAULT_SETTINGS: settings };
 })(typeof window !== "undefined" ? window : globalThis);
