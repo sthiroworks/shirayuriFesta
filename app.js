@@ -612,6 +612,7 @@
     const newCategoryInput = row.querySelector('[data-management-field="new-category"]');
     const priceInput = row.querySelector('[data-management-field="price"]');
     const stockLimitInput = row.querySelector('[data-management-field="stock-limit"]');
+    const startNewRowInput = row.querySelector('[data-management-field="start-new-row"]');
     if (!product || !nameInput || !categoryInput || !priceInput || !stockLimitInput) return null;
 
     const inputName = nameInput.value.trim();
@@ -624,20 +625,24 @@
     const unitPrice = Number(rawPrice);
     const stockLimit = readOptionalStockLimit(stockLimitInput);
     const currentStockLimit = Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : null;
+    const startNewRow = Boolean(startNewRowInput && startNewRowInput.checked);
+    const currentStartNewRow = product.startNewRow === true;
     const valid = Boolean(name && category && rawPrice !== '' && Number.isFinite(unitPrice) && stockLimit.valid);
     const hasUncommittedChanges = name !== product.name
       || category !== product.category
       || rawPrice !== String(product.unitPrice)
       || !stockLimit.valid
-      || stockLimit.value !== currentStockLimit;
+      || stockLimit.value !== currentStockLimit
+      || startNewRow !== currentStartNewRow;
     const canSave = valid && (
       name !== product.name
       || category !== product.category
       || unitPrice !== Number(product.unitPrice)
       || stockLimit.value !== currentStockLimit
+      || startNewRow !== currentStartNewRow
     );
 
-    return { saveButton, product, name, category, rawPrice, unitPrice, stockLimit, hasUncommittedChanges, canSave };
+    return { saveButton, product, name, category, rawPrice, unitPrice, stockLimit, startNewRow, hasUncommittedChanges, canSave };
   }
 
   function updateManagedProductSaveState(row) {
@@ -778,7 +783,7 @@
         const stockReached = stock.limited && stockCanStillAdd === 0;
         const stockUnavailable = stockReached && quantity === 0;
         const stockLow = stock.limited && stockRemainingAfterCart > 0 && stockRemainingAfterCart <= 3;
-        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}${stockLow ? ' is-stock-low' : ''}`;
+        const cardState = `${quantity > 0 ? ' has-quantity' : ''}${limitExceeded ? ' is-limit-exceeded' : ''}${stockReached ? ' is-stock-reached' : ''}${stockUnavailable ? ' is-stock-exhausted' : ''}${stockLow ? ' is-stock-low' : ''}${product.startNewRow === true ? ' starts-new-row' : ''}`;
         const accessibleName = productNameText(product.name);
         const accessibleLabel = stockUnavailable ? `${accessibleName}は在庫切れです` : (limitExceeded ? `${accessibleName}は購入制限を超えています` : `${accessibleName}を1個追加`);
         return `<article class="product-card${cardState}" data-action="add" data-product-id="${escapeHtml(product.id)}" data-product-category="${escapeHtml(product.category)}" tabindex="0" role="button" aria-disabled="${String(stockUnavailable)}" aria-label="${escapeHtml(accessibleLabel)}">
@@ -826,7 +831,7 @@
         <div class="managed-product-heading">
           <button class="managed-product-toggle" type="button" data-management-action="toggle" data-product-id="${escapeHtml(product.id)}" aria-expanded="${state.expandedManagedProducts.has(product.id)}" aria-controls="managed-product-editor-${index}" aria-label="${escapeHtml(productNameText(product.name))}の商品情報を開閉">
             <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
-            <span class="managed-product-summary"><strong>${productNameMarkup(product.name)}</strong><small>${escapeHtml(product.category)} · ${formatYen(product.unitPrice)}</small></span>
+            <span class="managed-product-summary"><strong>${productNameMarkup(product.name)}</strong><small>${escapeHtml(product.category)} · ${formatYen(product.unitPrice)}${product.startNewRow === true ? ' · 次の行から表示' : ''}</small></span>
           </button>
           <div class="managed-product-order" role="group" aria-label="${escapeHtml(productNameText(product.name))}の並び順">
             <button class="managed-product-action" type="button" data-management-action="move-up" data-product-id="${escapeHtml(product.id)}" title="上へ" aria-label="${escapeHtml(productNameText(product.name))}を上へ移動">↑</button>
@@ -842,6 +847,7 @@
             <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${getProductStockInfo(product).remaining}` : '上限なし'}</small></label>
             <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(productNameText(product.name))}の新しいカテゴリ"></label>
           </div>
+            <label class="managed-product-row-break"><input type="checkbox" data-management-field="start-new-row" data-product-id="${escapeHtml(product.id)}"${product.startNewRow === true ? ' checked' : ''} aria-label="${escapeHtml(productNameText(product.name))}から次の行に表示">この商品から次の行に表示</label>
           <div class="managed-stock-adjustment">
             <label>実在庫の残数<input type="number" min="0" step="1" value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-saved-value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-management-field="stock-remaining" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の現在庫残数"></label>
             <button class="managed-product-action" type="button" data-management-action="adjust-stock" data-product-id="${escapeHtml(product.id)}" disabled>残数を反映</button>
@@ -1896,6 +1902,8 @@
       const nextProduct = { ...draft.product, name: draft.name, category: draft.category, unitPrice: draft.unitPrice };
       if (draft.stockLimit.value === null) delete nextProduct.stockLimit;
       else nextProduct.stockLimit = draft.stockLimit.value;
+      if (draft.startNewRow) nextProduct.startNewRow = true;
+      else delete nextProduct.startNewRow;
       const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
       const nextInventory = updateInventoryForProductChange(state.inventory, draft.product, nextProduct);
       Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
@@ -1962,6 +1970,7 @@
         product.id = state.pendingProductCopy.id;
         if (state.pendingProductCopy.icon) product.icon = state.pendingProductCopy.icon;
         if (state.pendingProductCopy.iconPath) product.iconPath = state.pendingProductCopy.iconPath;
+        if (state.pendingProductCopy.startNewRow === true) product.startNewRow = true;
       }
       if (stockLimit.value !== null) product.stockLimit = stockLimit.value;
       if (state.products.some((candidate) => candidate.id === product.id || (candidate.category === product.category && candidate.name === product.name))) {
@@ -2501,6 +2510,9 @@
           }
           if (!parsed.hasStockLimitColumn && Number.isInteger(existing.stockLimit) && existing.stockLimit >= 0) {
             merged.stockLimit = existing.stockLimit;
+          }
+          if (!parsed.hasStartNewRowColumn && existing.startNewRow === true) {
+            merged.startNewRow = true;
           }
           return merged;
         });

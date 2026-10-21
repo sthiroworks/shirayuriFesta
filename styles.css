@@ -172,6 +172,8 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .managed-product-info { display: grid; gap: 2px; min-width: 0; }
 .managed-product-fields { display: grid; grid-template-columns: minmax(145px, 1.35fr) minmax(120px, 1fr) 96px minmax(95px, .75fr); gap: 8px; align-items: end; min-width: 0; }
 .managed-product-fields label { display: grid; gap: 4px; color: var(--muted); font-size: .68rem; font-weight: 700; }
+.managed-product-row-break { display: flex; align-items: center; gap: 8px; min-height: 36px; color: var(--muted); font-size: .74rem; font-weight: 700; cursor: pointer; }
+.managed-product-row-break input { width: 18px; height: 18px; margin: 0; accent-color: var(--teal); }
 .managed-product-new-category { grid-column: 1 / -1; }
 .managed-product-fields input, .managed-product-fields select { width: 100%; min-width: 0; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; }
 .managed-product-fields input:focus, .managed-product-fields select:focus { border-color: var(--teal); }
@@ -259,6 +261,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .category-toggle-icon::before { position: absolute; top: 6px; left: 7px; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; content: ""; transform: rotate(45deg); transition: transform .16s ease; }
 .category-heading[aria-expanded="true"] .category-toggle-icon::before { top: 9px; transform: rotate(225deg); }
 .product-card { position: relative; display: grid; gap: 10px; overflow: hidden; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdfc; cursor: pointer; }
+.product-card.starts-new-row { grid-column-start: 1; }
 .product-card:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 2px; }
 .product-card.has-quantity { border-color: #4b9690; background: #e8f4f1; box-shadow: 0 0 0 2px rgba(75, 150, 144, .16); }
 .product-card.is-limit-exceeded { border-color: var(--danger); background: #fff3f1; box-shadow: 0 0 0 2px rgba(183, 74, 67, .18); }
@@ -1321,8 +1324,10 @@ td.money { white-space: nowrap; font-weight: 700; }
   .stock-adjustment-list { grid-template-columns: 1fr; }
 }
 
-/* 400px前後では商品見出しと幅・カテゴリ操作が横並びになり切らないため、操作を次段へ送る。 */
-@media (max-width: 400px) {
+/* 絞り込み後に件数表示が長くなっても、商品見出しを折り返さない。 */
+.catalog-panel #catalog-title { white-space: nowrap; }
+/* カテゴリを絞ると件数表示が長くなるため、スマホでは商品見出しと操作を別段にする。 */
+@media (max-width: 560px) {
   .catalog-panel .panel-heading { flex-wrap: wrap; gap: 8px; }
   .catalog-panel .panel-heading > div:first-child { flex: 1 1 100%; }
   .catalog-panel-actions { width: 100%; justify-content: flex-start; gap: 6px; }

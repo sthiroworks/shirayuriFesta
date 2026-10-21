@@ -42,6 +42,7 @@
     const copy = makeProduct(source.category, name, source.unitPrice);
     if (copyId) copy.id = String(copyId);
     if (Number.isInteger(source.stockLimit) && source.stockLimit >= 0) copy.stockLimit = source.stockLimit;
+    if (source.startNewRow === true) copy.startNewRow = true;
     if (source.icon) copy.icon = source.icon;
     if (source.iconPath) copy.iconPath = source.iconPath;
     return copy;
@@ -104,7 +105,7 @@
     const products = new Map();
     const stats = { accepted: 0, rejected: 0, duplicates: 0 };
 
-    function addProduct(category, name, price, rowNumber, icon, iconPath, stockLimitValue, productIdValue) {
+    function addProduct(category, name, price, rowNumber, icon, iconPath, stockLimitValue, productIdValue, startNewRowValue) {
       const normalizedCategory = clean(category) || 'その他';
       const normalizedName = clean(name);
       if (!normalizedName || price === null) {
@@ -122,6 +123,7 @@
       const product = makeProduct(normalizedCategory, normalizedName, price);
       if (clean(productIdValue)) product.id = clean(productIdValue);
       if (stockLimit !== null) product.stockLimit = stockLimit;
+      if (['true', '1', 'yes', 'y', 'はい', 'する'].includes(clean(startNewRowValue).toLowerCase())) product.startNewRow = true;
       const normalizedIcon = clean(icon);
       if (normalizedIcon) product.icon = normalizedIcon;
       const normalizedIconPath = clean(iconPath);
@@ -148,12 +150,13 @@
     const iconPathIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['アイコンパス', 'iconpath'].includes(value));
     const stockLimitIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['在庫上限', 'stocklimit', 'stock'].includes(value));
     const productIdIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['商品id', 'productid'].includes(value));
+    const startNewRowIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['次の行から表示', '次行から表示', 'startnewrow'].includes(value));
     const isNormalized = normalizedHeader && categoryIndex >= 0 && nameIndex >= 0 && priceIndex >= 0;
 
     if (isNormalized) {
       nonEmptyRows.slice(headerIndex + 1).forEach((row, offset) => {
         const rowNumber = headerIndex + offset + 2;
-        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '', stockLimitIndex >= 0 ? row[stockLimitIndex] : '', productIdIndex >= 0 ? row[productIdIndex] : '');
+        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '', stockLimitIndex >= 0 ? row[stockLimitIndex] : '', productIdIndex >= 0 ? row[productIdIndex] : '', startNewRowIndex >= 0 ? row[startNewRowIndex] : '');
       });
     } else {
       const blocks = [];
@@ -191,6 +194,7 @@
       stats,
       hasStockLimitColumn: Boolean(normalizedHeader && stockLimitIndex >= 0),
       hasProductIdColumn: Boolean(normalizedHeader && productIdIndex >= 0),
+      hasStartNewRowColumn: Boolean(normalizedHeader && startNewRowIndex >= 0),
     };
   }
 
@@ -599,7 +603,7 @@
   }
 
   function productsToCsv(products) {
-    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID'];
+    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID,次の行から表示'];
     (products || []).forEach((product) => {
       lines.push([
         product.category,
@@ -609,6 +613,7 @@
         product.iconPath || '',
         Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : '',
         product.id || '',
+        product.startNewRow === true ? 'true' : 'false',
       ].map(csvEscape).join(','));
     });
     return lines.join('\r\n');
@@ -641,6 +646,7 @@
         unitPrice: Number(product.unitPrice),
       };
       if (Number.isInteger(product.stockLimit) && product.stockLimit >= 0) value.stockLimit = product.stockLimit;
+      if (product.startNewRow === true) value.startNewRow = true;
       if (typeof product.icon === 'string' && product.icon) value.icon = product.icon;
       if (typeof product.iconPath === 'string' && product.iconPath) value.iconPath = product.iconPath;
       return value;
@@ -704,6 +710,10 @@
         }
         product.stockLimit = stockLimit;
       }
+      if (source && source.startNewRow !== undefined && typeof source.startNewRow !== 'boolean') {
+        return { products: [], settings: null, warnings: [`設定一式ファイルの商品${index + 1}件目の行表示設定が不正です。`] };
+      }
+      if (source && source.startNewRow === true) product.startNewRow = true;
       if (typeof (source && source.icon) === 'string' && source.icon) product.icon = source.icon;
       if (typeof (source && source.iconPath) === 'string' && source.iconPath) product.iconPath = source.iconPath;
       products.push(product);
