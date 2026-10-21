@@ -1853,6 +1853,11 @@
     elements.productAddStockLimit.value = Number.isInteger(copy.stockLimit) ? String(copy.stockLimit) : '';
     elements.productCopyNote.classList.remove('is-hidden');
     renderProductAddCategories();
+    let fold = elements.productAddForm.closest('details');
+    while (fold) {
+      fold.open = true;
+      fold = fold.parentElement.closest('details');
+    }
     elements.productAddForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
     elements.productAddName.focus({ preventScroll: true });
     elements.productAddName.select();

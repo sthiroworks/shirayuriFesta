@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261022-product-collapse" />
+    <link rel="stylesheet" href="styles.css?v=20261022-admin-folds" />
   </head>
   <body>
     <header class="site-header">
@@ -46,17 +46,168 @@
           </button>
         </div>
         <div class="admin-sections">
-          <section
-            id="settings-panel"
-            class="admin-section"
-            aria-labelledby="settings-title"
-          >
-            <div class="admin-section-heading">
+          <details id="product-management-panel" class="admin-section admin-fold" open>
+            <summary class="admin-fold-summary">
+              <h2 id="product-management-title" class="admin-fold-label">
+                <span class="section-kicker">PRODUCT MANAGEMENT</span>
+                <span class="admin-fold-title">商品管理</span>
+                <span class="admin-fold-description">商品の編集・在庫調整・並び替え</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
+            <p class="settings-help">
+              商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。在庫数は会計履歴とは別に保存され、履歴を消去しても残ります。残数は商品ごとに調整できます。残り3個以下は注意表示されます。
+            </p>
+            <details id="registered-products-fold" class="admin-subfold" open>
+              <summary class="admin-subfold-summary"><h3>登録済み商品</h3></summary>
+              <div class="admin-subfold-content">
+            <div
+              class="product-management-subheading product-management-list-heading"
+            >
+              <span
+                >商品名を押すと編集欄が開きます。内容を変更したら、同じ行の「商品情報を反映」を押してください。↑↓で同じカテゴリ内の並び順を変更するとすぐに保存されます。</span
+              >
+            </div>
+            <input
+              id="icon-file"
+              class="visually-hidden"
+              type="file"
+              accept="image/*"
+            />
+            <div
+              id="product-management-list"
+              class="product-management-list"
+            ></div>
+              </div>
+            </details>
+            <details id="product-add-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>商品を追加</h3></summary>
+              <div class="admin-subfold-content">
+            <form id="product-add-form" class="product-add-form">
+              <div class="product-management-subheading">
+                <span
+                  >追加した商品はこのブラウザに保存されます。商品名の「\n」でカード表示を改行できます。</span
+                >
+              </div>
+              <div id="product-copy-note" class="product-copy-note is-hidden" role="status">
+                <span>コピー元の画像・設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
+                <button id="product-copy-cancel" type="button">コピーを取り消す</button>
+              </div>
+              <div class="product-add-grid">
+                <label
+                  >カテゴリ<select id="product-add-category" required></select
+                ></label>
+                <label id="product-add-new-category-field" class="is-hidden"
+                  >新しいカテゴリ<input
+                    id="product-add-new-category"
+                    type="text"
+                /></label>
+                <label
+                  >商品名<input id="product-add-name" type="text" required
+                /></label>
+                <label
+                  >単価<input
+                    id="product-add-price"
+                    type="number"
+                    step="1"
+                    required
+                /></label>
+                <label
+                  >在庫上限<input
+                    id="product-add-stock-limit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="無制限"
+                /></label>
+                <button
+                  id="product-add-submit"
+                  class="button button-primary product-add-submit"
+                  type="submit"
+                  disabled
+                >
+                  商品を追加
+                </button>
+              </div>
+            </form>
+              </div>
+            </details>
+            <details id="category-order-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>カテゴリの並び順</h3></summary>
+              <div class="admin-subfold-content">
+            <section class="category-order-panel" aria-label="カテゴリの並び順">
+              <p>↑↓で販売画面のカテゴリ順を変更できます。変更はすぐに保存されます。</p>
+              <div id="category-order-list" class="category-order-list"></div>
+            </section>
+              </div>
+            </details>
+            <details id="product-bulk-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>商品一覧の一括更新・バックアップ</h3></summary>
+              <div class="admin-subfold-content">
+            <div class="product-management-tools">
               <div>
-                <p class="section-kicker">SETTINGS</p>
-                <h2 id="settings-title">購入制限の設定</h2>
+                <span>商品をまとめて登録・更新するときに使用します。</span>
+              </div>
+              <div class="product-management-tool-actions">
+                <label class="button button-secondary" for="import-file"
+                  >商品一覧CSVを読み込む</label
+                >
+                <input
+                  id="import-file"
+                  class="visually-hidden"
+                  type="file"
+                  accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                />
+                <button
+                  id="export-products-csv"
+                  class="button button-secondary"
+                  type="button"
+                >
+                  商品一覧CSVをダウンロード
+                </button>
+                <button
+                  id="share-products-csv"
+                  class="button button-secondary button-share"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="2.5" />
+                    <circle cx="6" cy="12" r="2.5" />
+                    <circle cx="18" cy="19" r="2.5" />
+                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                  </svg>
+                  商品一覧CSVを共有
+                </button>
               </div>
             </div>
+              </div>
+            </details>
+            <details id="stock-history-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>最近の在庫調整</h3></summary>
+              <div class="admin-subfold-content">
+            <section
+              class="stock-adjustment-history"
+              aria-label="最近の在庫調整"
+            >
+              <div
+                id="stock-adjustment-history"
+                class="stock-adjustment-list"
+              ></div>
+            </section>
+              </div>
+            </details>
+            </div>
+          </details>
+
+          <details id="settings-panel" class="admin-section admin-fold">
+            <summary class="admin-fold-summary">
+              <h2 id="settings-title" class="admin-fold-label">
+                <span class="section-kicker">PURCHASE LIMITS</span>
+                <span class="admin-fold-title">購入制限の設定</span>
+                <span class="admin-fold-description">対象カテゴリ・人数・購入点数の上限</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
             <div class="settings-grid">
               <label class="setting-check"
                 ><input id="settings-enabled" type="checkbox" />
@@ -133,8 +284,10 @@
             >
               制限設定を反映
             </button>
+            <details id="restriction-backup-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>制限設定のバックアップ</h3></summary>
+              <div class="admin-subfold-content">
             <div class="settings-data-actions">
-              <strong>制限設定のバックアップ</strong>
               <label class="button button-secondary" for="import-settings-file"
                 >制限設定を復元</label
               >
@@ -165,16 +318,26 @@
                 制限設定を共有
               </button>
             </div>
-            <div class="backup-settings">
-              <div class="admin-section-heading backup-heading">
-                <div>
-                  <p class="section-kicker">AUTO BACKUP</p>
-                  <h3>販売履歴のバックアップ</h3>
-                </div>
               </div>
+            </details>
+            </div>
+          </details>
+
+          <details id="history-backup-panel" class="admin-section admin-fold">
+            <summary class="admin-fold-summary">
+              <h2 id="history-backup-title" class="admin-fold-label">
+                <span class="section-kicker">SALES BACKUP</span>
+                <span class="admin-fold-title">販売履歴のバックアップ</span>
+                <span class="admin-fold-description">販売履歴の保存・共有・復元・自動バックアップ</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
+              <div class="backup-settings">
+            <details id="history-export-fold" class="admin-subfold" open>
+              <summary class="admin-subfold-summary"><h3>販売履歴のダウンロード・共有・復元</h3></summary>
+              <div class="admin-subfold-content">
               <div class="backup-history-actions">
                 <div class="backup-history-copy">
-                  <strong>手動バックアップ</strong>
                   <span>CSVをダウンロードするか、共有メニューから送れます。</span>
                 </div>
                 <div class="backup-history-buttons">
@@ -218,6 +381,11 @@
                   </button>
                 </div>
               </div>
+              </div>
+            </details>
+            <details id="auto-backup-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>自動バックアップの設定</h3></summary>
+              <div class="admin-subfold-content">
               <div class="backup-options">
                 <label class="setting-check"
                   ><input id="backup-enabled" type="checkbox" />
@@ -261,153 +429,21 @@
               <p id="backup-status" class="settings-help">
                 バックアップ先を選ぶと、販売履歴を同じCSVへ上書き保存します。
               </p>
+              </div>
+            </details>
+              </div>
             </div>
-          </section>
+          </details>
 
-          <section
-            id="product-management-panel"
-            class="admin-section"
-            aria-labelledby="product-management-title"
-          >
-            <div class="admin-section-heading">
-              <div>
-                <p class="section-kicker">PRODUCT MANAGEMENT</p>
-                <h2 id="product-management-title">商品管理</h2>
-              </div>
-            </div>
-            <p class="settings-help">
-              商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。在庫数は会計履歴とは別に保存され、履歴を消去しても残ります。残数は商品ごとに調整できます。残り3個以下は注意表示されます。
-            </p>
-            <div class="product-management-tools">
-              <div>
-                <strong>初期設定・一括更新</strong>
-                <span>商品をまとめて登録・更新するときに使用します。</span>
-              </div>
-              <div class="product-management-tool-actions">
-                <label class="button button-secondary" for="import-file"
-                  >商品一覧CSVを読み込む</label
-                >
-                <input
-                  id="import-file"
-                  class="visually-hidden"
-                  type="file"
-                  accept=".csv,.tsv,text/csv,text/tab-separated-values"
-                />
-                <button
-                  id="export-products-csv"
-                  class="button button-secondary"
-                  type="button"
-                >
-                  商品一覧CSVをダウンロード
-                </button>
-                <button
-                  id="share-products-csv"
-                  class="button button-secondary button-share"
-                  type="button"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="18" cy="5" r="2.5" />
-                    <circle cx="6" cy="12" r="2.5" />
-                    <circle cx="18" cy="19" r="2.5" />
-                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
-                  </svg>
-                  商品一覧CSVを共有
-                </button>
-              </div>
-            </div>
-            <form id="product-add-form" class="product-add-form">
-              <div class="product-management-subheading">
-                <strong>商品を追加</strong>
-                <span
-                  >追加した商品はこのブラウザに保存されます。商品名の「\n」でカード表示を改行できます。</span
-                >
-              </div>
-              <div id="product-copy-note" class="product-copy-note is-hidden" role="status">
-                <span>コピー元の画像・設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
-                <button id="product-copy-cancel" type="button">コピーを取り消す</button>
-              </div>
-              <div class="product-add-grid">
-                <label
-                  >カテゴリ<select id="product-add-category" required></select
-                ></label>
-                <label id="product-add-new-category-field" class="is-hidden"
-                  >新しいカテゴリ<input
-                    id="product-add-new-category"
-                    type="text"
-                /></label>
-                <label
-                  >商品名<input id="product-add-name" type="text" required
-                /></label>
-                <label
-                  >単価<input
-                    id="product-add-price"
-                    type="number"
-                    step="1"
-                    required
-                /></label>
-                <label
-                  >在庫上限<input
-                    id="product-add-stock-limit"
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="無制限"
-                /></label>
-                <button
-                  id="product-add-submit"
-                  class="button button-primary product-add-submit"
-                  type="submit"
-                  disabled
-                >
-                  商品を追加
-                </button>
-              </div>
-            </form>
-            <section class="category-order-panel" aria-labelledby="category-order-title">
-              <h3 id="category-order-title">カテゴリの並び順</h3>
-              <p>↑↓で販売画面のカテゴリ順を変更できます。変更はすぐに保存されます。</p>
-              <div id="category-order-list" class="category-order-list"></div>
-            </section>
-            <div
-              class="product-management-subheading product-management-list-heading"
-            >
-              <strong>登録済み商品</strong>
-              <span
-                >商品名を押すと編集欄が開きます。内容を変更したら、同じ行の「商品情報を反映」を押してください。↑↓で同じカテゴリ内の並び順を変更するとすぐに保存されます。</span
-              >
-            </div>
-            <input
-              id="icon-file"
-              class="visually-hidden"
-              type="file"
-              accept="image/*"
-            />
-            <div
-              id="product-management-list"
-              class="product-management-list"
-            ></div>
-            <section
-              class="stock-adjustment-history"
-              aria-labelledby="stock-adjustment-history-title"
-            >
-              <h3 id="stock-adjustment-history-title">最近の在庫調整</h3>
-              <div
-                id="stock-adjustment-history"
-                class="stock-adjustment-list"
-              ></div>
-            </section>
-          </section>
-        </div>
-        <section
-          class="admin-section data-transfer-panel"
-          aria-labelledby="data-transfer-title"
-        >
-          <div class="admin-section-heading">
-            <div>
-              <p class="section-kicker">DATA TRANSFER</p>
-              <h2 id="data-transfer-title">設定の移行・バックアップ</h2>
-            </div>
-          </div>
+          <details id="data-transfer-panel" class="admin-section admin-fold data-transfer-panel">
+            <summary class="admin-fold-summary">
+              <h2 id="data-transfer-title" class="admin-fold-label">
+                <span class="section-kicker">DATA TRANSFER</span>
+                <span class="admin-fold-title">設定の移行・バックアップ</span>
+                <span class="admin-fold-description">商品・在庫・購入制限をまとめて保存・復元</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
           <div class="data-transfer-layout">
             <div class="settings-data-copy">
               <strong>レジ設定一式</strong>
@@ -449,7 +485,9 @@
               </button>
             </div>
           </div>
-        </section>
+            </div>
+          </details>
+        </div>
       </section>
 
       <section
@@ -1388,6 +1426,6 @@
     <script src="core.js?v=20261021-copy-product"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js?v=20261022-product-collapse"></script>
+    <script src="app.js?v=20261022-admin-folds"></script>
   </body>
 </html>

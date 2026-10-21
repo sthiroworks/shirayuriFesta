@@ -53,10 +53,39 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .admin-panel { margin-bottom: 18px; padding: 22px; }
 .admin-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
 .button-danger { color: #fff; background: var(--danger); }
-.admin-sections { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; }
+.admin-sections { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .admin-section { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdfc; }
+.admin-section.admin-fold { padding: 0; }
+.admin-fold-summary, .admin-subfold-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; cursor: pointer; list-style: none; }
+.admin-fold-summary { min-height: 76px; padding: 16px 18px; }
+.admin-fold-summary::-webkit-details-marker, .admin-subfold-summary::-webkit-details-marker { display: none; }
+.admin-fold-summary::marker, .admin-subfold-summary::marker { content: ""; }
+.admin-fold-summary::after, .admin-subfold-summary::after { flex: 0 0 9px; width: 9px; height: 9px; margin-right: 3px; border-right: 2px solid var(--teal); border-bottom: 2px solid var(--teal); content: ""; transform: rotate(45deg); }
+.admin-fold[open] > .admin-fold-summary::after, .admin-subfold[open] > .admin-subfold-summary::after { transform: rotate(225deg); }
+.admin-fold-summary:hover, .admin-subfold-summary:hover { background: var(--teal-light); }
+.admin-fold-summary:focus-visible, .admin-subfold-summary:focus-visible { outline: 3px solid var(--teal); outline-offset: -3px; border-radius: 9px; }
+.admin-fold-label { display: grid; gap: 3px; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.admin-fold-label .section-kicker { margin: 0; }
+.admin-fold-title { color: var(--ink); font-size: 1.05rem; }
+.admin-fold-description { color: var(--muted); font-size: .74rem; font-weight: 500; }
+.admin-fold-content { min-width: 0; padding: 0 18px 18px; border-top: 1px solid var(--line); }
+.admin-subfold { min-width: 0; margin-top: 12px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.admin-subfold-summary { min-height: 48px; padding: 10px 12px; border-radius: 9px; }
+.admin-subfold-summary h3 { min-width: 0; margin: 0; color: var(--ink); font-size: .86rem; overflow-wrap: anywhere; }
+.admin-subfold-content { min-width: 0; padding: 12px; border-top: 1px solid var(--line); }
+.admin-subfold-content > .product-add-form, .admin-subfold-content > .category-order-panel, .admin-subfold-content > .product-management-tools, .admin-subfold-content > .stock-adjustment-history, .admin-subfold-content > .settings-data-actions { margin: 0; padding: 0; border: 0; background: transparent; }
+.admin-subfold-content > .product-management-list-heading { margin-top: 0; }
+.admin-fold-content > .backup-settings { padding-top: 12px; }
+.backup-settings > .admin-subfold { margin-top: 0; }
+.admin-subfold-content > .backup-history-actions { flex-wrap: wrap; }
+.admin-subfold-content > .backup-history-actions .backup-history-buttons { flex: 0 1 auto; min-width: 0; }
+@media (max-width: 560px) {
+  .admin-panel .admin-fold-summary { padding: 14px 12px; }
+  .admin-panel .admin-fold-content { padding: 0 8px 10px; }
+  .admin-panel .admin-subfold-content { padding: 8px; }
+}
 .admin-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.data-transfer-panel { margin-top: 18px; }
+.data-transfer-panel { margin-top: 0; }
 .data-transfer-layout { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .data-transfer-actions { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .settings-panel { margin-bottom: 18px; padding: 22px; }
@@ -76,7 +105,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .settings-data-copy { display: grid; gap: 2px; min-width: 0; margin-right: auto; }
 .settings-data-copy strong { margin-right: 0; }
 .settings-data-copy span { color: var(--muted); font-size: .72rem; }
-.backup-settings { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; align-items: end; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+.backup-settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .backup-heading { grid-column: 1 / -1; margin-bottom: 0; }
 .backup-heading h3 { margin: 0; color: var(--ink); font-size: .92rem; }
 .backup-history-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; grid-column: 1 / -1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
