@@ -94,6 +94,7 @@
     autoBackupInProgress: false,
     backupDirectoryHandle: null,
     temporaryCheckoutSiblings: null,
+    pendingProductCopy: null,
     historySearch: '',
     historyFrom: '',
     historyTo: '',
@@ -825,6 +826,7 @@
         </div>
         <div class="managed-product-actions">
             <button class="managed-product-action managed-product-save" type="button" data-management-action="save" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品情報を反映" disabled>商品情報を反映</button>
+          <button class="managed-product-action" type="button" data-management-action="copy" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}をコピーして追加">コピー</button>
           <button class="managed-product-action" type="button" data-management-action="icon" data-product-id="${escapeHtml(product.id)}">画像を変更</button>
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
         </div>
@@ -1670,6 +1672,7 @@
     const productId = target.dataset.productId;
     if (target.dataset.managementAction === 'save') saveProductDetails(productId, target);
     if (target.dataset.managementAction === 'adjust-stock') adjustProductStock(productId, target);
+    if (target.dataset.managementAction === 'copy') prepareProductCopy(productId, target.closest('.managed-product-row'));
     if (target.dataset.managementAction === 'icon') {
       elements.iconFile.dataset.targetProductId = productId;
       elements.iconFile.click();
@@ -1696,6 +1699,43 @@
 
   function handleProductManagementInput(event) {
     updateManagedProductSaveState(event.target.closest('.managed-product-row'));
+  }
+
+  function prepareProductCopy(productId, row) {
+    const source = state.products.find((product) => product.id === productId);
+    if (!source) {
+      setStatus('コピー元の商品が見つかりません。', 'error');
+      return;
+    }
+    if (getManagedProductDraft(row, productId)?.hasUncommittedChanges) {
+      setStatus('コピー元の商品情報を先に反映してください。', 'error');
+      return;
+    }
+    if (hasProductAddFormChanges() && !root.confirm('入力中の商品追加フォームをコピー内容で置き換えますか？')) return;
+    const copyId = root.crypto && typeof root.crypto.randomUUID === 'function'
+      ? root.crypto.randomUUID()
+      : `copy-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const copy = Core.makeProductCopy(source, state.products, copyId);
+    state.pendingProductCopy = copy;
+    elements.productAddCategory.value = copy.category;
+    elements.productAddNewCategory.value = '';
+    elements.productAddName.value = copy.name;
+    elements.productAddPrice.value = String(copy.unitPrice);
+    elements.productAddStockLimit.value = Number.isInteger(copy.stockLimit) ? String(copy.stockLimit) : '';
+    elements.productCopyNote.classList.remove('is-hidden');
+    renderProductAddCategories();
+    elements.productAddForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    elements.productAddName.focus({ preventScroll: true });
+    elements.productAddName.select();
+    setStatus('コピー内容を追加フォームにセットしました。確認して「商品を追加」を押してください。', 'success');
+  }
+
+  function cancelProductCopy() {
+    state.pendingProductCopy = null;
+    elements.productAddForm.reset();
+    elements.productCopyNote.classList.add('is-hidden');
+    renderProductAddCategories();
+    setStatus('商品のコピーを取り消しました。', 'success');
   }
 
   function saveProductDetails(productId, actionTarget) {
@@ -1783,8 +1823,13 @@
     }
     try {
       const product = Core.makeProduct(category, name, Number(rawPrice));
+      if (state.pendingProductCopy) {
+        product.id = state.pendingProductCopy.id;
+        if (state.pendingProductCopy.icon) product.icon = state.pendingProductCopy.icon;
+        if (state.pendingProductCopy.iconPath) product.iconPath = state.pendingProductCopy.iconPath;
+      }
       if (stockLimit.value !== null) product.stockLimit = stockLimit.value;
-      if (state.products.some((candidate) => candidate.id === product.id)) {
+      if (state.products.some((candidate) => candidate.id === product.id || (candidate.category === product.category && candidate.name === product.name))) {
         setStatus('同じカテゴリと商品名の商品がすでにあります。', 'error');
         return;
       }
@@ -1793,6 +1838,8 @@
       Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
       state.products = nextProducts;
       state.inventory = nextInventory;
+      state.pendingProductCopy = null;
+      elements.productCopyNote.classList.add('is-hidden');
       elements.productAddName.value = '';
       elements.productAddPrice.value = '';
       elements.productAddStockLimit.value = '';
@@ -2595,6 +2642,8 @@
     elements.backupNow = $('#backup-now');
     elements.iconFile = $('#icon-file');
     elements.productAddForm = $('#product-add-form');
+    elements.productCopyNote = $('#product-copy-note');
+    elements.productCopyCancel = $('#product-copy-cancel');
     elements.productAddCategory = $('#product-add-category');
     elements.productAddNewCategoryField = $('#product-add-new-category-field');
     elements.productAddNewCategory = $('#product-add-new-category');
@@ -2646,6 +2695,7 @@
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
     elements.productAddForm.addEventListener('submit', addProduct);
+    elements.productCopyCancel.addEventListener('click', cancelProductCopy);
     elements.productAddForm.addEventListener('input', updateProductAddActionState);
     elements.productAddForm.addEventListener('change', updateProductAddActionState);
     elements.productAddCategory.addEventListener('change', renderProductAddCategories);

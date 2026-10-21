@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261021-copy-product" />
   </head>
   <body>
     <header class="site-header">
@@ -321,6 +321,10 @@
                 <span
                   >追加した商品はこのブラウザに保存されます。商品名の「\n」でカード表示を改行できます。</span
                 >
+              </div>
+              <div id="product-copy-note" class="product-copy-note is-hidden" role="status">
+                <span>コピー元の画像・設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
+                <button id="product-copy-cancel" type="button">コピーを取り消す</button>
               </div>
               <div class="product-add-grid">
                 <label
@@ -1376,9 +1380,9 @@
       </div>
     </dialog>
 
-    <script src="core.js"></script>
+    <script src="core.js?v=20261021-copy-product"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20261021-copy-product"></script>
   </body>
 </html>

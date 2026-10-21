@@ -31,6 +31,22 @@
     };
   }
 
+  function makeProductCopy(source, products, copyId) {
+    const baseName = `${clean(source.name)}（コピー）`;
+    let name = baseName;
+    let sequence = 2;
+    while ((products || []).some((product) => product.category === source.category && product.name === name)) {
+      name = `${clean(source.name)}（コピー${sequence}）`;
+      sequence += 1;
+    }
+    const copy = makeProduct(source.category, name, source.unitPrice);
+    if (copyId) copy.id = String(copyId);
+    if (Number.isInteger(source.stockLimit) && source.stockLimit >= 0) copy.stockLimit = source.stockLimit;
+    if (source.icon) copy.icon = source.icon;
+    if (source.iconPath) copy.iconPath = source.iconPath;
+    return copy;
+  }
+
   function detectDelimiter(text) {
     const firstLine = String(text).split(/\r?\n/, 1)[0];
     return firstLine.includes('\t') ? '\t' : ',';
@@ -860,6 +876,6 @@
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };
   }
 
-  return { makeProduct, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
+  return { makeProduct, makeProductCopy, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
 });
 

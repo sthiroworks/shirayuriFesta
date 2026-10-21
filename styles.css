@@ -104,6 +104,9 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .product-management-tool-actions { display: flex !important; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .product-management-tool-actions .button { padding: 8px 10px; font-size: .74rem; }
 .product-add-form { margin-bottom: 18px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+.product-copy-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--teal); background: var(--teal-light); font-size: .74rem; font-weight: 700; }
+.product-copy-note.is-hidden { display: none; }
+.product-copy-note button { padding: 3px 6px; border: 0; color: var(--teal); background: transparent; font: inherit; text-decoration: underline; cursor: pointer; }
 .product-add-grid { display: grid; grid-template-columns: 1.1fr 1.5fr .75fr .8fr auto; gap: 10px; align-items: end; }
 .product-add-grid label, .managed-product-price { display: grid; gap: 4px; color: var(--muted); font-size: .73rem; font-weight: 700; }
 .product-add-grid input, .product-add-grid select, .managed-product-price input { width: 100%; padding: 8px 9px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; }
