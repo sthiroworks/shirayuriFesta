@@ -2294,16 +2294,16 @@
     const filename = `shirayuri-sales-history-${new Date().toISOString().slice(0, 10)}.csv`;
     const detailCount = state.transactions.reduce((count, transaction) => count + (transaction.items || []).length, 0);
     const file = typeof root.File === 'function'
-      ? new root.File([`\uFEFF${csv}`], filename, { type: 'text/csv;charset=utf-8' })
+      ? new root.File([`\uFEFF${csv}`], filename, { type: 'text/csv' })
       : null;
-    const shareData = file ? { files: [file], title: '販売履歴CSV', text: '販売履歴CSVを共有します。' } : null;
+    const shareFiles = file ? [file] : null;
     let canShareFile = false;
     try {
-      canShareFile = Boolean(shareData
+      canShareFile = Boolean(shareFiles
         && root.navigator
         && typeof root.navigator.share === 'function'
         && typeof root.navigator.canShare === 'function'
-        && root.navigator.canShare(shareData));
+        && root.navigator.canShare({ files: shareFiles }));
     } catch {
       canShareFile = false;
     }
@@ -2316,7 +2316,7 @@
     }
 
     try {
-      await root.navigator.share(shareData);
+      await root.navigator.share({ files: shareFiles });
       recordHistoryBackupSuccess('manual');
       setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴を共有しました。`, 'success');
     } catch (error) {
@@ -2326,7 +2326,8 @@
       }
       downloadCsvFile(filename, csv);
       recordHistoryBackupSuccess('manual');
-      setStatus('共有を開始できなかったため、販売履歴をダウンロードしました。', 'error');
+      const errorName = error && error.name && error.name !== 'Error' ? `（${error.name}）` : '';
+      setStatus(`共有を開始できなかったため${errorName}、販売履歴をダウンロードしました。`, 'error');
     }
   }
 
