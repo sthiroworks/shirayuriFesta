@@ -151,6 +151,19 @@
               >
                 制限設定をダウンロード
               </button>
+              <button
+                id="share-settings-csv"
+                class="button button-secondary button-share"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="2.5" />
+                  <circle cx="6" cy="12" r="2.5" />
+                  <circle cx="18" cy="19" r="2.5" />
+                  <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                </svg>
+                制限設定を共有
+              </button>
             </div>
             <div class="backup-settings">
               <div class="admin-section-heading backup-heading">
@@ -185,7 +198,7 @@
                   </button>
                   <button
                     id="share-csv"
-                    class="button button-secondary"
+                    class="button button-secondary button-share"
                     type="button"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -286,6 +299,19 @@
                   type="button"
                 >
                   商品一覧CSVをダウンロード
+                </button>
+                <button
+                  id="share-products-csv"
+                  class="button button-secondary button-share"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="2.5" />
+                    <circle cx="6" cy="12" r="2.5" />
+                    <circle cx="18" cy="19" r="2.5" />
+                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                  </svg>
+                  商品一覧CSVを共有
                 </button>
               </div>
             </div>
@@ -398,6 +424,19 @@
                 type="button"
               >
                 レジ設定をダウンロード
+              </button>
+              <button
+                id="share-settings-bundle"
+                class="button button-secondary button-share"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="2.5" />
+                  <circle cx="6" cy="12" r="2.5" />
+                  <circle cx="18" cy="19" r="2.5" />
+                  <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                </svg>
+                レジ設定を共有
               </button>
             </div>
           </div>
@@ -993,13 +1032,28 @@
                 class="daily-close-summary"
                 aria-live="polite"
               ></div>
-              <button
-                id="daily-close-export"
-                class="button button-secondary"
-                type="button"
-              >
-                締めレポートをCSV保存
-              </button>
+              <div class="daily-close-actions">
+                <button
+                  id="daily-close-export"
+                  class="button button-secondary"
+                  type="button"
+                >
+                  締めレポートをCSV保存
+                </button>
+                <button
+                  id="daily-close-share"
+                  class="button button-secondary button-share"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="2.5" />
+                    <circle cx="6" cy="12" r="2.5" />
+                    <circle cx="18" cy="19" r="2.5" />
+                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                  </svg>
+                  締めレポートを共有
+                </button>
+              </div>
             </section>
             <div class="analytics-charts">
               <article

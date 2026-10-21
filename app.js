@@ -1325,16 +1325,29 @@
       <div><span>お預かり</span><strong>${formatYen(report.totalReceived)}</strong></div>
       <div><span>おつり</span><strong>${formatYen(report.totalChange)}</strong></div>`;
     elements.dailyCloseExport.disabled = report.transactionCount === 0;
+    elements.dailyCloseShare.disabled = report.transactionCount === 0;
   }
 
-  function exportDailyClose() {
+  function selectedDailyCloseReport() {
     const report = Core.dailyCloseReport(state.transactions, elements.dailyCloseDate.value);
     if (!report.transactionCount) {
       setStatus('選択した日に確定済みの会計はありません。', 'error');
-      return;
+      return null;
     }
+    return report;
+  }
+
+  function exportDailyClose() {
+    const report = selectedDailyCloseReport();
+    if (!report) return;
     downloadCsvFile(`shirayuri-daily-close-${report.date}.csv`, report.csv);
     setStatus(`${report.date}の日次締めレポートを保存しました。`, 'success');
+  }
+
+  function shareDailyClose() {
+    const report = selectedDailyCloseReport();
+    if (!report) return;
+    return shareCsvFile(`shirayuri-daily-close-${report.date}.csv`, report.csv, `${report.date}の日次締めレポート`);
   }
 
   function activateTab(tabName, swipeEnterFrom = '') {
@@ -1992,6 +2005,56 @@
     downloadTextFile(filename, json, 'application/json;charset=utf-8');
   }
 
+  async function shareExportFile(filename, contents, type, label, { historyBackup = false } = {}) {
+    let shareFiles = null;
+    try {
+      if (typeof root.File === 'function') {
+        shareFiles = [new root.File([contents], filename, { type })];
+      }
+    } catch {
+      shareFiles = null;
+    }
+
+    let canShareFile = false;
+    try {
+      canShareFile = Boolean(shareFiles
+        && root.navigator
+        && typeof root.navigator.share === 'function'
+        && typeof root.navigator.canShare === 'function'
+        && root.navigator.canShare({ files: shareFiles }));
+    } catch {
+      canShareFile = false;
+    }
+
+    const downloadFallback = () => {
+      downloadTextFile(filename, contents, `${type};charset=utf-8`);
+      if (historyBackup) recordHistoryBackupSuccess('manual');
+    };
+    if (!canShareFile) {
+      downloadFallback();
+      setStatus(`このブラウザーでは${label}のファイルを直接共有できないため、ダウンロードしました。`, 'success');
+      return;
+    }
+
+    try {
+      await root.navigator.share({ files: shareFiles });
+      if (historyBackup) recordHistoryBackupSuccess('manual');
+      setStatus(`${label}を共有先に渡しました。`, 'success');
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        setStatus('共有をキャンセルしました。ファイルはダウンロードされていません。');
+        return;
+      }
+      downloadFallback();
+      const errorName = error && error.name && error.name !== 'Error' ? `（${error.name}）` : '';
+      setStatus(`共有を開始できなかったため${errorName}、${label}をダウンロードしました。`, 'error');
+    }
+  }
+
+  function shareCsvFile(filename, csv, label, options) {
+    return shareExportFile(filename, `\uFEFF${csv}`, 'text/csv', label, options);
+  }
+
   function backupTimestamp() {
     const date = new Date();
     const pad = (value) => String(value).padStart(2, '0');
@@ -2289,46 +2352,10 @@
     setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴をダウンロードしました。`, 'success');
   }
 
-  async function shareCsv() {
+  function shareCsv() {
     const csv = Core.transactionsToCsv(state.transactions);
     const filename = `shirayuri-sales-history-${new Date().toISOString().slice(0, 10)}.csv`;
-    const detailCount = state.transactions.reduce((count, transaction) => count + (transaction.items || []).length, 0);
-    const file = typeof root.File === 'function'
-      ? new root.File([`\uFEFF${csv}`], filename, { type: 'text/csv' })
-      : null;
-    const shareFiles = file ? [file] : null;
-    let canShareFile = false;
-    try {
-      canShareFile = Boolean(shareFiles
-        && root.navigator
-        && typeof root.navigator.share === 'function'
-        && typeof root.navigator.canShare === 'function'
-        && root.navigator.canShare({ files: shareFiles }));
-    } catch {
-      canShareFile = false;
-    }
-
-    if (!canShareFile) {
-      downloadCsvFile(filename, csv);
-      recordHistoryBackupSuccess('manual');
-      setStatus('このブラウザーはCSVの直接共有に対応していないため、販売履歴をダウンロードしました。', 'success');
-      return;
-    }
-
-    try {
-      await root.navigator.share({ files: shareFiles });
-      recordHistoryBackupSuccess('manual');
-      setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴を共有しました。`, 'success');
-    } catch (error) {
-      if (error && error.name === 'AbortError') {
-        setStatus('共有をキャンセルしました。CSVはダウンロードされていません。');
-        return;
-      }
-      downloadCsvFile(filename, csv);
-      recordHistoryBackupSuccess('manual');
-      const errorName = error && error.name && error.name !== 'Error' ? `（${error.name}）` : '';
-      setStatus(`共有を開始できなかったため${errorName}、販売履歴をダウンロードしました。`, 'error');
-    }
+    return shareCsvFile(filename, csv, '販売履歴', { historyBackup: true });
   }
 
   function exportProductsCsv() {
@@ -2337,16 +2364,31 @@
     setStatus(`${state.products.length}件の商品一覧をダウンロードしました。`, 'success');
   }
 
+  function shareProductsCsv() {
+    const csv = Core.productsToCsv(state.products);
+    return shareCsvFile(`shirayuri-products-${new Date().toISOString().slice(0, 10)}.csv`, csv, '商品一覧CSV');
+  }
+
   function exportSettingsCsv() {
     const csv = Core.settingsToCsv(state.settings);
     downloadCsvFile(`shirayuri-settings-${new Date().toISOString().slice(0, 10)}.csv`, csv);
     setStatus('制限設定をダウンロードしました。', 'success');
   }
 
+  function shareSettingsCsv() {
+    const csv = Core.settingsToCsv(state.settings);
+    return shareCsvFile(`shirayuri-settings-${new Date().toISOString().slice(0, 10)}.csv`, csv, '制限設定');
+  }
+
   function exportSettingsBundle() {
     const json = Core.settingsBundleToJson(state.products, state.settings, state.inventory);
     downloadJsonFile(`shirayuri-register-settings-${new Date().toISOString().slice(0, 10)}.json`, json);
     setStatus(`${state.products.length}件の商品・在庫数・レジ設定をダウンロードしました。販売履歴は含まれません。`, 'success');
+  }
+
+  function shareSettingsBundle() {
+    const json = Core.settingsBundleToJson(state.products, state.settings, state.inventory);
+    return shareExportFile(`shirayuri-register-settings-${new Date().toISOString().slice(0, 10)}.json`, json, 'application/json', 'レジ設定');
   }
 
   function importTransactions(file) {
@@ -2517,6 +2559,7 @@
     elements.dailyCloseDate = $('#daily-close-date');
     elements.dailyCloseSummary = $('#daily-close-summary');
     elements.dailyCloseExport = $('#daily-close-export');
+    elements.dailyCloseShare = $('#daily-close-share');
     elements.clearCart = $('#clear-cart');
     elements.clearCartDialog = $('#clear-cart-dialog');
     elements.clearCartDialogTitle = $('#clear-cart-dialog-title');
@@ -2598,6 +2641,7 @@
     elements.dailyCloseDate.value = localDateInputValue(new Date());
     elements.dailyCloseDate.addEventListener('change', renderDailyClose);
     elements.dailyCloseExport.addEventListener('click', exportDailyClose);
+    elements.dailyCloseShare.addEventListener('click', shareDailyClose);
     elements.productManagementList.addEventListener('click', handleProductManagementAction);
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
@@ -2652,8 +2696,11 @@
     $('#export-csv').addEventListener('click', exportCsv);
     $('#share-csv').addEventListener('click', shareCsv);
     $('#export-products-csv').addEventListener('click', exportProductsCsv);
+    $('#share-products-csv').addEventListener('click', shareProductsCsv);
     elements.exportSettingsCsv.addEventListener('click', exportSettingsCsv);
+    $('#share-settings-csv').addEventListener('click', shareSettingsCsv);
     elements.exportSettingsBundle.addEventListener('click', exportSettingsBundle);
+    $('#share-settings-bundle').addEventListener('click', shareSettingsBundle);
     elements.iconFile.addEventListener('change', (event) => {
       replaceProductIcon(event.target.files[0], event.target.dataset.targetProductId);
       event.target.value = '';
