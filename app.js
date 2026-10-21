@@ -96,6 +96,7 @@
     temporaryCheckoutSiblings: null,
     pendingProductCopy: null,
     productOrderSaving: false,
+    expandedManagedProducts: new Set(),
     historySearch: '',
     historyFrom: '',
     historyTo: '',
@@ -819,15 +820,19 @@
         </div>
       </div>`).join('') || '<p class="muted-label">カテゴリがありません。</p>';
     const groupedProducts = categories.flatMap((category) => state.products.filter((product) => product.category === category));
-    elements.productManagementList.innerHTML = groupedProducts.map((product) => `
-      <div class="managed-product-row" data-managed-product-id="${escapeHtml(product.id)}">
-        <div class="managed-product-visual">
-          <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
+    elements.productManagementList.innerHTML = groupedProducts.map((product, index) => `
+      <div class="managed-product-item" data-managed-product-id="${escapeHtml(product.id)}">
+        <div class="managed-product-heading">
+          <button class="managed-product-toggle" type="button" data-management-action="toggle" data-product-id="${escapeHtml(product.id)}" aria-expanded="${state.expandedManagedProducts.has(product.id)}" aria-controls="managed-product-editor-${index}" aria-label="${escapeHtml(productNameText(product.name))}の商品情報を開閉">
+            <span class="managed-product-preview" aria-hidden="true">${iconMarkup(product)}</span>
+            <span class="managed-product-summary"><strong>${productNameMarkup(product.name)}</strong><small>${escapeHtml(product.category)} · ${formatYen(product.unitPrice)}</small></span>
+          </button>
           <div class="managed-product-order" role="group" aria-label="${escapeHtml(productNameText(product.name))}の並び順">
             <button class="managed-product-action" type="button" data-management-action="move-up" data-product-id="${escapeHtml(product.id)}" title="上へ" aria-label="${escapeHtml(productNameText(product.name))}を上へ移動">↑</button>
             <button class="managed-product-action" type="button" data-management-action="move-down" data-product-id="${escapeHtml(product.id)}" title="下へ" aria-label="${escapeHtml(productNameText(product.name))}を下へ移動">↓</button>
           </div>
         </div>
+        <div id="managed-product-editor-${index}" class="managed-product-row${state.expandedManagedProducts.has(product.id) ? '' : ' is-hidden'}">
         <div class="managed-product-info">
           <div class="managed-product-fields">
           <label class="managed-product-name">商品名<input type="text" value="${escapeHtml(String(product.name).replace(/\r?\n/g, '\\n'))}" data-management-field="name" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の商品名"></label>
@@ -846,6 +851,7 @@
           <button class="managed-product-action" type="button" data-management-action="copy" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}をコピーして追加">コピー</button>
           <button class="managed-product-action" type="button" data-management-action="icon" data-product-id="${escapeHtml(product.id)}">画像を変更</button>
           <button class="managed-product-action managed-product-delete" type="button" data-management-action="delete" data-product-id="${escapeHtml(product.id)}">削除</button>
+        </div>
         </div>
       </div>`).join('') || '<div class="empty-state">商品がありません。</div>';
     updateProductOrderActions();
@@ -1688,6 +1694,14 @@
     const target = event.target.closest('[data-management-action]');
     if (!target) return;
     const productId = target.dataset.productId;
+    if (target.dataset.managementAction === 'toggle') {
+      const expanded = target.getAttribute('aria-expanded') !== 'true';
+      if (expanded) state.expandedManagedProducts.add(productId);
+      else state.expandedManagedProducts.delete(productId);
+      target.setAttribute('aria-expanded', String(expanded));
+      target.closest('.managed-product-item').querySelector('.managed-product-row').classList.toggle('is-hidden', !expanded);
+      return;
+    }
     if (target.dataset.managementAction === 'move-up') void moveProduct(productId, -1);
     if (target.dataset.managementAction === 'move-down') void moveProduct(productId, 1);
     if (target.dataset.managementAction === 'save') saveProductDetails(productId, target);
