@@ -26,28 +26,32 @@
     ["チケット販売", "お魚釣り(お菓子)", 150, "candy-fishing.png"],
     ["チケット販売", "お宝すくい", 150, "treasure-scoop.png"],
     ["チケット販売", "先生スタンプラリー", 100, "takoyaki-bingo.png"],
-    ["チケット販売", "ブレスレット作り(09:20〜)", 200, "bracelet-coral.png"],
-    ["チケット販売", "ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png"],
-    ["チケット販売", "ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png"],
-    ["チケット販売", "ブレスレット作り(10:20〜)", 200, "bracelet-mint.png"],
+    ["チケット販売", "A ブレスレット作り(09:20〜)", 200, "bracelet-coral.png", "ブレスレット作り(09:20〜)"],
+    ["チケット販売", "B ブレスレット作り(09:40〜)", 200, "bracelet-aqua.png", "ブレスレット作り(09:40〜)"],
+    ["チケット販売", "C ブレスレット作り(10:00〜)", 200, "bracelet-lavender.png", "ブレスレット作り(10:00〜)"],
+    ["チケット販売", "D ブレスレット作り(10:20〜)", 200, "bracelet-mint.png", "ブレスレット作り(10:20〜)"],
     [
       "チケット販売",
-      "ブレスレット作り(10:40〜)",
+      "E ブレスレット作り(10:40〜)",
       200,
-      "bracelet-pink-aqua.png"
+      "bracelet-pink-aqua.png",
+      "ブレスレット作り(10:40〜)"
     ],
-    ["チケット販売", "ブレスレット作り(11:00〜)", 200, "bracelet-orange.png"],
-    ["チケット販売", "ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png"],
+    ["チケット販売", "F ブレスレット作り(11:00〜)", 200, "bracelet-orange.png", "ブレスレット作り(11:00〜)"],
+    ["チケット販売", "G ブレスレット作り(11:20〜)", 200, "bracelet-rainbow.png", "ブレスレット作り(11:20〜)"],
     ["他", "ありがとうチケット", -50, "thank-you-ticket.png"]
-  ].map(([category, name, unitPrice, iconFile]) => ({
-    id: `${category}::${name}`,
-    category,
-    name,
-    unitPrice,
-    iconPath: `assets/icons/${iconFile}`,
-    // ブレスレット体験は各時間枠15個を初期在庫として設定する。
-    ...(name.startsWith("ブレスレット作り") ? { stockLimit: 15 } : {})
-  }));
+  ].map(([category, name, unitPrice, iconFile, idName]) => {
+    const identityName = idName || name;
+    return {
+      id: `${category}::${identityName}`,
+      category,
+      name,
+      unitPrice,
+      iconPath: `assets/icons/${iconFile}`,
+      // ブレスレット体験は各時間枠15個を初期在庫として設定する。
+      ...(identityName.startsWith("ブレスレット作り") ? { stockLimit: 15 } : {})
+    };
+  });
 
   root.DEFAULT_PRODUCTS = products;
   if (typeof module !== "undefined" && module.exports)
