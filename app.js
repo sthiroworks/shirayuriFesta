@@ -2289,6 +2289,47 @@
     setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴をダウンロードしました。`, 'success');
   }
 
+  async function shareCsv() {
+    const csv = Core.transactionsToCsv(state.transactions);
+    const filename = `shirayuri-sales-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    const detailCount = state.transactions.reduce((count, transaction) => count + (transaction.items || []).length, 0);
+    const file = typeof root.File === 'function'
+      ? new root.File([`\uFEFF${csv}`], filename, { type: 'text/csv;charset=utf-8' })
+      : null;
+    const shareData = file ? { files: [file], title: '販売履歴CSV', text: '販売履歴CSVを共有します。' } : null;
+    let canShareFile = false;
+    try {
+      canShareFile = Boolean(shareData
+        && root.navigator
+        && typeof root.navigator.share === 'function'
+        && typeof root.navigator.canShare === 'function'
+        && root.navigator.canShare(shareData));
+    } catch {
+      canShareFile = false;
+    }
+
+    if (!canShareFile) {
+      downloadCsvFile(filename, csv);
+      recordHistoryBackupSuccess('manual');
+      setStatus('このブラウザーはCSVの直接共有に対応していないため、販売履歴をダウンロードしました。', 'success');
+      return;
+    }
+
+    try {
+      await root.navigator.share(shareData);
+      recordHistoryBackupSuccess('manual');
+      setStatus(`${detailCount}件の明細を含む${state.transactions.length}件の会計履歴を共有しました。`, 'success');
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        setStatus('共有をキャンセルしました。CSVはダウンロードされていません。');
+        return;
+      }
+      downloadCsvFile(filename, csv);
+      recordHistoryBackupSuccess('manual');
+      setStatus('共有を開始できなかったため、販売履歴をダウンロードしました。', 'error');
+    }
+  }
+
   function exportProductsCsv() {
     const csv = Core.productsToCsv(state.products);
     downloadCsvFile(`shirayuri-products-${new Date().toISOString().slice(0, 10)}.csv`, csv);
@@ -2608,6 +2649,7 @@
     elements.importSettingsFile.addEventListener('change', (event) => { if (event.target.files[0]) importSettings(event.target.files[0]); event.target.value = ''; });
     elements.importSettingsBundleFile.addEventListener('change', (event) => { if (event.target.files[0]) importSettingsBundle(event.target.files[0]); event.target.value = ''; });
     $('#export-csv').addEventListener('click', exportCsv);
+    $('#share-csv').addEventListener('click', shareCsv);
     $('#export-products-csv').addEventListener('click', exportProductsCsv);
     elements.exportSettingsCsv.addEventListener('click', exportSettingsCsv);
     elements.exportSettingsBundle.addEventListener('click', exportSettingsBundle);
