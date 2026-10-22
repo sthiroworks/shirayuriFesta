@@ -158,15 +158,21 @@ test('checkout limit reset sits immediately before the sibling stepper', () => {
   }
 });
 
-test('header bee is decorative, mobile-sized, and respects reduced-motion in source and dist', () => {
+test('header garden has three decorative bees and five flowers and respects reduced-motion in source and dist', () => {
   for (const directory of ['', 'dist/']) {
     const html = read(`${directory}index.html`);
     const css = read(`${directory}styles.css`);
-    assert.match(html, /<span class="header-bee" aria-hidden="true">[\s\S]*?<svg viewBox="0 0 44 30"/);
+    assert.match(html, /<div class="header-garden" aria-hidden="true">[\s\S]*?<svg class="header-flower-bed"/);
+    assert.equal((html.match(/class="header-bee header-bee-(?:one|two|three)"/g) || []).length, 3);
+    assert.equal((html.match(/class="header-flower flower-(?:pink|lavender|yellow|blue|rose)"/g) || []).length, 5);
+    assert.match(css, /\.header-garden \{[^}]*pointer-events: none;/);
     assert.match(css, /\.header-bee \{[^}]*pointer-events: none;[^}]*animation: header-bee-flight/);
-    assert.match(css, /@keyframes header-bee-flight[\s\S]*?var\(--bee-flight-distance\)/);
+    assert.match(css, /\.header-bee-three \{[^}]*animation-delay: -3\.1s;/);
+    assert.match(css, /@keyframes header-bee-flight[\s\S]*?var\(--bee-flight-distance(?:,)/);
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.header-bee, \.header-bee-wings \{ animation: none; \}/);
-    assert.match(css, /\.header-bee \{ --bee-flight-distance: 16px; top: 8px; width: 24px; height: 18px; \}/);
+    assert.match(css, /\.header-garden \{ top: 8px; right: 105px; width: 84px; height: 31px; \}/);
+    assert.match(css, /\.header-bee \{ width: 15px; height: 11px; \}/);
+    assert.match(css, /\.header-bee-three \{ --bee-flight-distance: 4px; \}/);
   }
 });
 

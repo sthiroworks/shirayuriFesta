@@ -36,12 +36,25 @@ button:focus-visible, input:focus-visible, select:focus-visible, label.button:fo
 .site-header::after { right: 3%; bottom: -38px; width: 112px; height: 112px; border: 18px solid rgba(167, 207, 190, .2); }
 .brand-lockup, .header-actions { position: relative; z-index: 1; }
 .brand-lockup { min-width: 0; }
-.header-bee { --bee-flight-distance: 24px; position: absolute; top: 12px; left: 50%; z-index: 2; width: 30px; height: 22px; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(25, 50, 53, .16)); animation: header-bee-flight 5.4s ease-in-out infinite; }
+.header-garden { position: absolute; top: 12px; right: clamp(110px, 13vw, 190px); z-index: 2; width: 132px; height: 48px; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(25, 50, 53, .14)); }
+.header-flower-bed { display: block; width: 100%; height: 100%; overflow: visible; }
+.header-flower .flower-stem { fill: none; stroke: #719b69; stroke-linecap: round; stroke-width: 1.8; }
+.header-flower .flower-leaf { fill: #94bc7b; stroke: #719b69; stroke-linecap: round; stroke-width: .7; }
+.header-flower .flower-petal { stroke: rgba(255, 255, 255, .8); stroke-width: .55; }
+.header-flower .flower-center { fill: #ffd451; stroke: #d49b37; stroke-width: .6; }
+.flower-pink .flower-petal, .flower-rose .flower-petal { fill: #ec83a0; }
+.flower-lavender .flower-petal { fill: #9c83cf; }
+.flower-yellow .flower-petal { fill: #f4bd52; }
+.flower-blue .flower-petal { fill: #68b4d2; }
+.header-bee { position: absolute; z-index: 1; display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .16)); animation: header-bee-flight 5.4s ease-in-out infinite; }
+.header-bee-one { top: 0; left: 5%; --bee-flight-distance: 10px; animation-duration: 4.8s; }
+.header-bee-two { top: 9px; left: 39%; --bee-flight-distance: -9px; animation-duration: 5.2s; animation-delay: -1.7s; }
+.header-bee-three { top: 1px; left: 73%; --bee-flight-distance: 8px; animation-duration: 4.4s; animation-delay: -3.1s; }
 .header-bee svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .header-bee-wings { transform-box: fill-box; transform-origin: center; animation: header-bee-wing-flutter .16s ease-in-out infinite alternate; }
 @keyframes header-bee-flight {
   0%, 100% { transform: translate3d(0, 2px, 0) rotate(-7deg); }
-  50% { transform: translate3d(var(--bee-flight-distance), -3px, 0) rotate(6deg); }
+  50% { transform: translate3d(var(--bee-flight-distance, 8px), -3px, 0) rotate(6deg); }
 }
 @keyframes header-bee-wing-flutter {
   from { transform: scaleY(.72); }
@@ -652,7 +665,11 @@ td.money { white-space: nowrap; font-weight: 700; }
 @media (max-width: 560px) {
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
-  .header-bee { --bee-flight-distance: 16px; top: 8px; width: 24px; height: 18px; }
+  .header-garden { top: 8px; right: 105px; width: 84px; height: 31px; }
+  .header-bee { width: 15px; height: 11px; }
+  .header-bee-one { --bee-flight-distance: 4px; }
+  .header-bee-two { --bee-flight-distance: -4px; }
+  .header-bee-three { --bee-flight-distance: 4px; }
   .status { top: calc(env(safe-area-inset-top) + 76px); right: auto; bottom: auto; left: 50%; z-index: 90; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
   /* 下部の会計バーに商品が隠れない分だけ余白を確保する。 */
   .page-shell { padding: 18px 12px calc(82px + env(safe-area-inset-bottom)); }
