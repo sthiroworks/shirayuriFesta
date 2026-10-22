@@ -157,17 +157,6 @@ test('checkout limit reset sits immediately before the sibling stepper', () => {
   }
 });
 
-test('header decoration stays non-interactive and respects reduced motion in source and dist', () => {
-  for (const directory of ['', 'dist/']) {
-    const html = read(`${directory}index.html`);
-    const css = read(`${directory}styles.css`);
-    const garden = html.match(/<div class="header-garden" aria-hidden="true">([\s\S]*?)<\/header>/)?.[1];
-    assert.ok(garden);
-    assert.doesNotMatch(garden, /<(?:button|a|input)\b/);
-    assert.match(css, /\.header-garden \{[^}]*pointer-events: none/);
-    assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.header-bee, \.header-bee-body, \.header-bee svg, \.header-bee-wings, \.header-flower \{ animation: none; \}/);
-  }
-});
 
 test('app warns when browser persistence is unavailable and resets payment on import', () => {
   const html = read('index.html');

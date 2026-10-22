@@ -32,56 +32,10 @@ button, label.button { cursor: pointer; }
 button:focus-visible, input:focus-visible, select:focus-visible, label.button:focus-visible { outline: 3px solid rgba(244, 201, 93, .85); outline-offset: 2px; }
 .site-header { position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; gap: 24px; align-items: center; overflow: hidden; padding: 16px clamp(20px, 5vw, 72px); border-bottom: 1px solid #d9e9df; color: var(--ink); background: linear-gradient(110deg, rgba(255, 255, 255, .65) 0%, rgba(242, 250, 245, .65) 64%, rgba(255, 248, 239, .65) 100%); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 3px 10px rgba(25, 50, 53, .06); }
 .site-header::before, .site-header::after { position: absolute; z-index: 0; border-radius: 50%; content: ""; pointer-events: none; }
-.site-header::before { top: -120px; right: 22%; width: 340px; height: 240px; background: radial-gradient(ellipse, rgba(247, 220, 158, .2), transparent 68%); }
-.site-header::after { right: -5%; bottom: -130px; width: 420px; height: 240px; background: radial-gradient(ellipse, rgba(176, 208, 181, .24), transparent 70%); }
-.brand-lockup, .header-actions { position: relative; z-index: 3; }
+.site-header::before { top: -72px; right: 9%; width: 180px; height: 180px; background: radial-gradient(circle at 50% 50%, rgba(244, 201, 93, .26) 0 22%, transparent 23%), radial-gradient(circle at 50% 50%, rgba(233, 173, 134, .16) 0 55%, transparent 56%); }
+.site-header::after { right: 3%; bottom: -38px; width: 112px; height: 112px; border: 18px solid rgba(167, 207, 190, .2); }
+.brand-lockup, .header-actions { position: relative; z-index: 1; }
 .brand-lockup { min-width: 0; }
-.header-garden { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.header-garden::after { position: absolute; right: 0; bottom: 0; left: 0; z-index: 0; height: 14px; background: linear-gradient(transparent, rgba(161, 193, 145, .12)); content: ""; }
-.header-flower-bed { position: absolute; bottom: -3px; left: 52%; z-index: 1; display: block; width: 220px; height: 76px; overflow: visible; transform: translateX(-50%); opacity: .9; }
-.header-flower-bed-left { left: 29%; width: 180px; height: 68px; opacity: .7; }
-.header-flower-bed-right { left: 78%; width: 180px; height: 68px; opacity: .8; }
-.meadow-grass { fill: none; stroke: #91ac79; stroke-linecap: round; stroke-width: 1.3; opacity: .65; }
-.header-flower { transform-box: fill-box; transform-origin: center bottom; animation: header-flower-sway var(--flower-duration, 9s) ease-in-out infinite alternate; animation-delay: var(--flower-delay, 0s); }
-.header-flower .flower-stem { fill: none; stroke: #7e9e6e; stroke-linecap: round; stroke-width: 1.6; }
-.header-flower .flower-leaf { fill: #a1bd87; stroke: #7e9e6e; stroke-linecap: round; stroke-width: .6; }
-.header-flower .flower-petal { stroke: rgba(255, 255, 255, .8); stroke-width: .55; }
-.header-flower .flower-center { fill: #eec464; stroke: #cfa34d; stroke-width: .6; }
-.flower-pink .flower-petal, .flower-rose .flower-petal { fill: #eaa1ad; }
-.flower-lavender .flower-petal { fill: #b3a1d3; }
-.flower-yellow .flower-petal { fill: #f1d17c; }
-.flower-blue .flower-petal { fill: #91c3ce; }
-.flower-ivory .flower-petal { fill: #fffdf3; stroke: #e2dcca; }
-.header-bee { position: absolute; z-index: 2; left: var(--bee-rest-left, 24%); top: var(--bee-start-top, 18%); display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .12)); animation: header-bee-flight var(--bee-duration, 68s) ease-in-out infinite; animation-delay: var(--bee-delay, 0s); }
-.header-bee-one { --bee-rest-left: 24%; --bee-start-top: 18%; --bee-mid-top: 44%; --bee-end-top: 24%; --bee-return-top: 12%; --bee-duration: 68s; }
-.header-bee-two { --bee-rest-left: 56%; --bee-start-top: 48%; --bee-mid-top: 18%; --bee-end-top: 42%; --bee-return-top: 57%; --bee-duration: 80s; --bee-delay: -26s; width: 21px; height: 15px; opacity: .86; }
-.header-bee-three { --bee-rest-left: 88%; --bee-start-top: 30%; --bee-mid-top: 55%; --bee-end-top: 12%; --bee-return-top: 35%; --bee-duration: 74s; --bee-delay: -49s; width: 23px; height: 16px; }
-.header-bee-body { display: block; width: 100%; height: 100%; animation: header-bee-turn var(--bee-duration, 68s) step-end infinite; animation-delay: var(--bee-delay, 0s); }
-.header-bee svg { display: block; width: 100%; height: 100%; overflow: visible; animation: header-bee-hover 4.8s ease-in-out infinite; animation-delay: var(--bee-delay, 0s); }
-.header-bee-wings { transform-box: fill-box; transform-origin: center; animation: header-bee-wing-flutter .2s ease-in-out infinite alternate; }
-@keyframes header-flower-sway {
-  from { transform: rotate(-2deg); }
-  to { transform: rotate(2.5deg); }
-}
-@keyframes header-bee-flight {
-  0%, 100% { left: 2%; top: var(--bee-start-top, 18%); transform: rotate(-4deg); }
-  25% { left: 50%; top: var(--bee-mid-top, 44%); transform: rotate(4deg); }
-  50% { left: var(--bee-end-left, calc(100% - 24px)); top: var(--bee-end-top, 24%); transform: rotate(-3deg); }
-  75% { left: 50%; top: var(--bee-return-top, 12%); transform: rotate(3deg); }
-}
-@keyframes header-bee-turn {
-  0% { transform: scaleX(1); }
-  50% { transform: scaleX(-1); }
-  100% { transform: scaleX(1); }
-}
-@keyframes header-bee-hover {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2.5px); }
-}
-@keyframes header-bee-wing-flutter {
-  from { transform: scaleY(.72); }
-  to { transform: scaleY(1); }
-}
 .eyebrow, .section-kicker { margin: 0 0 4px; color: #6b9a7f; font-size: .7rem; font-weight: 800; letter-spacing: .16em; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 0; color: #244e4e; font-size: clamp(1.45rem, 3.5vw, 2.25rem); letter-spacing: .04em; line-height: 1.2; }
@@ -299,7 +253,6 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
   .tab-panel .is-swipe-enter-from-left,
   .tab-panel .is-swipe-enter-from-right { animation: none; }
   .is-swipe-settling { transition: none; }
-  .header-bee, .header-bee-body, .header-bee svg, .header-bee-wings, .header-flower { animation: none; }
 }
 .analytics-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
 .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
@@ -687,12 +640,6 @@ td.money { white-space: nowrap; font-weight: 700; }
 @media (max-width: 560px) {
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
-  .header-flower-bed { left: 54%; bottom: -5px; width: 156px; height: 54px; opacity: .85; }
-  .header-flower-bed-left { left: 14%; width: 126px; height: 48px; opacity: .4; }
-  .header-flower-bed-right { left: 89%; width: 126px; height: 48px; opacity: .55; }
-  .header-bee { width: 17px; height: 12px; --bee-end-left: calc(100% - 18px); }
-  .header-bee-two { width: 15px; height: 11px; }
-  .header-bee-three { width: 16px; height: 12px; }
   .status { top: calc(env(safe-area-inset-top) + 76px); right: auto; bottom: auto; left: 50%; z-index: 90; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
   /* 下部の会計バーに商品が隠れない分だけ余白を確保する。 */
   .page-shell { padding: 18px 12px calc(82px + env(safe-area-inset-bottom)); }
