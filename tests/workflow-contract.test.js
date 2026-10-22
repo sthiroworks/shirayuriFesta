@@ -28,6 +28,13 @@ test('browser workflow includes import, live aggregation, and CSV export paths',
   assert.match(html, /全期間/);
 });
 
+test('D1 warns before replacing different device-local data', () => {
+  const app = read('app.js');
+  assert.match(app, /sharedSnapshotsDiffer\(localSnapshot, remoteSnapshot\)/);
+  assert.match(app, /共有データでこの端末のデータを置き換えます/);
+  assert.match(app, /自動統合はしません/);
+});
+
 test('README documents the standard-library macOS workflow and CSV boundary', () => {
   const readme = read('README.md');
   assert.match(readme, /Safari|Chrome/);

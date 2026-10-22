@@ -1,0 +1,14 @@
+name = "shirayuri-festa-register-api"
+main = "worker.mjs"
+compatibility_date = "2026-10-20"
+
+[vars]
+# 必ず実際のGitHub PagesのOriginに置き換えてください。複数の場合はカンマ区切りです。
+ALLOWED_ORIGINS = "https://YOUR-ACCOUNT.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shirayuri-festa-register"
+# `npx wrangler d1 create shirayuri-festa-register` の出力で置き換えます。
+database_id = "PASTE_D1_DATABASE_ID_HERE"
+migrations_dir = "./migrations"

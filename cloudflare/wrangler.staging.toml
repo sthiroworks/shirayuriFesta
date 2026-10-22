@@ -1,0 +1,14 @@
+name = "shirayuri-festa-register-api-staging"
+main = "worker.mjs"
+compatibility_date = "2026-10-20"
+
+[vars]
+# Cloudflare Pagesの `test` ブランチ用プレビューOriginだけを許可します。
+ALLOWED_ORIGINS = "https://test.shirayuri-festa-preview.pages.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "shirayuri-festa-register-staging"
+# ステージング専用D1のIDを設定。本番DBのIDは絶対に使わないでください。
+database_id = "ed90978d-4ceb-4c89-a990-6819f5088ce3"
+migrations_dir = "./migrations"

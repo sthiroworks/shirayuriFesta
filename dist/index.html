@@ -2,12 +2,23 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20261022-share-chart-leaders" />
   </head>
   <body>
+    <section id="shared-login" class="shared-login" aria-labelledby="shared-login-title" hidden>
+      <form id="shared-login-form" class="shared-login-card">
+        <p class="section-kicker">SHARED REGISTER</p>
+        <h1 id="shared-login-title">共有レジにログイン</h1>
+        <p id="shared-login-message">共有データに接続しています。</p>
+        <label for="shared-password">共有パスワード</label>
+        <input id="shared-password" type="password" autocomplete="current-password" required />
+        <p id="shared-login-error" class="shared-login-error" role="alert"></p>
+        <button id="shared-login-submit" class="button button-primary" type="submit">ログイン</button>
+      </form>
+    </section>
     <header class="site-header">
       <div class="brand-lockup">
         <div>
@@ -16,6 +27,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="shared-logout" class="button button-secondary is-hidden" type="button">共有レジからログアウト</button>
         <button
           id="admin-toggle"
           class="button button-secondary button-toggle"
@@ -46,17 +58,186 @@
           </button>
         </div>
         <div class="admin-sections">
-          <section
-            id="settings-panel"
-            class="admin-section"
-            aria-labelledby="settings-title"
-          >
-            <div class="admin-section-heading">
+          <details id="product-management-panel" class="admin-section admin-fold" open>
+            <summary class="admin-fold-summary">
+              <h2 id="product-management-title" class="admin-fold-label">
+                <span class="section-kicker">PRODUCT MANAGEMENT</span>
+                <span class="admin-fold-title">商品管理</span>
+                <span class="admin-fold-description">商品の編集・在庫調整・並び替え</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
+            <p class="settings-help">
+              商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。在庫数は会計履歴とは別に保存され、履歴を消去しても残ります。残数は商品ごとに調整できます。残り3個以下は注意表示されます。
+            </p>
+            <details id="inventory-period-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>販売済みのリセット</h3></summary>
+              <div class="admin-subfold-content">
+            <div class="product-management-tools inventory-period-tools">
               <div>
-                <p class="section-kicker">SETTINGS</p>
-                <h2 id="settings-title">購入制限の設定</h2>
+                <strong>販売期間の切り替え</strong>
+                <span>会計履歴を残したまま、販売済みを0に戻し、現在の残数を新しい期間の初期在庫にします。</span>
+              </div>
+              <button
+                id="reset-inventory-period"
+                class="button button-danger"
+                type="button"
+              >
+                販売済みをリセット
+              </button>
+            </div>
+              </div>
+            </details>
+            <details id="registered-products-fold" class="admin-subfold" open>
+              <summary class="admin-subfold-summary"><h3>登録済み商品</h3></summary>
+              <div class="admin-subfold-content">
+            <div
+              class="product-management-subheading product-management-list-heading"
+            >
+              <span
+                >商品名を押すと編集欄が開きます。次の行から表示したい商品は「この商品から次の行に表示」にチェックし、「商品情報を反映」を押してください。空の商品カードは作られません。↑↓で同じカテゴリ内の並び順を変更するとすぐに保存されます。</span
+              >
+            </div>
+            <input
+              id="icon-file"
+              class="visually-hidden"
+              type="file"
+              accept="image/*"
+            />
+            <div
+              id="product-management-list"
+              class="product-management-list"
+            ></div>
+              </div>
+            </details>
+            <details id="product-add-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>商品を追加</h3></summary>
+              <div class="admin-subfold-content">
+            <form id="product-add-form" class="product-add-form">
+              <div class="product-management-subheading">
+                <span
+                  >追加した商品はこのブラウザに保存されます。商品名の「\n」でカード表示を改行できます。商品一覧で次の行から表示したい場合は、登録済商品の編集で「この商品から次の行に表示」を設定してください。</span
+                >
+              </div>
+              <div id="product-copy-note" class="product-copy-note is-hidden" role="status">
+                <span>コピー元の画像・表示設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
+                <button id="product-copy-cancel" type="button">コピーを取り消す</button>
+              </div>
+              <div class="product-add-grid">
+                <label
+                  >カテゴリ<select id="product-add-category" required></select
+                ></label>
+                <label id="product-add-new-category-field" class="is-hidden"
+                  >新しいカテゴリ<input
+                    id="product-add-new-category"
+                    type="text"
+                /></label>
+                <label
+                  >商品名<input id="product-add-name" type="text" required
+                /></label>
+                <label
+                  >単価<input
+                    id="product-add-price"
+                    type="number"
+                    step="1"
+                    required
+                /></label>
+                <label
+                  >在庫上限<input
+                    id="product-add-stock-limit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="無制限"
+                /></label>
+                <button
+                  id="product-add-submit"
+                  class="button button-primary product-add-submit"
+                  type="submit"
+                  disabled
+                >
+                  商品を追加
+                </button>
+              </div>
+            </form>
+              </div>
+            </details>
+            <details id="category-order-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>カテゴリの並び順</h3></summary>
+              <div class="admin-subfold-content">
+            <section class="category-order-panel" aria-label="カテゴリの並び順">
+              <p>↑↓で販売画面のカテゴリ順を変更できます。変更はすぐに保存されます。</p>
+              <div id="category-order-list" class="category-order-list"></div>
+            </section>
+              </div>
+            </details>
+            <details id="product-bulk-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>商品一覧の一括更新・バックアップ</h3></summary>
+              <div class="admin-subfold-content">
+            <div class="product-management-tools">
+              <div>
+                <span>商品をまとめて登録・更新するときに使用します。</span>
+              </div>
+              <div class="product-management-tool-actions">
+                <label class="button button-secondary" for="import-file"
+                  >商品一覧CSVを読み込む</label
+                >
+                <input
+                  id="import-file"
+                  class="visually-hidden"
+                  type="file"
+                  accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                />
+                <button
+                  id="export-products-csv"
+                  class="button button-secondary"
+                  type="button"
+                >
+                  商品一覧CSVをダウンロード
+                </button>
+                <button
+                  id="share-products-csv"
+                  class="button button-secondary button-share"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="2.5" />
+                    <circle cx="6" cy="12" r="2.5" />
+                    <circle cx="18" cy="19" r="2.5" />
+                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                  </svg>
+                  商品一覧CSVを共有
+                </button>
               </div>
             </div>
+              </div>
+            </details>
+            <details id="stock-history-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>最近の在庫調整</h3></summary>
+              <div class="admin-subfold-content">
+            <section
+              class="stock-adjustment-history"
+              aria-label="最近の在庫調整"
+            >
+              <div
+                id="stock-adjustment-history"
+                class="stock-adjustment-list"
+              ></div>
+            </section>
+              </div>
+            </details>
+            </div>
+          </details>
+
+          <details id="settings-panel" class="admin-section admin-fold">
+            <summary class="admin-fold-summary">
+              <h2 id="settings-title" class="admin-fold-label">
+                <span class="section-kicker">PURCHASE LIMITS</span>
+                <span class="admin-fold-title">購入制限の設定</span>
+                <span class="admin-fold-description">対象カテゴリ・人数・購入点数の上限</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
             <div class="settings-grid">
               <label class="setting-check"
                 ><input id="settings-enabled" type="checkbox" />
@@ -133,8 +314,10 @@
             >
               制限設定を反映
             </button>
+            <details id="restriction-backup-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>制限設定のバックアップ</h3></summary>
+              <div class="admin-subfold-content">
             <div class="settings-data-actions">
-              <strong>制限設定のバックアップ</strong>
               <label class="button button-secondary" for="import-settings-file"
                 >制限設定を復元</label
               >
@@ -151,18 +334,41 @@
               >
                 制限設定をダウンロード
               </button>
+              <button
+                id="share-settings-csv"
+                class="button button-secondary button-share"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="2.5" />
+                  <circle cx="6" cy="12" r="2.5" />
+                  <circle cx="18" cy="19" r="2.5" />
+                  <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                </svg>
+                制限設定を共有
+              </button>
             </div>
-            <div class="backup-settings">
-              <div class="admin-section-heading backup-heading">
-                <div>
-                  <p class="section-kicker">AUTO BACKUP</p>
-                  <h3>販売履歴のバックアップ</h3>
-                </div>
               </div>
+            </details>
+            </div>
+          </details>
+
+          <details id="history-backup-panel" class="admin-section admin-fold">
+            <summary class="admin-fold-summary">
+              <h2 id="history-backup-title" class="admin-fold-label">
+                <span class="section-kicker">SALES BACKUP</span>
+                <span class="admin-fold-title">販売履歴のバックアップ</span>
+                <span class="admin-fold-description">販売履歴の保存・共有・復元・自動バックアップ</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
+              <div class="backup-settings">
+            <details id="history-export-fold" class="admin-subfold" open>
+              <summary class="admin-subfold-summary"><h3>販売履歴のダウンロード・共有・復元</h3></summary>
+              <div class="admin-subfold-content">
               <div class="backup-history-actions">
                 <div class="backup-history-copy">
-                  <strong>手動バックアップ</strong>
-                  <span>販売履歴をダウンロード・復元・消去します。</span>
+                  <span>CSVをダウンロードするか、共有メニューから送れます。</span>
                 </div>
                 <div class="backup-history-buttons">
                   <label
@@ -184,6 +390,19 @@
                     販売履歴をダウンロード
                   </button>
                   <button
+                    id="share-csv"
+                    class="button button-secondary button-share"
+                    type="button"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="18" cy="5" r="2.5" />
+                      <circle cx="6" cy="12" r="2.5" />
+                      <circle cx="18" cy="19" r="2.5" />
+                      <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                    </svg>
+                    販売履歴を共有
+                  </button>
+                  <button
                     id="clear-history"
                     class="button button-danger"
                     type="button"
@@ -192,6 +411,11 @@
                   </button>
                 </div>
               </div>
+              </div>
+            </details>
+            <details id="auto-backup-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>自動バックアップの設定</h3></summary>
+              <div class="admin-subfold-content">
               <div class="backup-options">
                 <label class="setting-check"
                   ><input id="backup-enabled" type="checkbox" />
@@ -235,116 +459,26 @@
               <p id="backup-status" class="settings-help">
                 バックアップ先を選ぶと、販売履歴を同じCSVへ上書き保存します。
               </p>
+              </div>
+            </details>
+              </div>
             </div>
-          </section>
+          </details>
 
-          <section
-            id="product-management-panel"
-            class="admin-section"
-            aria-labelledby="product-management-title"
-          >
-            <div class="admin-section-heading">
-              <div>
-                <p class="section-kicker">PRODUCT MANAGEMENT</p>
-                <h2 id="product-management-title">商品管理</h2>
-              </div>
-            </div>
-            <p class="settings-help">
-              商品の追加・価格変更・削除と、商品アイコンの差し替えを行えます。CSVの「アイコン」列から絵文字を設定することもできます。
-            </p>
-            <div class="product-management-tools">
-              <div>
-                <strong>初期設定・一括更新</strong>
-                <span>商品をまとめて登録・更新するときに使用します。</span>
-              </div>
-              <div class="product-management-tool-actions">
-                <label class="button button-secondary" for="import-file"
-                  >商品一覧CSVを読み込む</label
-                >
-                <input
-                  id="import-file"
-                  class="visually-hidden"
-                  type="file"
-                  accept=".csv,.tsv,text/csv,text/tab-separated-values"
-                />
-                <button
-                  id="export-products-csv"
-                  class="button button-secondary"
-                  type="button"
-                >
-                  商品一覧CSVをダウンロード
-                </button>
-              </div>
-            </div>
-            <form id="product-add-form" class="product-add-form">
-              <div class="product-management-subheading">
-                <strong>商品を追加</strong>
-                <span>追加した商品はこのブラウザに保存されます。</span>
-              </div>
-              <div class="product-add-grid">
-                <label
-                  >カテゴリ<select id="product-add-category" required></select
-                ></label>
-                <label id="product-add-new-category-field" class="is-hidden"
-                  >新しいカテゴリ<input
-                    id="product-add-new-category"
-                    type="text"
-                /></label>
-                <label
-                  >商品名<input id="product-add-name" type="text" required
-                /></label>
-                <label
-                  >単価<input
-                    id="product-add-price"
-                    type="number"
-                    step="1"
-                    required
-                /></label>
-                <button
-                  id="product-add-submit"
-                  class="button button-primary product-add-submit"
-                  type="submit"
-                  disabled
-                >
-                  商品を追加
-                </button>
-              </div>
-            </form>
-            <div
-              class="product-management-subheading product-management-list-heading"
-            >
-              <strong>登録済み商品</strong>
-              <span
-                >内容を変更したら、同じ行の「商品情報を反映」を押してください。</span
-              >
-            </div>
-            <input
-              id="icon-file"
-              class="visually-hidden"
-              type="file"
-              accept="image/*"
-            />
-            <div
-              id="product-management-list"
-              class="product-management-list"
-            ></div>
-          </section>
-        </div>
-        <section
-          class="admin-section data-transfer-panel"
-          aria-labelledby="data-transfer-title"
-        >
-          <div class="admin-section-heading">
-            <div>
-              <p class="section-kicker">DATA TRANSFER</p>
-              <h2 id="data-transfer-title">設定の移行・バックアップ</h2>
-            </div>
-          </div>
+          <details id="data-transfer-panel" class="admin-section admin-fold data-transfer-panel">
+            <summary class="admin-fold-summary">
+              <h2 id="data-transfer-title" class="admin-fold-label">
+                <span class="section-kicker">DATA TRANSFER</span>
+                <span class="admin-fold-title">設定の移行・バックアップ</span>
+                <span class="admin-fold-description">商品・在庫・購入制限をまとめて保存・復元</span>
+              </h2>
+            </summary>
+            <div class="admin-fold-content">
           <div class="data-transfer-layout">
             <div class="settings-data-copy">
               <strong>レジ設定一式</strong>
               <span
-                >商品・アイコン・購入制限・自動バックアップ間隔をまとめて移行します。販売履歴と保存先は含みません。</span
+                >商品・アイコン・在庫残数・購入制限をまとめて移行します。販売履歴とバックアップ先は含みません。共有時は復元可能な .txt ファイルで送ります。</span
               >
             </div>
             <div class="data-transfer-actions">
@@ -357,7 +491,7 @@
                 id="import-settings-bundle-file"
                 class="visually-hidden"
                 type="file"
-                accept=".json,application/json"
+                accept=".json,.txt,application/json,text/plain"
               />
               <button
                 id="export-settings-bundle"
@@ -366,9 +500,24 @@
               >
                 レジ設定をダウンロード
               </button>
+              <button
+                id="share-settings-bundle"
+                class="button button-secondary button-share"
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="18" cy="5" r="2.5" />
+                  <circle cx="6" cy="12" r="2.5" />
+                  <circle cx="18" cy="19" r="2.5" />
+                  <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                </svg>
+                レジ設定を共有
+              </button>
             </div>
           </div>
-        </section>
+            </div>
+          </details>
+        </div>
       </section>
 
       <section
@@ -441,6 +590,7 @@
           </label>
         </section>
 
+        <!-- 商品一覧と会計を同じタブに置く。スマホでは会計が画面固定なので、スワイプ演出は一覧側だけに適用する。 -->
         <div
           id="tab-panel-products"
           class="tab-panel"
@@ -497,6 +647,7 @@
                 aria-label="お会計領域の高さを調整。上下にドラッグできます"
                 aria-valuetext="自動サイズ"
               ></button>
+              <div class="checkout-scroll-area">
               <div class="panel-heading">
                 <div>
                   <p class="section-kicker">CHECKOUT</p>
@@ -511,9 +662,6 @@
                     >
                   </h2>
                 </div>
-                <button id="clear-cart" class="text-button" type="button">
-                  すべて取消
-                </button>
               </div>
               <div id="cart-list" class="cart-list"></div>
               <div class="total-row">
@@ -571,57 +719,353 @@
                 </div>
               </div>
               <div class="payment-box">
-                <label for="received">お預かり</label>
+                <div class="received-label-row">
+                  <label for="received">お預かり</label>
+                  <button
+                    class="received-clear-button"
+                    type="button"
+                    data-received-action="clear"
+                  >
+                    クリア
+                  </button>
+                </div>
                 <div class="received-row">
                   <input
                     id="received"
                     type="number"
                     min="0"
                     step="1"
-                    inputmode="none"
+                    inputmode="numeric"
                     placeholder="0"
-                    readonly
                     aria-describedby="received-help"
                   />
-                  <button
-                    id="exact-total"
-                    class="button button-secondary"
-                    type="button"
-                  >
-                    ちょうど
-                  </button>
                 </div>
                 <div
                   class="received-quick-buttons"
-                  aria-label="お預かり金額をタップで加算"
+                  aria-label="お預かり金額の調整"
                 >
-                  <button type="button" data-received-add="10">＋10</button>
-                  <button type="button" data-received-add="50">＋50</button>
-                  <button type="button" data-received-add="100">＋100</button>
-                  <button type="button" data-received-add="500">＋500</button>
+                  <button type="button" data-received-add="10">
+                    <svg
+                      class="received-coin received-coin-10"
+                      viewBox="0 0 28 28"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <radialGradient
+                          id="coin10-metal"
+                          cx="34%"
+                          cy="28%"
+                          r="75%"
+                        >
+                          <stop offset="0" stop-color="#f4cca1" />
+                          <stop offset=".52" stop-color="#ca8450" />
+                          <stop offset="1" stop-color="#925a36" />
+                        </radialGradient>
+                      </defs>
+                      <circle class="coin-rim" cx="14" cy="14" r="12.5" />
+                      <circle
+                        class="coin-highlight-ring"
+                        cx="14"
+                        cy="14"
+                        r="11.4"
+                      />
+                      <circle class="coin-inner" cx="14" cy="14" r="10.5" />
+                      <circle
+                        class="coin-detail-ring"
+                        cx="14"
+                        cy="14"
+                        r="9.7"
+                      />
+                      <text class="coin-value coin-value-10" x="14" y="13.3">
+                        10
+                      </text>
+                      <path
+                        class="coin-evergreen"
+                        d="M6.8 21.2c4.2-2.5 9-2.8 14.4-1.3m-11.4.5-2.4-2.5m5.1 1.5-.2-3m3.2 2.7 2.1-2.6m-7.7 3.1-3.5.1m8.7-.6 2.9.2m-6.1-1.8-2.1-2.1m5.2 3 2.1-1.9"
+                      /></svg
+                    >＋10
+                  </button>
+                  <button type="button" data-received-add="50">
+                    <svg
+                      class="received-coin received-coin-50"
+                      viewBox="0 0 28 28"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <radialGradient
+                          id="coin50-metal"
+                          cx="34%"
+                          cy="28%"
+                          r="75%"
+                        >
+                          <stop offset="0" stop-color="#fff" />
+                          <stop offset=".55" stop-color="#d9e0e1" />
+                          <stop offset="1" stop-color="#8e9da0" />
+                        </radialGradient>
+                      </defs>
+                      <circle class="coin-rim" cx="14" cy="14" r="12.5" />
+                      <circle
+                        class="coin-highlight-ring"
+                        cx="14"
+                        cy="14"
+                        r="11.4"
+                      />
+                      <circle class="coin-inner" cx="14" cy="14" r="10.5" />
+                      <circle
+                        class="coin-detail-ring"
+                        cx="14"
+                        cy="14"
+                        r="9.7"
+                      />
+                      <text class="coin-value coin-value-50" x="14" y="11.2">
+                        50
+                      </text>
+                      <circle class="coin-hole" cx="14" cy="14" r="2.2" />
+                      <path
+                        class="coin-year-dots"
+                        d="M8.5 21h.7m.8-.2h1.1m.8.2h.6m.8-.2h1.2m.8.2h.6m.8-.2h1.1m.8.2h.7"
+                      /></svg
+                    >＋50
+                  </button>
+                  <button type="button" data-received-add="100">
+                    <svg
+                      class="received-coin received-coin-100"
+                      viewBox="0 0 28 28"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <radialGradient
+                          id="coin100-metal"
+                          cx="34%"
+                          cy="28%"
+                          r="75%"
+                        >
+                          <stop offset="0" stop-color="#fff" />
+                          <stop offset=".55" stop-color="#e0e5e4" />
+                          <stop offset="1" stop-color="#98a4a2" />
+                        </radialGradient>
+                      </defs>
+                      <circle class="coin-rim" cx="14" cy="14" r="12.5" />
+                      <circle
+                        class="coin-highlight-ring"
+                        cx="14"
+                        cy="14"
+                        r="11.4"
+                      />
+                      <circle class="coin-inner" cx="14" cy="14" r="10.5" />
+                      <circle
+                        class="coin-detail-ring"
+                        cx="14"
+                        cy="14"
+                        r="9.7"
+                      />
+                      <text class="coin-value coin-value-100" x="14" y="16.8">
+                        100
+                      </text>
+                      <path
+                        class="coin-year-dots"
+                        d="M8.5 21h.7m.8-.2h1.1m.8.2h.6m.8-.2h1.2m.8.2h.6m.8-.2h1.1m.8.2h.7"
+                      /></svg
+                    >＋100
+                  </button>
+                  <button type="button" data-received-add="500">
+                    <svg
+                      class="received-coin received-coin-500"
+                      viewBox="0 0 28 28"
+                      aria-hidden="true"
+                    >
+                      <defs>
+                        <radialGradient
+                          id="coin500-rim"
+                          cx="35%"
+                          cy="28%"
+                          r="75%"
+                        >
+                          <stop offset="0" stop-color="#f7e8b1" />
+                          <stop offset=".58" stop-color="#d1ad50" />
+                          <stop offset="1" stop-color="#967631" />
+                        </radialGradient>
+                        <radialGradient
+                          id="coin500-center"
+                          cx="35%"
+                          cy="28%"
+                          r="80%"
+                        >
+                          <stop offset="0" stop-color="#fff" />
+                          <stop offset=".6" stop-color="#d9dfde" />
+                          <stop offset="1" stop-color="#9aa5a4" />
+                        </radialGradient>
+                        <clipPath id="coin500-face">
+                          <circle cx="14" cy="14" r="12.8" />
+                        </clipPath>
+                      </defs>
+                      <circle class="coin-rim" cx="14" cy="14" r="13" />
+                      <circle
+                        class="coin-highlight-ring"
+                        cx="14"
+                        cy="14"
+                        r="12"
+                      />
+                      <circle class="coin-inner" cx="14" cy="14" r="9.1" />
+                      <circle
+                        class="coin-detail-ring"
+                        cx="14"
+                        cy="14"
+                        r="8.5"
+                      />
+                      <g clip-path="url(#coin500-face)">
+                        <path
+                          class="coin-bamboo"
+                          d="M5.1 5.4v17.2m-.8-12.2h1.6m-.8 4.7h1.6m-.8 4.6h1.6M5.1 8c.9-.9 1.5-1.9 2.1-3.2M5.1 9.2c1.2-.5 2-1.3 2.7-2.3M5.1 12.3c1-.8 1.6-1.7 2.1-2.8m-2.1 4.1c1.1-.6 1.8-1.4 2.4-2.4m-2.4 6c1-.6 1.6-1.4 2.1-2.4m-2.1 4c.9-.4 1.5-1.1 2-1.9"
+                        />
+                        <text class="coin-value coin-value-500" x="14" y="16.2">
+                          500
+                        </text>
+                        <circle
+                          class="coin-orange"
+                          cx="22.3"
+                          cy="20.3"
+                          r="1.15"
+                        />
+                        <circle
+                          class="coin-orange"
+                          cx="24.1"
+                          cy="17.8"
+                          r=".95"
+                        />
+                        <path
+                          class="coin-orange-leaf"
+                          d="M21.8 18.5c-.5-1.6.1-2.7 1.7-3.1.1 1.5-.5 2.6-1.7 3.1zm2.2-1.8c.2-1.4 1.1-2 2.4-1.8-.3 1.2-1.1 1.8-2.4 1.8z"
+                        />
+                        <path
+                          class="coin-year-dots"
+                          d="M10 21.7h.6m.7-.2h.9m.7.2h.6m.7-.2h.9m.7.2h.6m.7-.2h.9m.7.2h.6"
+                        />
+                      </g></svg
+                    >＋500
+                  </button>
                   <button type="button" data-received-add="1000">
-                    ＋1,000
+                    <svg
+                      class="received-coin received-banknote-1000"
+                      viewBox="0 0 38 24"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        class="banknote-field"
+                        x="1"
+                        y="1"
+                        width="36"
+                        height="22"
+                        rx="2.2"
+                      />
+                      <rect
+                        class="banknote-border"
+                        x="2.8"
+                        y="2.8"
+                        width="32.4"
+                        height="18.4"
+                        rx="1.4"
+                      />
+                      <path
+                        class="banknote-portrait"
+                        d="M9.2 5.3c2.2-.2 3.6 1.2 3.5 3-.1 1-.7 1.7-1.1 2.3l.9 1.3-.7 1.2.2 2.2 2.2 1.5v1H5v-2.2c-.8-.8-1.1-1.9-1-3.3.2-3.4 2-6.6 5.2-7z"
+                      />
+                      <path
+                        class="banknote-hair"
+                        d="M5.1 10.1c.3-3.2 2.2-5.1 5-5 1.8.1 2.8 1.2 3.1 2.5-.8-.5-1.6-.7-2.5-.5-.7-.7-1.9-.7-2.7-.1-.8.5-1.3 1.7-1.3 3.1l-1.6 1.1z"
+                      />
+                      <path
+                        class="banknote-face-lines"
+                        d="M8 10.4h1m1.9 1.3.5 1.2m-2.1 1.3h1.1"
+                      />
+                      <path
+                        class="banknote-collar"
+                        d="m7.1 17.1 2.3-1.5 2.3 1.5 1.6 2.1H5.5z"
+                      />
+                      <path
+                        class="banknote-wave"
+                        d="M16 17.5c1.8-2.7 3.4-1.6 4.8-4.1 1.5-2.6 3.2-1.4 4.6-4.2 1.3-2.4 3-1.4 4.8-3.5M16 19.5c1.8-2.7 3.4-1.6 4.8-4.1 1.5-2.6 3.2-1.4 4.6-4.2 1.3-2.4 3-1.4 4.8-3.5"
+                      />
+                      <path
+                        class="banknote-wave-crest"
+                        d="M26.7 8c1.1-1.9 2.3-2.1 3.5-2.3-.6 1.1-1.5 2.4-3.4 2.8m-2.3 2.7c.9-1.7 1.9-1.9 2.9-2.1-.5 1-1.2 2-2.8 2.5"
+                      />
+                      <circle
+                        class="banknote-seal"
+                        cx="32.1"
+                        cy="6.2"
+                        r="1.6"
+                      /></svg
+                    >＋1,000
                   </button>
-                  <button type="button" data-received-action="clear">
-                    クリア
-                  </button>
+                  <button id="exact-total" type="button">ちょうど</button>
                 </div>
                 <p id="received-help" class="received-help">
-                  金額ボタンを押してお預かりを加算します。
+                  金額を直接入力するか、ボタンで加算できます。
                 </p>
                 <div class="change-row">
                   <span>おつり</span><strong id="change">¥0</strong>
                 </div>
-                <p id="payment-message" class="field-message"></p>
+                <p id="payment-message" class="field-message" role="alert" aria-live="polite"></p>
               </div>
-              <button
-                id="confirm-button"
-                class="confirm-button"
-                type="button"
-                disabled
-              >
-                会計を確定する
-              </button>
+              <div class="sale-note">
+                <button
+                  id="sale-note-toggle"
+                  class="sale-note-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="sale-note-field"
+                >
+                  ＋ 会計メモを追加
+                </button>
+                <div id="sale-note-field" class="sale-note-field is-hidden">
+                  <label for="sale-note">会計メモ</label>
+                  <textarea
+                    id="sale-note"
+                    maxlength="200"
+                    rows="2"
+                    placeholder="例：取り置き、特記事項"
+                  ></textarea>
+                  <span id="sale-note-count" class="sale-note-count">0/200</span>
+                </div>
+              </div>
+              <div class="undo-sale-anchor">
+                <button
+                  id="undo-last-sale"
+                  class="undo-last-sale is-hidden"
+                  type="button"
+                >
+                  直前の会計を取り消す
+                </button>
+              </div>
+              </div>
+              <div class="checkout-actions-footer">
+                <button
+                  id="confirm-button"
+                  class="confirm-button"
+                  type="button"
+                  disabled
+                >
+                  会計を確定する
+                </button>
+                <div class="checkout-footer-secondary">
+                  <button
+                    id="mobile-checkout-close"
+                    class="checkout-mobile-close"
+                    type="button"
+                    aria-label="商品選択に戻る"
+                  >
+                    ← 商品を選ぶ
+                  </button>
+                  <button
+                    id="clear-cart"
+                    class="checkout-clear-button"
+                    type="button"
+                  >
+                    すべて取り消す
+                  </button>
+                </div>
+              </div>
             </section>
           </div>
         </div>
@@ -649,6 +1093,45 @@
                 >全時間帯</span
               >
             </div>
+            <section
+              class="daily-close-panel"
+              aria-labelledby="daily-close-title"
+            >
+              <div class="daily-close-heading">
+                <div>
+                  <h3 id="daily-close-title">日次締めレポート</h3>
+                  <p>日付を選ぶと、その日の会計と商品別売上を確認できます。</p>
+                </div>
+                <label>対象日<input id="daily-close-date" type="date" /></label>
+              </div>
+              <div
+                id="daily-close-summary"
+                class="daily-close-summary"
+                aria-live="polite"
+              ></div>
+              <div class="daily-close-actions">
+                <button
+                  id="daily-close-export"
+                  class="button button-secondary"
+                  type="button"
+                >
+                  締めレポートをCSV保存
+                </button>
+                <button
+                  id="daily-close-share"
+                  class="button button-secondary button-share"
+                  type="button"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="2.5" />
+                    <circle cx="6" cy="12" r="2.5" />
+                    <circle cx="18" cy="19" r="2.5" />
+                    <path d="m8.3 10.7 7.4-4.4m-7.4 7 7.4 4.4" />
+                  </svg>
+                  締めレポートを共有
+                </button>
+              </div>
+            </section>
             <div class="analytics-charts">
               <article
                 class="analytics-chart-card"
@@ -690,14 +1173,14 @@
               >
                 <div class="chart-card-heading">
                   <h3 id="share-chart-title">売上構成比</h3>
-                  <span class="chart-card-unit">売上全体に占める割合</span>
+                  <span class="chart-card-unit">売上割合・販売個数</span>
                 </div>
                 <div class="chart-wrap">
                   <svg
                     id="share-chart"
                     viewBox="0 0 760 360"
                     role="img"
-                    aria-label="商品別売上構成比"
+                    aria-label="商品別売上構成比・販売個数"
                   ></svg>
                 </div>
               </article>
@@ -747,6 +1230,29 @@
                   role="img"
                   aria-label="カテゴリ別販売数グラフ"
                 ></div>
+              </article>
+              <article
+                class="analytics-chart-card inventory-chart-card"
+                aria-labelledby="inventory-chart-title"
+              >
+                <div class="chart-card-heading">
+                  <h3 id="inventory-chart-title">在庫残数</h3>
+                  <span class="chart-card-unit">在庫上限を設定した商品</span>
+                </div>
+                <p
+                  id="inventory-chart-summary"
+                  class="inventory-chart-summary"
+                  aria-live="polite"
+                ></p>
+                <div
+                  id="inventory-chart"
+                  class="inventory-chart"
+                  role="list"
+                  aria-label="商品別の在庫残数"
+                ></div>
+                <p class="inventory-chart-note">
+                  横棒は現在の残数の割合です。残り3個以下はオレンジで表示します。
+                </p>
               </article>
               <article
                 class="analytics-chart-card"
@@ -827,6 +1333,33 @@
                   </table>
                 </div>
               </article>
+              <article
+                class="analytics-chart-card weekday-heatmap-card"
+                aria-labelledby="weekday-heatmap-title"
+              >
+                <div class="chart-card-heading">
+                  <h3 id="weekday-heatmap-title">曜日×時間帯の混雑</h3>
+                  <span class="chart-card-unit">会計件数 · 濃いほど多い</span>
+                </div>
+                <p class="weekday-heatmap-note">
+                  選択中の集計期間と時間帯を反映します。複数日のデータがあると曜日ごとの傾向を比べやすくなります。
+                </p>
+                <div class="weekday-heatmap-scroll">
+                  <table
+                    class="weekday-heatmap"
+                    aria-describedby="weekday-heatmap-help"
+                  >
+                    <caption class="visually-hidden">
+                      曜日と時間帯別の会計件数
+                    </caption>
+                    <thead id="weekday-heatmap-head"></thead>
+                    <tbody id="weekday-heatmap-body"></tbody>
+                  </table>
+                </div>
+                <span id="weekday-heatmap-help" class="visually-hidden"
+                  >各セルの数字はその曜日・時間帯の会計件数です。</span
+                >
+              </article>
             </div>
           </section>
         </div>
@@ -845,15 +1378,108 @@
                 <h2 id="history-title">直近の会計</h2>
               </div>
             </div>
+            <div class="history-tools">
+              <label
+                >キーワード<input
+                  id="history-search"
+                  type="search"
+                  placeholder="商品名・カテゴリで検索"
+              /></label>
+              <label>開始日<input id="history-from" type="date" /></label>
+              <label>終了日<input id="history-to" type="date" /></label>
+              <button
+                id="history-filter-clear"
+                class="button button-secondary"
+                type="button"
+              >
+                条件をクリア
+              </button>
+            </div>
+            <div
+              class="history-results"
+              id="history-results"
+              aria-live="polite"
+            ></div>
             <div id="history-body" class="history-list" role="list"></div>
+            <button
+              id="history-load-more"
+              class="button button-secondary history-load-more is-hidden"
+              type="button"
+            >
+              さらに20件表示
+            </button>
           </section>
+        </div>
+
+        <div id="mobile-checkout-bar" class="mobile-checkout-bar">
+          <div class="mobile-checkout-total" aria-live="polite">
+            <span>お会計合計</span>
+            <strong id="mobile-cart-total">¥0</strong>
+          </div>
+          <button
+            id="mobile-checkout-open"
+            class="mobile-checkout-open button-primary"
+            type="button"
+            aria-expanded="false"
+            aria-controls="checkout-panel"
+          >
+            会計に進む
+            <span aria-hidden="true">›</span>
+          </button>
         </div>
       </section>
     </main>
 
+    <dialog
+      id="admin-password-dialog"
+      class="confirmation-dialog admin-password-dialog"
+      aria-labelledby="admin-password-dialog-title"
+      aria-describedby="admin-password-dialog-message"
+    >
+      <form id="admin-password-form" class="confirmation-dialog-content">
+        <span class="confirmation-dialog-icon" aria-hidden="true">🔒</span>
+        <h2 id="admin-password-dialog-title">管理者パスワード</h2>
+        <p id="admin-password-dialog-message">商品・在庫・購入制限を変更するには管理者パスワードが必要です。</p>
+        <label class="admin-password-label" for="admin-password">
+          管理者パスワード
+          <input id="admin-password" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="admin-password-error" class="shared-login-error" role="alert"></p>
+        <div class="confirmation-dialog-actions">
+          <button id="admin-password-cancel" class="button button-secondary" type="button">キャンセル</button>
+          <button id="admin-password-submit" class="button button-primary" type="submit">管理を開く</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog
+      id="clear-cart-dialog"
+      class="confirmation-dialog"
+      aria-labelledby="clear-cart-dialog-title"
+      aria-describedby="clear-cart-dialog-message"
+    >
+      <div class="confirmation-dialog-content">
+        <span class="confirmation-dialog-icon" aria-hidden="true">!</span>
+        <h2 id="clear-cart-dialog-title">会計をすべて取り消しますか？</h2>
+        <p id="clear-cart-dialog-message">
+          選択中の商品と入力内容が消えます。確定済みの会計履歴は削除されません。
+        </p>
+        <div class="confirmation-dialog-actions">
+          <button id="clear-cart-dialog-cancel" class="button button-secondary" type="button">
+            キャンセル
+          </button>
+          <button id="clear-cart-dialog-confirm" class="button button-danger" type="button">
+            すべて取り消す
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="api-config.js"></script>
+    <script src="d1-client.js"></script>
     <script src="core.js"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20261022-share-chart-leaders"></script>
   </body>
 </html>

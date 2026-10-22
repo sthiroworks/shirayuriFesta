@@ -547,6 +547,38 @@
     return ledger;
   }
 
+  function resetInventoryPeriod(products, inventory) {
+    // 会計履歴は残したまま、現在の残数を新しい販売期間の初期在庫として販売累計をリセットする。
+    const source = inventory || {};
+    const sales = source.salesByProduct || {};
+    const physical = source.remainingByProduct || {};
+    const nextInventory = {
+      salesByProduct: {},
+      remainingByProduct: {},
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const nextProducts = (products || []).map((product) => {
+      const nextProduct = { ...product };
+      const limit = Number(product && product.stockLimit);
+      const hasLimit = Number.isInteger(limit) && limit >= 0;
+      const sold = Math.max(0, Math.floor(Number(sales[product.id]) || 0));
+      const currentRemaining = hasLimit
+        ? (Object.prototype.hasOwnProperty.call(physical, product.id)
+          ? Math.max(0, Math.floor(Number(physical[product.id]) || 0))
+          : Math.max(0, limit - sold))
+        : null;
+      nextInventory.salesByProduct[product.id] = 0;
+      if (hasLimit) {
+        nextProduct.stockLimit = currentRemaining;
+        nextInventory.remainingByProduct[product.id] = currentRemaining;
+      } else {
+        delete nextProduct.stockLimit;
+      }
+      return nextProduct;
+    });
+    return { products: nextProducts, inventory: nextInventory };
+  }
+
   function summarizeInventoryAvailability(products, inventory) {
     const source = inventory || {};
     const sales = source.salesByProduct || {};
@@ -886,6 +918,6 @@
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };
   }
 
-  return { makeProduct, makeProductCopy, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
+  return { makeProduct, makeProductCopy, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, resetInventoryPeriod, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
 });
 

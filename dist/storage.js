@@ -5,9 +5,11 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
+  // localStorage の読み込み検証と永続化を集約し、UI 側にキー名や復旧手順を漏らさない。
   const PRODUCT_KEY = 'shirayuri-products-v1';
   const TRANSACTION_KEY = 'shirayuri-transactions-v1';
   const SETTINGS_KEY = 'shirayuri-settings-v1';
+  const INVENTORY_KEY = 'shirayuri-inventory-v1';
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -47,7 +49,7 @@
   }
 
   function isProduct(value) {
-    return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && typeof value.category === 'string' && typeof value.name === 'string' && Number.isFinite(value.unitPrice));
+    return Boolean(value && typeof value === 'object' && typeof value.id === 'string' && typeof value.category === 'string' && typeof value.name === 'string' && Number.isFinite(value.unitPrice) && (value.stockLimit === undefined || (Number.isInteger(value.stockLimit) && value.stockLimit >= 0)));
   }
 
   function isTransaction(value) {
@@ -72,10 +74,79 @@
     saveJson(storage, TRANSACTION_KEY, transactions);
   }
 
+  function isInventoryLedger(value) {
+    const validCounts = (counts) => counts && typeof counts === 'object' && !Array.isArray(counts)
+      && Object.values(counts).every((count) => Number.isInteger(count) && count >= 0);
+    const validAdjustments = Array.isArray(value && value.adjustments) && value.adjustments.every((entry) => (
+      entry && typeof entry === 'object' && typeof entry.productId === 'string' && typeof entry.recordedAt === 'string'
+      && Number.isInteger(entry.after) && entry.after >= 0
+      && (entry.before === null || (Number.isInteger(entry.before) && entry.before >= 0))
+    ));
+    return Boolean(value && typeof value === 'object' && validCounts(value.salesByProduct)
+      && validCounts(value.remainingByProduct) && validAdjustments);
+  }
+
+  function loadInventory(storage) {
+    const raw = storage.getItem(INVENTORY_KEY);
+    if (raw === null) return { inventory: null, warning: null };
+    try {
+      const inventory = JSON.parse(raw);
+      if (!isInventoryLedger(inventory)) throw new Error('保存形式が不正です');
+      return { inventory, warning: null };
+    } catch (error) {
+      return { inventory: null, warning: '在庫台帳を読み込めなかったため、会計履歴から再作成しました' };
+    }
+  }
+
+  function saveInventory(storage, inventory) {
+    if (!isInventoryLedger(inventory)) throw new Error('在庫台帳の保存形式が不正です');
+    saveJson(storage, INVENTORY_KEY, inventory);
+  }
+
+  function saveProductsAndInventory(storage, products, inventory) {
+    // localStorage に複数キーの一括トランザクションはないため、先に退避して部分更新を巻き戻す。
+    const previousProducts = storage.getItem(PRODUCT_KEY);
+    const previousInventory = storage.getItem(INVENTORY_KEY);
+    try {
+      saveProducts(storage, products);
+      saveInventory(storage, inventory);
+    } catch (error) {
+      try {
+        if (previousProducts === null) storage.removeItem(PRODUCT_KEY);
+        else storage.setItem(PRODUCT_KEY, previousProducts);
+        if (previousInventory === null) storage.removeItem(INVENTORY_KEY);
+        else storage.setItem(INVENTORY_KEY, previousInventory);
+      } catch (restoreError) {
+        // Preserve the original failure for the caller; it can show a single actionable message.
+      }
+      throw error;
+    }
+  }
+
+  function saveSalesAndInventory(storage, transactions, inventory) {
+    // 会計履歴と在庫台帳も同じ更新として扱い、片方だけの保存で数字が食い違うのを防ぐ。
+    const previousTransactions = storage.getItem(TRANSACTION_KEY);
+    const previousInventory = storage.getItem(INVENTORY_KEY);
+    try {
+      saveTransactions(storage, transactions);
+      saveInventory(storage, inventory);
+    } catch (error) {
+      try {
+        if (previousTransactions === null) storage.removeItem(TRANSACTION_KEY);
+        else storage.setItem(TRANSACTION_KEY, previousTransactions);
+        if (previousInventory === null) storage.removeItem(INVENTORY_KEY);
+        else storage.setItem(INVENTORY_KEY, previousInventory);
+      } catch (restoreError) {
+        // Preserve the original failure for the caller; it can show a single actionable message.
+      }
+      throw error;
+    }
+  }
+
   function clearTransactions(storage) {
     storage.removeItem(TRANSACTION_KEY);
   }
 
-  return { loadProducts, saveProducts, loadTransactions, saveTransactions, clearTransactions, loadSettings, saveSettings };
+  return { loadProducts, saveProducts, saveProductsAndInventory, loadTransactions, saveTransactions, saveSalesAndInventory, clearTransactions, loadInventory, saveInventory, loadSettings, saveSettings };
 });
 

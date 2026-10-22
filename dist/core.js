@@ -5,6 +5,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   'use strict';
 
+  // DOM やブラウザ保存領域に依存しない計算・変換処理。Node のテストからも同じ関数を使う。
   function clean(value) {
     return value == null ? '' : String(value).replace(/^\uFEFF/, '').trim();
   }
@@ -30,12 +31,30 @@
     };
   }
 
+  function makeProductCopy(source, products, copyId) {
+    const baseName = `${clean(source.name)}（コピー）`;
+    let name = baseName;
+    let sequence = 2;
+    while ((products || []).some((product) => product.category === source.category && product.name === name)) {
+      name = `${clean(source.name)}（コピー${sequence}）`;
+      sequence += 1;
+    }
+    const copy = makeProduct(source.category, name, source.unitPrice);
+    if (copyId) copy.id = String(copyId);
+    if (Number.isInteger(source.stockLimit) && source.stockLimit >= 0) copy.stockLimit = source.stockLimit;
+    if (source.startNewRow === true) copy.startNewRow = true;
+    if (source.icon) copy.icon = source.icon;
+    if (source.iconPath) copy.iconPath = source.iconPath;
+    return copy;
+  }
+
   function detectDelimiter(text) {
     const firstLine = String(text).split(/\r?\n/, 1)[0];
     return firstLine.includes('\t') ? '\t' : ',';
   }
 
   function parseRows(text, delimiter) {
+    // 引用符の内側では区切り文字・改行をセルの値として扱い、二重引用符は1文字に戻す。
     const rows = [];
     let row = [];
     let field = '';
@@ -86,7 +105,7 @@
     const products = new Map();
     const stats = { accepted: 0, rejected: 0, duplicates: 0 };
 
-    function addProduct(category, name, price, rowNumber, icon, iconPath) {
+    function addProduct(category, name, price, rowNumber, icon, iconPath, stockLimitValue, productIdValue, startNewRowValue) {
       const normalizedCategory = clean(category) || 'その他';
       const normalizedName = clean(name);
       if (!normalizedName || price === null) {
@@ -94,7 +113,17 @@
         warnings.push(`${rowNumber}行目: 商品名または単価が不正です`);
         return;
       }
+      const rawStockLimit = clean(stockLimitValue);
+      const stockLimit = rawStockLimit === '' ? null : parsePrice(rawStockLimit);
+      if (rawStockLimit !== '' && (stockLimit === null || !Number.isInteger(stockLimit) || stockLimit < 0)) {
+        stats.rejected += 1;
+        warnings.push(`${rowNumber}行目: 在庫上限は0以上の整数で入力してください`);
+        return;
+      }
       const product = makeProduct(normalizedCategory, normalizedName, price);
+      if (clean(productIdValue)) product.id = clean(productIdValue);
+      if (stockLimit !== null) product.stockLimit = stockLimit;
+      if (['true', '1', 'yes', 'y', 'はい', 'する'].includes(clean(startNewRowValue).toLowerCase())) product.startNewRow = true;
       const normalizedIcon = clean(icon);
       if (normalizedIcon) product.icon = normalizedIcon;
       const normalizedIconPath = clean(iconPath);
@@ -119,12 +148,15 @@
     const priceIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['単価', '金額', '価格', 'price', 'unitprice'].includes(value));
     const iconIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['アイコン', 'icon', 'emoji'].includes(value));
     const iconPathIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['アイコンパス', 'iconpath'].includes(value));
+    const stockLimitIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['在庫上限', 'stocklimit', 'stock'].includes(value));
+    const productIdIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['商品id', 'productid'].includes(value));
+    const startNewRowIndex = normalizedHeader && normalizedHeader.findIndex((value) => ['次の行から表示', '次行から表示', 'startnewrow'].includes(value));
     const isNormalized = normalizedHeader && categoryIndex >= 0 && nameIndex >= 0 && priceIndex >= 0;
 
     if (isNormalized) {
       nonEmptyRows.slice(headerIndex + 1).forEach((row, offset) => {
         const rowNumber = headerIndex + offset + 2;
-        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '');
+        addProduct(row[categoryIndex], row[nameIndex], parsePrice(row[priceIndex]), rowNumber, iconIndex >= 0 ? row[iconIndex] : '', iconPathIndex >= 0 ? row[iconPathIndex] : '', stockLimitIndex >= 0 ? row[stockLimitIndex] : '', productIdIndex >= 0 ? row[productIdIndex] : '', startNewRowIndex >= 0 ? row[startNewRowIndex] : '');
       });
     } else {
       const blocks = [];
@@ -156,7 +188,14 @@
     }
 
     if (products.size === 0 && rows.length > 0) warnings.push('取り込める商品がありません');
-    return { products: Array.from(products.values()), warnings, stats };
+    return {
+      products: Array.from(products.values()),
+      warnings,
+      stats,
+      hasStockLimitColumn: Boolean(normalizedHeader && stockLimitIndex >= 0),
+      hasProductIdColumn: Boolean(normalizedHeader && productIdIndex >= 0),
+      hasStartNewRowColumn: Boolean(normalizedHeader && startNewRowIndex >= 0),
+    };
   }
 
   function calculateCart(lines) {
@@ -166,13 +205,15 @@
       const quantity = Math.max(0, Math.floor(Number(line.quantity) || 0));
       if (!product || quantity === 0) return;
       const subtotal = product.unitPrice * quantity;
-      lineItems.push({
+      const item = {
         category: product.category,
         name: product.name,
         unitPrice: product.unitPrice,
         quantity,
         subtotal,
-      });
+      };
+      if (typeof product.id === 'string' && product.id) item.productId = product.id;
+      lineItems.push(item);
     });
     return {
       lineItems,
@@ -184,6 +225,7 @@
   function buildTransaction(input) {
     const cart = calculateCart(input.lines);
     const received = Number(input.received);
+    const note = clean(input.note);
     if (cart.total < 0) throw new Error('合計金額がマイナスです');
     if (!Number.isFinite(received) || received < cart.total) throw new Error('お預かりが不足しています');
     return {
@@ -194,10 +236,12 @@
       change: received - cart.total,
       itemCount: cart.itemCount,
       items: cart.lineItems,
+      ...(note ? { note } : {}),
     };
   }
 
   function calculatePurchaseLimit(lines, settings) {
+    // 制限対象カテゴリだけを合算する。設定には会計単位の一時上書きも渡せる。
     const enabled = Boolean(settings && settings.enabled);
     const category = clean(settings && settings.category);
     const siblings = Math.max(1, Math.floor(Number(settings && settings.siblings) || 1));
@@ -226,6 +270,7 @@
   }
 
   function isSameLocalWeek(dateValue, now) {
+    // 集計期間は端末のローカル時刻で扱い、週は月曜開始・翌週月曜未満とする。
     const date = new Date(dateValue);
     if (Number.isNaN(date.getTime())) return false;
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -260,6 +305,7 @@
   }
 
   function summarizeTransactions(transactions, period, nowValue, timeRange) {
+    // 期間と時間帯を先に絞り、その同じ対象集合から全ての集計表・グラフ用データを作る。
     const now = nowValue instanceof Date ? nowValue : new Date(nowValue || Date.now());
     const selected = (transactions || []).filter((transaction) => {
       if (period === 'today') return isSameLocalDay(transaction.recordedAt, now);
@@ -338,6 +384,34 @@
     };
   }
 
+  function summarizeWeekdayHours(transactions, period, nowValue, timeRange) {
+    const now = nowValue instanceof Date ? nowValue : new Date(nowValue || Date.now());
+    const labels = ['日', '月', '火', '水', '木', '金', '土'];
+    const weekdays = labels.map((label, weekday) => ({
+      weekday,
+      label,
+      hours: Array.from({ length: 24 }, (_, hour) => ({ hour, transactionCount: 0, itemCount: 0, sales: 0 })),
+    }));
+    const selected = (transactions || []).filter((transaction) => {
+      if (period === 'today') return isSameLocalDay(transaction.recordedAt, now);
+      if (period === 'week') return isSameLocalWeek(transaction.recordedAt, now);
+      if (period === 'month') return isSameLocalMonth(transaction.recordedAt, now);
+      return true;
+    }).filter((transaction) => isWithinLocalHour(transaction.recordedAt, timeRange));
+    selected.forEach((transaction) => {
+      const date = new Date(transaction.recordedAt);
+      if (Number.isNaN(date.getTime())) return;
+      const cell = weekdays[date.getDay()].hours[date.getHours()];
+      cell.transactionCount += 1;
+      cell.itemCount += Number(transaction.itemCount) || 0;
+      cell.sales += Number(transaction.total) || 0;
+    });
+    return {
+      weekdays,
+      maxTransactions: Math.max(0, ...weekdays.flatMap((day) => day.hours.map((hour) => hour.transactionCount))),
+    };
+  }
+
   function csvEscape(value) {
     const text = value == null ? '' : String(value);
     return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -354,7 +428,7 @@
   }
 
   function transactionsToCsv(transactions) {
-    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額'];
+    const lines = ['会計ID,会計日時,会計日,週開始日,会計合計,お預かり,おつり,会計点数,明細番号,カテゴリ,商品名,単価,数量,売上金額,商品ID,会計メモ'];
     (transactions || []).forEach((transaction) => {
       const dates = formatExportDate(transaction.recordedAt);
       const items = transaction.items || [];
@@ -374,14 +448,194 @@
           item.unitPrice,
           item.quantity,
           item.subtotal,
+          item.productId || '',
+          transaction.note || '',
         ].map(csvEscape).join(','));
       });
     });
     return lines.join('\r\n');
   }
 
+  function inventoryKeyForItem(item, products) {
+    if (item && clean(item.productId)) return clean(item.productId);
+    const product = (products || []).find((candidate) => candidate.category === item.category && candidate.name === item.name);
+    return product ? product.id : `${clean(item && item.category)}::${clean(item && item.name)}`;
+  }
+
+  function inventoryCountsForTransaction(transaction, products) {
+    const counts = {};
+    (transaction && transaction.items || []).forEach((item) => {
+      const key = inventoryKeyForItem(item, products);
+      const quantity = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      if (!key || !quantity) return;
+      counts[key] = (counts[key] || 0) + quantity;
+    });
+    return counts;
+  }
+
+  function createInventoryLedger(products, transactions) {
+    // 販売累計は履歴から集計する一方、物理残数は上限から初期化して別々に保持する。
+    const ledger = { salesByProduct: {}, remainingByProduct: {}, adjustments: [] };
+    (transactions || []).forEach((transaction) => {
+      const counts = inventoryCountsForTransaction(transaction, products);
+      Object.entries(counts).forEach(([key, quantity]) => {
+        ledger.salesByProduct[key] = (ledger.salesByProduct[key] || 0) + quantity;
+      });
+    });
+    (products || []).forEach((product) => {
+      const limit = Number(product.stockLimit);
+      if (Number.isInteger(limit) && limit >= 0) {
+        ledger.remainingByProduct[product.id] = Math.max(0, limit - (ledger.salesByProduct[product.id] || 0));
+      }
+    });
+    return ledger;
+  }
+
+  function applyInventoryTransactionChange(inventory, previousTransaction, nextTransaction, products) {
+    // 新旧会計の差分だけを反映するため、編集・取消でも過去分を二重に加減算しない。
+    // 販売累計と物理残数は別軸で更新し、在庫調整履歴はそのまま引き継ぐ。
+    const source = inventory || {};
+    const ledger = {
+      salesByProduct: { ...(source.salesByProduct || {}) },
+      remainingByProduct: { ...(source.remainingByProduct || {}) },
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const before = inventoryCountsForTransaction(previousTransaction, products);
+    const after = inventoryCountsForTransaction(nextTransaction, products);
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    keys.forEach((key) => {
+      const oldQuantity = before[key] || 0;
+      const newQuantity = after[key] || 0;
+      const delta = newQuantity - oldQuantity;
+      const currentSales = Math.max(0, Math.floor(Number(ledger.salesByProduct[key]) || 0));
+      const product = (products || []).find((candidate) => candidate.id === key);
+      const limit = Number(product && product.stockLimit);
+      if (Number.isInteger(limit) && limit >= 0 && !Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, key)) {
+        ledger.remainingByProduct[key] = Math.max(0, limit - currentSales);
+      }
+      ledger.salesByProduct[key] = Math.max(0, currentSales + delta);
+      if (Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, key)) {
+        ledger.remainingByProduct[key] = Math.max(0, Number(ledger.remainingByProduct[key]) - delta);
+      }
+    });
+    return ledger;
+  }
+
+  function adjustInventory(inventory, productId, productName, remaining, now) {
+    // 手動調整は現在残数だけを置き換え、販売累計には触れず、直近50件の変更履歴を残す。
+    const quantity = Number(remaining);
+    if (!productId || !Number.isInteger(quantity) || quantity < 0) throw new Error('在庫残数は0以上の整数で入力してください');
+    const source = inventory || {};
+    const ledger = {
+      salesByProduct: { ...(source.salesByProduct || {}) },
+      remainingByProduct: { ...(source.remainingByProduct || {}) },
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const previous = Object.prototype.hasOwnProperty.call(ledger.remainingByProduct, productId)
+      ? Math.max(0, Number(ledger.remainingByProduct[productId]) || 0)
+      : null;
+    ledger.remainingByProduct[productId] = quantity;
+    ledger.adjustments.unshift({
+      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      productId,
+      productName: clean(productName),
+      recordedAt: (now ? new Date(now) : new Date()).toISOString(),
+      before: previous,
+      after: quantity,
+    });
+    ledger.adjustments = ledger.adjustments.slice(0, 50);
+    return ledger;
+  }
+
+  function resetInventoryPeriod(products, inventory) {
+    // 会計履歴は残したまま、現在の残数を新しい販売期間の初期在庫として販売累計をリセットする。
+    const source = inventory || {};
+    const sales = source.salesByProduct || {};
+    const physical = source.remainingByProduct || {};
+    const nextInventory = {
+      salesByProduct: {},
+      remainingByProduct: {},
+      adjustments: Array.isArray(source.adjustments) ? source.adjustments.slice() : [],
+    };
+    const nextProducts = (products || []).map((product) => {
+      const nextProduct = { ...product };
+      const limit = Number(product && product.stockLimit);
+      const hasLimit = Number.isInteger(limit) && limit >= 0;
+      const sold = Math.max(0, Math.floor(Number(sales[product.id]) || 0));
+      const currentRemaining = hasLimit
+        ? (Object.prototype.hasOwnProperty.call(physical, product.id)
+          ? Math.max(0, Math.floor(Number(physical[product.id]) || 0))
+          : Math.max(0, limit - sold))
+        : null;
+      nextInventory.salesByProduct[product.id] = 0;
+      if (hasLimit) {
+        nextProduct.stockLimit = currentRemaining;
+        nextInventory.remainingByProduct[product.id] = currentRemaining;
+      } else {
+        delete nextProduct.stockLimit;
+      }
+      return nextProduct;
+    });
+    return { products: nextProducts, inventory: nextInventory };
+  }
+
+  function summarizeInventoryAvailability(products, inventory) {
+    const source = inventory || {};
+    const sales = source.salesByProduct || {};
+    const physical = source.remainingByProduct || {};
+    return (products || []).flatMap((product) => {
+      const limit = Number(product && product.stockLimit);
+      if (!Number.isInteger(limit) || limit < 0) return [];
+      const sold = Math.max(0, Math.floor(Number(sales[product.id]) || 0));
+      const limitRemaining = Math.max(0, limit - sold);
+      const physicalRemaining = Object.prototype.hasOwnProperty.call(physical, product.id)
+        ? Math.max(0, Math.floor(Number(physical[product.id]) || 0))
+        : limitRemaining;
+      const remaining = Math.min(limitRemaining, physicalRemaining);
+      const remainingRatio = limit ? remaining / limit : 0;
+      return [{ product, total: limit, sold, remaining, remainingRatio, soldPercent: limit ? Math.round((1 - remainingRatio) * 100) : 0 }];
+    });
+  }
+
+  function dailyCloseReport(transactions, date) {
+    // 指定日のローカル日付で締め、CSVには日計1行と商品別明細を出す。
+    // 商品IDのない古い会計はカテゴリ名と商品名の組でまとめる。
+    const targetDate = clean(date);
+    const dailyTransactions = (transactions || []).filter((transaction) => localDateKey(transaction.recordedAt) === targetDate);
+    const totals = dailyTransactions.reduce((result, transaction) => {
+      result.sales += Number(transaction.total) || 0;
+      result.items += Number(transaction.itemCount) || 0;
+      result.received += Number(transaction.received) || 0;
+      result.change += Number(transaction.change) || 0;
+      return result;
+    }, { sales: 0, items: 0, received: 0, change: 0 });
+    const products = new Map();
+    dailyTransactions.forEach((transaction) => (transaction.items || []).forEach((item) => {
+      const key = `${clean(item.productId) || `${clean(item.category)}::${clean(item.name)}`}`;
+      const current = products.get(key) || { category: clean(item.category), name: clean(item.name), quantity: 0, sales: 0 };
+      current.quantity += Number(item.quantity) || 0;
+      current.sales += Number(item.subtotal) || (Number(item.unitPrice) || 0) * (Number(item.quantity) || 0);
+      products.set(key, current);
+    }));
+    const lines = [['区分', '対象日', 'カテゴリ', '商品名', '会計数', '販売個数', '売上', 'お預かり', 'おつり']];
+    lines.push(['日計', targetDate, '', '', dailyTransactions.length, totals.items, totals.sales, totals.received, totals.change]);
+    Array.from(products.values()).sort((a, b) => b.sales - a.sales || a.name.localeCompare(b.name, 'ja')).forEach((item) => {
+      lines.push(['商品別', targetDate, item.category, item.name, '', item.quantity, item.sales, '', '']);
+    });
+    return {
+      date: targetDate,
+      transactionCount: dailyTransactions.length,
+      itemCount: totals.items,
+      totalSales: totals.sales,
+      totalReceived: totals.received,
+      totalChange: totals.change,
+      products: Array.from(products.values()),
+      csv: lines.map((row) => row.map(csvEscape).join(',')).join('\r\n'),
+    };
+  }
+
   function productsToCsv(products) {
-    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス'];
+    const lines = ['カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID,次の行から表示'];
     (products || []).forEach((product) => {
       lines.push([
         product.category,
@@ -389,6 +643,9 @@
         product.unitPrice,
         product.icon || '',
         product.iconPath || '',
+        Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? product.stockLimit : '',
+        product.id || '',
+        product.startNewRow === true ? 'true' : 'false',
       ].map(csvEscape).join(','));
     });
     return lines.join('\r\n');
@@ -410,7 +667,8 @@
     return lines.join('\r\n');
   }
 
-  function settingsBundleToJson(products, settings) {
+  function settingsBundleToJson(products, settings, inventory) {
+    // 設定一式は商品・在庫・設定の移行用。販売履歴や端末固有の保存先ハンドルは含めない。
     const columnWidth = ['compact', 'standard', 'wide'].includes(settings && settings.productColumnWidth) ? settings.productColumnWidth : 'standard';
     const bundleProducts = (products || []).map((product) => {
       const value = {
@@ -419,15 +677,22 @@
         name: clean(product.name),
         unitPrice: Number(product.unitPrice),
       };
+      if (Number.isInteger(product.stockLimit) && product.stockLimit >= 0) value.stockLimit = product.stockLimit;
+      if (product.startNewRow === true) value.startNewRow = true;
       if (typeof product.icon === 'string' && product.icon) value.icon = product.icon;
       if (typeof product.iconPath === 'string' && product.iconPath) value.iconPath = product.iconPath;
       return value;
     });
     return JSON.stringify({
       format: 'shirayuri-register-settings',
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       products: bundleProducts,
+      inventory: inventory ? {
+        salesByProduct: { ...(inventory.salesByProduct || {}) },
+        remainingByProduct: { ...(inventory.remainingByProduct || {}) },
+        adjustments: Array.isArray(inventory.adjustments) ? inventory.adjustments.slice(0, 50) : [],
+      } : null,
       settings: {
         enabled: settings && settings.enabled === true,
         category: clean(settings && settings.category) || '古園服',
@@ -447,7 +712,8 @@
     } catch (error) {
       return { products: [], settings: null, warnings: ['設定一式ファイルのJSONを読み込めません。'] };
     }
-    if (!bundle || bundle.format !== 'shirayuri-register-settings' || bundle.version !== 1) {
+    // version 1 の既存バックアップも読み込み、項目追加後の version 2 と共存させる。
+    if (!bundle || bundle.format !== 'shirayuri-register-settings' || ![1, 2].includes(bundle.version)) {
       return { products: [], settings: null, warnings: ['対応していない設定一式ファイルです。'] };
     }
     if (!Array.isArray(bundle.products) || !bundle.products.length || !bundle.settings || typeof bundle.settings !== 'object') {
@@ -469,6 +735,17 @@
       }
       productIds.add(id);
       const product = { id, category, name, unitPrice };
+      if (source && source.stockLimit !== undefined) {
+        const stockLimit = parsePrice(source.stockLimit);
+        if (stockLimit === null || !Number.isInteger(stockLimit) || stockLimit < 0) {
+          return { products: [], settings: null, warnings: [`設定一式ファイルの商品${index + 1}件目の在庫上限が不正です。`] };
+        }
+        product.stockLimit = stockLimit;
+      }
+      if (source && source.startNewRow !== undefined && typeof source.startNewRow !== 'boolean') {
+        return { products: [], settings: null, warnings: [`設定一式ファイルの商品${index + 1}件目の行表示設定が不正です。`] };
+      }
+      if (source && source.startNewRow === true) product.startNewRow = true;
       if (typeof (source && source.icon) === 'string' && source.icon) product.icon = source.icon;
       if (typeof (source && source.iconPath) === 'string' && source.iconPath) product.iconPath = source.iconPath;
       products.push(product);
@@ -485,8 +762,28 @@
     if (typeof enabled !== 'boolean' || !category || siblings === null || perSibling === null || !Number.isInteger(siblings) || siblings < 1 || !Number.isInteger(perSibling) || perSibling < 0 || !['compact', 'standard', 'wide'].includes(productColumnWidth) || typeof autoBackupEnabled !== 'boolean' || autoBackupIntervalMinutes === null || !Number.isInteger(autoBackupIntervalMinutes) || autoBackupIntervalMinutes < 1) {
       return { products: [], settings: null, warnings: ['設定一式ファイルの制限、表示またはバックアップ設定が不正です。'] };
     }
+    let inventory = null;
+    if (bundle.inventory != null) {
+      const sourceInventory = bundle.inventory;
+      const validCounts = (value) => value && typeof value === 'object' && !Array.isArray(value)
+        && Object.values(value).every((count) => Number.isInteger(count) && count >= 0);
+      const validAdjustments = Array.isArray(sourceInventory.adjustments) && sourceInventory.adjustments.every((entry) => (
+        entry && typeof entry === 'object' && typeof entry.productId === 'string' && typeof entry.recordedAt === 'string'
+        && Number.isInteger(entry.after) && entry.after >= 0
+        && (entry.before === null || (Number.isInteger(entry.before) && entry.before >= 0))
+      ));
+      if (!validCounts(sourceInventory.salesByProduct) || !validCounts(sourceInventory.remainingByProduct) || !validAdjustments) {
+        return { products: [], settings: null, inventory: null, warnings: ['設定一式ファイルの在庫情報が不正です。'] };
+      }
+      inventory = {
+        salesByProduct: { ...sourceInventory.salesByProduct },
+        remainingByProduct: { ...sourceInventory.remainingByProduct },
+        adjustments: sourceInventory.adjustments.slice(0, 50).map((entry) => ({ ...entry })),
+      };
+    }
     return {
       products,
+      inventory,
       settings: { enabled, category, siblings, perSibling, productColumnWidth, autoBackupEnabled, autoBackupIntervalMinutes },
       warnings: [],
     };
@@ -578,12 +875,15 @@
       unitPrice: indexOf('単価'),
       quantity: indexOf('数量'),
       subtotal: indexOf('売上金額'),
+      productId: indexOf('商品id'),
+      note: indexOf('会計メモ'),
     };
-    const missing = Object.entries(indexes).filter(([, index]) => index < 0).map(([name]) => name);
+    const missing = Object.entries(indexes).filter(([name, index]) => name !== 'productId' && name !== 'note' && index < 0).map(([name]) => name);
     if (missing.length) {
       return { transactions: [], warnings: [`会計履歴CSVに必要な列がありません: ${missing.join('、')}`], stats: { accepted: 0, rejected: 0 } };
     }
 
+    // CSVは会計明細ごとに複数行になるため、会計IDで再結合する。商品ID列は旧形式では省略可。
     const transactionMap = new Map();
     let rejected = 0;
     nonEmptyRows.slice(headerIndex + 1).forEach((row, offset) => {
@@ -605,14 +905,19 @@
         return;
       }
       if (!transactionMap.has(id)) {
-        transactionMap.set(id, { id, recordedAt, total, received, change, itemCount, items: [] });
+        const note = indexes.note >= 0 ? clean(row[indexes.note]) : '';
+        transactionMap.set(id, { id, recordedAt, total, received, change, itemCount, items: [], ...(note ? { note } : {}) });
       }
-      transactionMap.get(id).items.push({ category, name, unitPrice, quantity, subtotal });
+      const transaction = transactionMap.get(id);
+      if (!transaction.note && indexes.note >= 0 && clean(row[indexes.note])) transaction.note = clean(row[indexes.note]);
+      const item = { category, name, unitPrice, quantity, subtotal };
+      if (indexes.productId >= 0 && clean(row[indexes.productId])) item.productId = clean(row[indexes.productId]);
+      transaction.items.push(item);
     });
 
     return { transactions: Array.from(transactionMap.values()), warnings, stats: { accepted: transactionMap.size, rejected } };
   }
 
-  return { makeProduct, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, transactionsToCsv, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
+  return { makeProduct, makeProductCopy, parseProductText, calculateCart, buildTransaction, calculatePurchaseLimit, upsertTransaction, removeTransaction, summarizeTransactions, summarizeWeekdayHours, transactionsToCsv, createInventoryLedger, applyInventoryTransactionChange, adjustInventory, resetInventoryPeriod, summarizeInventoryAvailability, dailyCloseReport, productsToCsv, settingsToCsv, settingsBundleToJson, parseSettingsBundle, parseSettingsCsv, parseTransactionCsv };
 });
 

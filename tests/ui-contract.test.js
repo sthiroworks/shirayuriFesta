@@ -13,7 +13,7 @@ test('index contains the checkout and dashboard interaction contract', () => {
     'sales-total', 'transaction-count', 'item-count', 'average-transaction',
     'category-summary', 'category-quantity-summary', 'sales-chart', 'quantity-chart', 'share-chart', 'daily-sales-chart', 'inventory-chart-summary', 'inventory-chart', 'hourly-chart', 'hourly-metric', 'hourly-start-hour', 'hourly-end-hour', 'hourly-sort', 'hourly-hide-empty', 'hourly-table-body', 'hourly-table-foot', 'hourly-category-table-head', 'hourly-category-table-body', 'hourly-category-table-foot', 'hourly-product-table-head', 'hourly-product-table-body', 'hourly-product-table-foot', 'weekday-heatmap-head', 'weekday-heatmap-body', 'history-body', 'import-file', 'import-transactions-file',
     'tab-products', 'tab-chart', 'tab-history',
-    'admin-toggle', 'admin-panel', 'product-management-panel', 'product-management-list',
+    'admin-toggle', 'admin-panel', 'product-management-panel', 'product-management-list', 'reset-inventory-period',
     'export-products-csv',
   ]) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
@@ -30,6 +30,13 @@ test('index contains the checkout and dashboard interaction contract', () => {
   assert.match(html, /会計がない時間を隠す/);
   assert.match(html, /class="tabbed-results"\s+data-sales-interface/);
   assert.match(html, /class="product-management-tools"/);
+  assert.match(html, /販売期間の切り替え/);
+  assert.match(read('app.js'), /function resetInventoryPeriod\(/);
+  assert.match(read('app.js'), /Core\.resetInventoryPeriod/);
+  assert.match(read('app.js'), /persistSharedSnapshot\(\{ inventory: nextInventory \}/);
+  assert.doesNotMatch(read('app.js'), /stockLimit = sales \+ value/);
+  assert.match(read('app.js'), /function getProductPhysicalRemaining\(/);
+  assert.match(read('app.js'), /手動調整済みの残数はそのまま保持/);
   assert.match(html, /class="backup-history-actions"/);
   assert.match(html, /class="[^"]*data-transfer-panel[^"]*"/);
   assert.match(html, /id="data-transfer-title"/);
@@ -42,10 +49,13 @@ test('styles and app files are present and app uses the core and storage APIs', 
   const css = read('styles.css');
   const app = read('app.js');
   assert.match(html, /styles\.css/);
+  assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"\s*\/>/);
   assert.match(css, /@media/);
+  assert.match(css, /html \{ max-width: 100%; overflow-x: hidden;/);
   assert.match(css, /\.status:empty \{ display: none; \}/);
   assert.match(css, /pointer-events: none/);
-  assert.match(css, /\.status \{ top: calc\(env\(safe-area-inset-top\) \+ 12px\); right: auto; bottom: auto; left: 50%;/);
+  assert.match(css, /\.status \{ position: fixed; top: calc\(env\(safe-area-inset-top\) \+ 96px\);/);
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.status \{ top: calc\(env\(safe-area-inset-top\) \+ 76px\); right: auto; bottom: auto; left: 50%;/);
   assert.match(css, /\.product-list \{ display: grid; grid-template-columns: repeat\(var\(--product-grid-columns\), minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-list \{ grid-template-columns: repeat\(var\(--product-grid-columns-mobile\), minmax\(0, 1fr\)\); gap: 7px;/);
   assert.match(css, /\.product-add-grid \{ grid-template-columns: 1fr; gap: 8px; \}/);
@@ -172,7 +182,7 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(app, /function clearCartState\(\) \{[\s\S]*?state\.fitCheckoutHeightAfterClear = state\.checkoutHeight != null;/);
   assert.match(app, /function renderAll\(\) \{[\s\S]*?if \(state\.fitCheckoutHeightAfterClear && fitCheckoutHeightToContent\(\)\) state\.fitCheckoutHeightAfterClear = false;/);
   assert.match(app, /Math\.max\(minimum, Math\.floor\(\(root\.innerHeight \|\| 700\) \* 0\.9\)\)/);
-  assert.match(css, /#checkout-panel\.is-mobile-open \{ position: fixed; inset: 0;[^}]*height: 100vh; height: 100dvh;/);
+  assert.match(css, /#checkout-panel\.is-mobile-open \{ position: fixed; inset: 0;[^}]*width: auto; height: auto; min-width: 0; min-height: 0;/);
   assert.match(css, /#checkout-panel\.is-mobile-open \{[^}]*flex-direction: column;/);
   assert.match(css, /\.checkout-actions-footer \{ flex: 0 0 auto;[^}]*safe-area-inset-bottom/);
   assert.match(css, /\.checkout-actions-footer \{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2\.2fr\); grid-template-rows: repeat\(2, minmax\(38px, 1fr\)\)/);
@@ -181,7 +191,9 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /#checkout-panel \.payment-box \{ display: grid; grid-template-columns: minmax\(112px, 1fr\) minmax\(0, 2\.2fr\); grid-template-areas: "label quick" "received quick" "change quick"/);
   assert.match(css, /#checkout-panel \.change-row span \{ font-size: \.72rem; \}/);
   assert.match(css, /\.checkout-resize-handle \{ display: none; \}/);
-  assert.match(css, /\.checkout-scroll-area \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;/);
+  assert.match(css, /\.checkout-scroll-area \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow-x: hidden; overflow-y: auto;/);
+  assert.match(css, /\.checkout-scroll-area \{[^}]*width: 100%; min-width: 0;/);
+  assert.match(css, /\.checkout-actions-footer \{ flex: 0 0 auto; min-width: 0;/);
   assert.match(css, /#checkout-panel\.is-mobile-open #cart-list \{ flex: 1 1 0; min-height: 44px; overflow-y: auto;/);
   assert.match(html, /id="checkout-resize-handle"[\s\S]*?<\/button>\s*<div class="checkout-scroll-area">/);
   assert.match(css, /\.page-shell \{ padding: 18px 12px calc\(82px \+ env\(safe-area-inset-bottom\)\); \}/);
@@ -226,6 +238,11 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /data-management-field="new-category"/);
   assert.match(app, /function handleProductManagementChange/);
   assert.match(app, /function saveProductDetails/);
+  assert.match(app, /data-management-action="copy"/);
+  assert.match(app, /function prepareProductCopy/);
+  assert.match(app, /Core\.makeProductCopy/);
+  assert.match(html, /id="product-copy-note"/);
+  assert.match(html, /id="product-copy-cancel"/);
   assert.match(html, /制限設定を反映/);
   assert.match(html, /制限設定のバックアップ/);
   assert.match(html, /制限設定を復元/);
@@ -234,9 +251,14 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /shirayuri-sales-history-archive-/);
   assert.match(app, /バックアップCSVをアーカイブできなかったため/);
   assert.match(html, /自動バックアップ設定を保存/);
-  assert.match(html, /同じ行の「商品情報を反映」を押してください/);
+  assert.match(html, /次の行から表示したい商品は「この商品から次の行に表示」にチェックし、「商品情報を反映」を押してください/);
   assert.match(app, /const accessibleLabel = stockUnavailable/);
   assert.match(app, /aria-label="\$\{escapeHtml\(accessibleLabel\)\}"/);
+  assert.match(app, /function getCartStockError\(/);
+  assert.match(app, /在庫切れです。管理画面から在庫残数を調整してください/);
+  assert.match(app, /elements\.confirmButton\.disabled = [^;]*Boolean\(stockError\)/);
+  assert.match(app, /is-stock-error/);
+  assert.match(html, /id="payment-message"[^>]*role="alert"[^>]*aria-live="polite"/);
   assert.match(app, /renderProductManagement/);
   assert.match(app, /function exportProductsCsv\(\)/);
   assert.match(app, /function exportSettingsBundle\(\)/);
@@ -274,6 +296,22 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /lineLimitExceeded/);
   assert.match(css, /\.cart-line\.is-limit-exceeded/);
   assert.match(css, /\.cart-line\.is-limit-exceeded \{ border-bottom-color/);
+ });
+
+test('shared management changes require a separate admin authentication flow', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  const client = read('d1-client.js');
+  for (const id of ['admin-password-dialog', 'admin-password-form', 'admin-password', 'admin-password-error', 'admin-password-submit', 'admin-password-cancel']) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
+  }
+  assert.match(app, /function openAdminAccess\(\)/);
+  assert.match(app, /await D1Client\.adminLogin\(password\)/);
+  assert.match(app, /if \(opening\) openAdminAccess\(\)/);
+  assert.match(app, /D1Client\.adminLogout\(\)/);
+  assert.match(client, /shirayuri-d1-admin-session-v2/);
+  assert.match(client, /request\('\/api\/admin\/login'/);
+  assert.match(client, /tokenType: requiresAdmin \? 'admin' : 'register'/);
 });
 
 test('history, inventory, backup, and daily close improvements are wired into the UI', () => {
@@ -333,11 +371,22 @@ test('inventory remaining chart and weekday-by-hour heatmap are wired into analy
 
 test('very small phone layouts wrap controls and prevent fixed-width overflow', () => {
   const css = read('styles.css');
-  assert.match(css, /@media \(max-width: 400px\) \{[\s\S]*?\.catalog-panel \.panel-heading \{ flex-wrap: wrap;/);
+  assert.match(css, /@media \(max-width: 560px\) \{[\s\S]*?\.catalog-panel \.panel-heading \{ flex-wrap: wrap;/);
   assert.match(css, /@media \(max-width: 360px\) \{[\s\S]*?\.summary-cards-row \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
   assert.match(css, /\.product-card \{ height: auto !important; min-height: 92px !important;/);
   assert.match(css, /#checkout-panel \.payment-box \{ grid-template-columns: minmax\(100px, 1fr\) minmax\(0, 1\.5fr\);/);
   assert.match(css, /#checkout-panel \.received-quick-buttons \{ min-width: 0;/);
+  assert.match(css, /\.checkout-scroll-area \{[^}]*overflow-x: hidden; overflow-y: auto;/);
+  assert.match(css, /\.checkout-panel\.is-stock-error/);
+  assert.match(css, /\.cart-line\.is-stock-error/);
   assert.match(css, /\.history-money \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+});
+
+test('register settings share uses a shareable text file without changing JSON downloads', () => {
+  const html = read('index.html');
+  const app = read('app.js');
+  assert.match(app, /function exportSettingsBundle\(\)[\s\S]*?shirayuri-register-settings-\$\{[^}]+\}\.json/);
+  assert.match(app, /function shareSettingsBundle\(\)[\s\S]*?shirayuri-register-settings-\$\{[^}]+\}\.txt`, json, 'text\/plain'/);
+  assert.match(html, /id="import-settings-bundle-file"[\s\S]*?accept="\.json,\.txt,application\/json,text\/plain"/);
 });
 

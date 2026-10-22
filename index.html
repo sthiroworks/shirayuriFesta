@@ -2,12 +2,23 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261022-share-chart-labels" />
+    <link rel="stylesheet" href="styles.css?v=20261022-share-chart-leaders" />
   </head>
   <body>
+    <section id="shared-login" class="shared-login" aria-labelledby="shared-login-title" hidden>
+      <form id="shared-login-form" class="shared-login-card">
+        <p class="section-kicker">SHARED REGISTER</p>
+        <h1 id="shared-login-title">共有レジにログイン</h1>
+        <p id="shared-login-message">共有データに接続しています。</p>
+        <label for="shared-password">共有パスワード</label>
+        <input id="shared-password" type="password" autocomplete="current-password" required />
+        <p id="shared-login-error" class="shared-login-error" role="alert"></p>
+        <button id="shared-login-submit" class="button button-primary" type="submit">ログイン</button>
+      </form>
+    </section>
     <header class="site-header">
       <div class="brand-lockup">
         <div>
@@ -16,6 +27,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="shared-logout" class="button button-secondary is-hidden" type="button">共有レジからログアウト</button>
         <button
           id="admin-toggle"
           class="button button-secondary button-toggle"
@@ -58,6 +70,24 @@
             <p class="settings-help">
               商品の追加・価格変更・在庫上限・削除と、商品アイコンの差し替えを行えます。在庫数は会計履歴とは別に保存され、履歴を消去しても残ります。残数は商品ごとに調整できます。残り3個以下は注意表示されます。
             </p>
+            <details id="inventory-period-fold" class="admin-subfold">
+              <summary class="admin-subfold-summary"><h3>販売済みのリセット</h3></summary>
+              <div class="admin-subfold-content">
+            <div class="product-management-tools inventory-period-tools">
+              <div>
+                <strong>販売期間の切り替え</strong>
+                <span>会計履歴を残したまま、販売済みを0に戻し、現在の残数を新しい期間の初期在庫にします。</span>
+              </div>
+              <button
+                id="reset-inventory-period"
+                class="button button-danger"
+                type="button"
+              >
+                販売済みをリセット
+              </button>
+            </div>
+              </div>
+            </details>
             <details id="registered-products-fold" class="admin-subfold" open>
               <summary class="admin-subfold-summary"><h3>登録済み商品</h3></summary>
               <div class="admin-subfold-content">
@@ -90,7 +120,7 @@
                 >
               </div>
               <div id="product-copy-note" class="product-copy-note is-hidden" role="status">
-                <span>コピー元の画像・設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
+                <span>コピー元の画像・表示設定を引き継ぎます。販売済み数と現在の残数は引き継ぎません。</span>
                 <button id="product-copy-cancel" type="button">コピーを取り消す</button>
               </div>
               <div class="product-add-grid">
@@ -976,7 +1006,7 @@
                 <div class="change-row">
                   <span>おつり</span><strong id="change">¥0</strong>
                 </div>
-                <p id="payment-message" class="field-message"></p>
+                <p id="payment-message" class="field-message" role="alert" aria-live="polite"></p>
               </div>
               <div class="sale-note">
                 <button
@@ -1401,6 +1431,28 @@
     </main>
 
     <dialog
+      id="admin-password-dialog"
+      class="confirmation-dialog admin-password-dialog"
+      aria-labelledby="admin-password-dialog-title"
+      aria-describedby="admin-password-dialog-message"
+    >
+      <form id="admin-password-form" class="confirmation-dialog-content">
+        <span class="confirmation-dialog-icon" aria-hidden="true">🔒</span>
+        <h2 id="admin-password-dialog-title">管理者パスワード</h2>
+        <p id="admin-password-dialog-message">商品・在庫・購入制限を変更するには管理者パスワードが必要です。</p>
+        <label class="admin-password-label" for="admin-password">
+          管理者パスワード
+          <input id="admin-password" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="admin-password-error" class="shared-login-error" role="alert"></p>
+        <div class="confirmation-dialog-actions">
+          <button id="admin-password-cancel" class="button button-secondary" type="button">キャンセル</button>
+          <button id="admin-password-submit" class="button button-primary" type="submit">管理を開く</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog
       id="clear-cart-dialog"
       class="confirmation-dialog"
       aria-labelledby="clear-cart-dialog-title"
@@ -1423,9 +1475,11 @@
       </div>
     </dialog>
 
-    <script src="core.js?v=20261021-copy-product"></script>
+    <script src="api-config.js"></script>
+    <script src="d1-client.js"></script>
+    <script src="core.js"></script>
     <script src="storage.js"></script>
-    <script src="products.default.js?v=20261022-initial-settings"></script>
-    <script src="app.js?v=20261022-share-chart-labels"></script>
+    <script src="products.default.js"></script>
+    <script src="app.js?v=20261022-share-chart-leaders"></script>
   </body>
 </html>

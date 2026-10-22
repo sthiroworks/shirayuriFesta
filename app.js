@@ -4,6 +4,7 @@
   // 画面表示とユーザー操作を担当する。集計・会計計算は Core、永続化は Storage に委譲する。
   const Core = root.SalesRegisterCore;
   const Storage = root.SalesRegisterStorage;
+  const D1Client = root.SalesRegisterD1Client;
   const fallbackProducts = root.DEFAULT_PRODUCTS || [];
   const PRODUCT_COLUMN_WIDTHS = Object.freeze({
     compact: { desktop: 180, mobile: 125, desktopColumns: 5, mobileColumns: 3, icon: 70, tabletIcon: 58, phoneIcon: 44 },
@@ -62,13 +63,16 @@
   };
   const defaultIcons = new Map(fallbackProducts.map((product) => [product.id, product.icon]).filter((entry) => entry[1]));
   const defaultIconPaths = new Map(fallbackProducts.map((product) => [product.id, product.iconPath]).filter((entry) => entry[1]));
-  const productsWithIcons = productState.products.map((product) => {
+  function normalizeProductsWithIcons(products) {
+    return products.map((product) => {
     if (product.icon && String(product.icon).startsWith('data:image/')) return product;
     if (defaultIconPaths.has(product.id)) return { ...product, icon: '', iconPath: defaultIconPaths.get(product.id) };
     if (product.icon || product.iconPath) return product;
     if (defaultIcons.has(product.id)) return { ...product, icon: defaultIcons.get(product.id) };
     return product;
-  });
+    });
+  }
+  const productsWithIcons = normalizeProductsWithIcons(productState.products);
   const state = {
     products: productsWithIcons,
     transactions: transactionState.transactions,
@@ -95,6 +99,14 @@
     autoBackupInProgress: false,
     backupDirectoryHandle: null,
     temporaryCheckoutSiblings: null,
+    serverRevision: 0,
+    remoteAuthenticated: false,
+    remoteWriteInProgress: false,
+    remoteRefreshing: false,
+    remoteConnecting: false,
+    adminPasswordRequest: null,
+    remoteSyncTimer: null,
+    remoteVisibilityHandler: null,
     pendingProductCopy: null,
     productOrderSaving: false,
     expandedManagedProducts: new Set(),
@@ -242,6 +254,32 @@
     return { limited: true, sold, editingQuantity, remaining, maxQuantity: remaining };
   }
 
+  function getProductPhysicalRemaining(product) {
+    const hasLimit = Number.isInteger(product && product.stockLimit) && product.stockLimit >= 0;
+    if (!hasLimit) return null;
+    const ledger = state.inventory || { remainingByProduct: {} };
+    if (Object.prototype.hasOwnProperty.call(ledger.remainingByProduct || {}, product.id)) {
+      return Math.max(0, Math.floor(Number(ledger.remainingByProduct[product.id]) || 0));
+    }
+    return Math.max(0, product.stockLimit - getProductSales(product));
+  }
+
+  function getCartStockError(lines = getCartLines()) {
+    for (const line of lines) {
+      const stock = getProductStockInfo(line.product);
+      if (!stock.limited || line.quantity <= stock.maxQuantity) continue;
+      const available = Math.max(0, Math.floor(Number(stock.maxQuantity) || 0));
+      return {
+        product: line.product,
+        available,
+        message: available === 0
+          ? `${line.product.name}は在庫切れです。管理画面から在庫残数を調整してください。`
+          : `${line.product.name}は残り${available}個までです。数量を減らしてください。`,
+      };
+    }
+    return null;
+  }
+
   function cloneInventoryLedger() {
     const source = state.inventory || { salesByProduct: {}, remainingByProduct: {}, adjustments: [] };
     return {
@@ -252,7 +290,8 @@
   }
 
   function updateInventoryForProductChange(ledger, previousProduct, nextProduct) {
-    // 上限変更分だけ残数を動かす。販売数や手動で調整した残数を再計算で消さない。
+    // 上限変更では実在庫を動かさない。手動調整済みの残数はそのまま保持し、
+    // まだ実在庫を設定していない商品だけ上限と販売済みから初期化する。
     const next = {
       salesByProduct: { ...(ledger.salesByProduct || {}) },
       remainingByProduct: { ...(ledger.remainingByProduct || {}) },
@@ -260,18 +299,11 @@
     };
     const id = nextProduct.id;
     const sold = Math.max(0, Number(next.salesByProduct[id]) || 0);
-    const oldLimit = previousProduct && Number.isInteger(previousProduct.stockLimit) && previousProduct.stockLimit >= 0
-      ? previousProduct.stockLimit : null;
     const newLimit = Number.isInteger(nextProduct.stockLimit) && nextProduct.stockLimit >= 0 ? nextProduct.stockLimit : null;
     if (newLimit === null) {
       delete next.remainingByProduct[id];
-    } else if (oldLimit === null) {
+    } else if (!Object.prototype.hasOwnProperty.call(next.remainingByProduct, id)) {
       next.remainingByProduct[id] = Math.max(0, newLimit - sold);
-    } else {
-      const currentRemaining = Object.prototype.hasOwnProperty.call(next.remainingByProduct, id)
-        ? Math.max(0, Number(next.remainingByProduct[id]) || 0)
-        : Math.max(0, oldLimit - sold);
-      next.remainingByProduct[id] = Math.max(0, currentRemaining + newLimit - oldLimit);
     }
     return next;
   }
@@ -289,14 +321,14 @@
     return next;
   }
 
-  function migrateLegacyTransactionProductIds() {
+  function migrateLegacyTransactionProductIds(transactions = state.transactions) {
     const productsByName = new Map();
     state.products.forEach((product) => {
       productsByName.set(`${product.category}::${product.name}`, product);
       productsByName.set(product.id, product);
     });
     let changed = false;
-    state.transactions.forEach((transaction) => {
+    transactions.forEach((transaction) => {
       (transaction.items || []).forEach((item) => {
         if (item.productId) return;
         const product = productsByName.get(`${item.category}::${item.name}`);
@@ -307,11 +339,12 @@
     });
     if (changed) {
       try {
-        Storage.saveTransactions(storage, state.transactions);
+        if (transactions === state.transactions) Storage.saveTransactions(storage, state.transactions);
       } catch (error) {
         // In-memory migration still works for this session if persistence is unavailable.
       }
     }
+    return changed;
   }
 
   function initializeInventoryLedger() {
@@ -331,6 +364,155 @@
       return '';
     } catch (error) {
       return '在庫情報を保存できませんでした。ブラウザの空き容量を確認してください。';
+    }
+  }
+
+  function sharedSettings(settings) {
+    return {
+      enabled: Boolean(settings.enabled),
+      category: String(settings.category || ''),
+      siblings: Math.max(1, Math.floor(Number(settings.siblings) || 1)),
+      perSibling: Math.max(0, Math.floor(Number(settings.perSibling) || 0)),
+    };
+  }
+
+  function makeSharedSnapshot(overrides = {}) {
+    return {
+      products: overrides.products || state.products,
+      transactions: overrides.transactions || state.transactions,
+      inventory: overrides.inventory || state.inventory || Core.createInventoryLedger(state.products, state.transactions),
+      settings: sharedSettings(overrides.settings || state.settings),
+    };
+  }
+
+  function sharedListDiff(current, next) {
+    const currentById = new Map(current.map((item) => [item.id, item]));
+    const nextById = new Map(next.map((item) => [item.id, item]));
+    const upsert = next.filter((item) => JSON.stringify(currentById.get(item.id)) !== JSON.stringify(item));
+    const remove = current.filter((item) => !nextById.has(item.id)).map((item) => item.id);
+    return { upsert, remove };
+  }
+
+  function sharedSnapshotDiff(current, next) {
+    const changes = {};
+    const products = sharedListDiff(current.products, next.products);
+    const transactions = sharedListDiff(current.transactions, next.transactions);
+    if (products.upsert.length || products.remove.length) changes.products = products;
+    const currentProductOrder = current.products.map((product) => product.id);
+    const nextProductOrder = next.products.map((product) => product.id);
+    if (JSON.stringify(currentProductOrder) !== JSON.stringify(nextProductOrder)) changes.productOrder = nextProductOrder;
+    if (transactions.upsert.length || transactions.remove.length) changes.transactions = transactions;
+    if (JSON.stringify(current.inventory) !== JSON.stringify(next.inventory)) changes.inventory = next.inventory;
+    if (JSON.stringify(current.settings) !== JSON.stringify(next.settings)) changes.settings = next.settings;
+    return changes;
+  }
+
+  function sharedSnapshotsDiffer(current, next) {
+    return Object.keys(sharedSnapshotDiff(current, next)).length > 0;
+  }
+
+  function mirrorRemoteSnapshot(snapshot) {
+    // localStorageはサーバーデータのキャッシュ。失敗してもD1に保存済みの正本は維持する。
+    try {
+      Storage.saveProductsAndInventory(storage, snapshot.products, snapshot.inventory);
+      Storage.saveTransactions(storage, snapshot.transactions);
+      Storage.saveSettings(storage, { ...state.settings, ...snapshot.settings });
+    } catch (error) {
+      // 端末内キャッシュに空きがなくても、共有サーバーの保存を取り消さない。
+    }
+  }
+
+  async function persistSharedSnapshot(overrides, localPersist, previousSnapshot = null) {
+    if (!D1Client || !D1Client.isConfigured()) {
+      localPersist();
+      return { revision: state.serverRevision, changed: true };
+    }
+    if (!state.remoteAuthenticated) throw new Error('共有レジにログインしてから操作してください。');
+    if (state.remoteWriteInProgress) throw new Error('別の保存処理が終わるまでお待ちください。');
+    state.remoteWriteInProgress = true;
+    let conflict = null;
+    let result;
+    const previous = previousSnapshot || makeSharedSnapshot();
+    const snapshot = makeSharedSnapshot(overrides);
+    try {
+      const changes = sharedSnapshotDiff(previous, snapshot);
+      result = await D1Client.save({ expectedRevision: state.serverRevision, changes });
+      state.serverRevision = result.revision;
+      mirrorRemoteSnapshot(snapshot);
+    } catch (error) {
+      if (error.status === 409) conflict = error;
+      else throw error;
+    } finally {
+      state.remoteWriteInProgress = false;
+    }
+    if (conflict) {
+      try { await refreshRemoteData({ silent: true }); } catch (error) { /* 次の定期同期で再試行する */ }
+      throw new Error('別の端末で先に更新されました。最新データを読み込みました。内容を確認して、もう一度操作してください。');
+    }
+    return result;
+  }
+
+  function persistenceErrorMessage(error, fallback) {
+    const message = String(error && error.message || '');
+    if (error && [401, 403, 409, 413, 428].includes(error.status)) return message || fallback;
+    if (/共有サーバー|共有レジ|別の端末|Worker|D1/.test(message)) return message;
+    return fallback;
+  }
+
+  function applyRemoteListChanges(current, delta) {
+    const removed = new Set(delta.remove || []);
+    const byId = new Map(current.filter((item) => !removed.has(item.id)).map((item) => [item.id, item]));
+    (delta.upsert || []).forEach((item) => byId.set(item.id, item));
+    return [...byId.values()];
+  }
+
+  function acceptRemoteSnapshot(snapshot) {
+    state.products = normalizeProductsWithIcons(snapshot.products);
+    state.transactions = snapshot.transactions;
+    state.inventory = snapshot.inventory;
+    state.settings = { ...state.settings, ...snapshot.settings };
+    state.serverRevision = snapshot.revision;
+    mirrorRemoteSnapshot(makeSharedSnapshot());
+  }
+
+  async function refreshRemoteData({ silent = false } = {}) {
+    if (!state.remoteAuthenticated || state.remoteRefreshing || state.remoteWriteInProgress) return;
+    state.remoteRefreshing = true;
+    let changed = false;
+    try {
+      let response;
+      do {
+        response = await D1Client.getChanges(state.serverRevision);
+        if (response.reset) {
+          acceptRemoteSnapshot(await D1Client.getState());
+          changed = true;
+          break;
+        }
+        (response.events || []).forEach((event) => {
+          if (event.changes && event.changes.products) {
+            state.products = normalizeProductsWithIcons(applyRemoteListChanges(state.products, event.changes.products));
+          }
+          if (event.changes && event.changes.productOrder) {
+            const order = new Map(event.changes.productOrder.map((id, index) => [id, index]));
+            state.products.sort((left, right) => (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER));
+          }
+          if (event.changes && event.changes.transactions) {
+            state.transactions = applyRemoteListChanges(state.transactions, event.changes.transactions)
+              .sort((left, right) => String(right.recordedAt).localeCompare(String(left.recordedAt)));
+          }
+          if (event.changes && event.changes.inventory) state.inventory = event.changes.inventory;
+          if (event.changes && event.changes.settings) state.settings = { ...state.settings, ...event.changes.settings };
+          state.serverRevision = event.revision;
+          changed = true;
+        });
+      } while (response.hasMore);
+      if (changed) {
+        mirrorRemoteSnapshot(makeSharedSnapshot());
+        renderAll();
+        if (!silent) setStatus('別の端末の更新を反映しました。', 'success');
+      }
+    } finally {
+      state.remoteRefreshing = false;
     }
   }
 
@@ -354,8 +536,11 @@
     if (product) {
       const stock = getProductStockInfo(product);
       if (stock.limited && quantity > stock.maxQuantity) {
+        const available = Math.max(0, Math.floor(Number(stock.maxQuantity) || 0));
         quantity = stock.maxQuantity;
-        setStatus(`${product.name}は在庫上限（${product.stockLimit}個）に達しています。`, 'error');
+        setStatus(available === 0
+          ? `${product.name}は在庫切れです。管理画面から在庫残数を調整してください。`
+          : `${product.name}は残り${available}個までです。`, 'error');
       }
     }
     if (quantity === 0) state.cart.delete(id);
@@ -847,9 +1032,9 @@
             <label class="managed-product-stock">在庫上限<input type="number" min="0" step="1" value="${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? escapeHtml(product.stockLimit) : ''}" placeholder="無制限" data-management-field="stock-limit" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の在庫上限"><small class="managed-stock-summary">販売済 ${getProductSales(product)} / ${Number.isInteger(product.stockLimit) && product.stockLimit >= 0 ? `上限 ${product.stockLimit}・残り ${getProductStockInfo(product).remaining}` : '上限なし'}</small></label>
             <label class="managed-product-new-category is-hidden">新しいカテゴリ<input type="text" data-management-field="new-category" data-product-id="${escapeHtml(product.id)}" placeholder="カテゴリ名" aria-label="${escapeHtml(productNameText(product.name))}の新しいカテゴリ"></label>
           </div>
-            <label class="managed-product-row-break"><input type="checkbox" data-management-field="start-new-row" data-product-id="${escapeHtml(product.id)}"${product.startNewRow === true ? ' checked' : ''} aria-label="${escapeHtml(productNameText(product.name))}から次の行に表示">この商品から次の行に表示</label>
+          <label class="managed-product-row-break"><input type="checkbox" data-management-field="start-new-row" data-product-id="${escapeHtml(product.id)}"${product.startNewRow === true ? ' checked' : ''} aria-label="${escapeHtml(productNameText(product.name))}から次の行に表示">この商品から次の行に表示</label>
           <div class="managed-stock-adjustment">
-            <label>実在庫の残数<input type="number" min="0" step="1" value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-saved-value="${getProductStockInfo(product).limited ? getProductStockInfo(product).remaining : ''}" data-management-field="stock-remaining" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の現在庫残数"></label>
+            <label>実在庫の残数<input type="number" min="0" step="1" value="${getProductPhysicalRemaining(product) ?? ''}" data-saved-value="${getProductPhysicalRemaining(product) ?? ''}" data-management-field="stock-remaining" data-product-id="${escapeHtml(product.id)}" aria-label="${escapeHtml(productNameText(product.name))}の現在庫残数"></label>
             <button class="managed-product-action" type="button" data-management-action="adjust-stock" data-product-id="${escapeHtml(product.id)}" disabled>残数を反映</button>
           </div>
         </div>
@@ -875,10 +1060,12 @@
     if (!lines.length) state.temporaryCheckoutSiblings = null;
     const cart = Core.calculateCart(lines);
     const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
+    const stockError = getCartStockError(lines);
     const temporarySiblings = state.temporaryCheckoutSiblings;
     elements.cartTotal.textContent = formatYen(cart.total);
     elements.mobileCartTotal.textContent = formatYen(cart.total);
     elements.checkoutPanel.classList.toggle('is-limit-exceeded', limit.exceeded);
+    elements.checkoutPanel.classList.toggle('is-stock-error', Boolean(stockError));
     elements.checkoutLimitBadge.classList.toggle('is-hidden', !limit.exceeded);
     elements.purchaseLimit.textContent = state.settings.enabled && limit.category
       ? `${limit.exceeded ? '⚠ ' : ''}${limit.category}: ${limit.count} / ${limit.limit}点${limit.exceeded ? '（制限超過）' : ''}${temporarySiblings != null ? `（この会計のみ${temporarySiblings}人）` : ''}`
@@ -904,8 +1091,11 @@
         const id = item.productId || (cartProduct ? cartProduct.id : `${item.category}::${item.name}`);
         const itemName = productNameText(item.name) ? item.name : (cartProduct && cartProduct.name) || '商品';
         const lineLimitExceeded = limit.exceeded && item.category === limit.category;
-        return `<div class="cart-line${lineLimitExceeded ? ' is-limit-exceeded' : ''}">
-          <div class="cart-line-product"><span class="cart-line-icon" aria-hidden="true">${iconMarkup(cartProduct || { category: item.category })}</span><div class="cart-line-content"><div class="cart-line-name">${productNameMarkup(itemName)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div></div>
+        const itemStock = cartProduct ? getProductStockInfo(cartProduct) : null;
+        const lineStockError = Boolean(itemStock && itemStock.limited && item.quantity > itemStock.maxQuantity);
+        const stockBadge = lineStockError ? `<span class="cart-stock-badge">${itemStock.maxQuantity === 0 ? '在庫切れ' : '在庫不足'}</span>` : '';
+        return `<div class="cart-line${lineLimitExceeded ? ' is-limit-exceeded' : ''}${lineStockError ? ' is-stock-error' : ''}">
+          <div class="cart-line-product"><span class="cart-line-icon" aria-hidden="true">${iconMarkup(cartProduct || { category: item.category })}</span><div class="cart-line-content"><div class="cart-line-name">${productNameMarkup(itemName)}${lineLimitExceeded ? '<span class="cart-limit-badge">制限超過</span>' : ''}${stockBadge}</div><div class="cart-line-meta">${formatYen(item.unitPrice)} × ${item.quantity}</div></div></div>
           <div><div class="cart-line-total">${formatYen(item.subtotal)}</div><div class="stepper"><button type="button" data-action="decrement" data-product-id="${escapeHtml(id)}">−</button><input type="number" min="0" step="1" value="${item.quantity}" data-action="quantity" data-product-id="${escapeHtml(id)}"><button type="button" data-action="increment" data-product-id="${escapeHtml(id)}">＋</button></div></div>
         </div>`;
       }).join('');
@@ -914,11 +1104,12 @@
     const canCalculateChange = Number.isFinite(received) && state.received !== '';
     elements.change.textContent = canCalculateChange ? formatYen(received - cart.total) : '¥0';
     if (cart.total < 0) elements.paymentMessage.textContent = '合計がマイナスになる組み合わせは確定できません。';
+    else if (stockError) elements.paymentMessage.textContent = stockError.message;
     else if (limit.exceeded) elements.paymentMessage.textContent = `${limit.category}は${limit.limit}点までです。下の人数をこの会計だけ変更できます。`;
     else if (temporarySiblings != null) elements.paymentMessage.textContent = `${limit.category}をこの会計だけ${temporarySiblings}人分として計算しています。`;
     else if (canCalculateChange && received < cart.total) elements.paymentMessage.textContent = `あと${formatYen(cart.total - received)}必要です。`;
     else elements.paymentMessage.textContent = '';
-    elements.confirmButton.disabled = !cart.lineItems.length || cart.total < 0 || limit.exceeded || !canCalculateChange || received < cart.total;
+    elements.confirmButton.disabled = !cart.lineItems.length || cart.total < 0 || Boolean(stockError) || limit.exceeded || !canCalculateChange || received < cart.total;
   }
 
   function renderDashboard() {
@@ -1271,40 +1462,58 @@
       return;
     }
     const colors = ['#2f8f89', '#d48632', '#c39a39', '#6d8fbe', '#a26795', '#709e60', '#cc6b50', '#687279'];
-    const centerX = 180;
-    const centerY = 180;
+    const centerX = 190;
     const radius = 132;
     const innerRadius = 76;
     let angle = -90;
     const slices = soldProducts.map((product, index) => {
-      const share = totalSales > 0 ? Math.max(0, Number(product.sales) || 0) / totalSales : 0;
+      const sales = Math.max(0, Number(product.sales) || 0);
+      const share = totalSales > 0 ? sales / totalSales : 0;
       const nextAngle = angle + share * 360;
-      const start = polarPoint(centerX, centerY, radius, angle);
-      const end = polarPoint(centerX, centerY, radius, nextAngle);
-      const innerEnd = polarPoint(centerX, centerY, innerRadius, nextAngle);
-      const innerStart = polarPoint(centerX, centerY, innerRadius, angle);
-      const largeArc = nextAngle - angle > 180 ? 1 : 0;
-      const path = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} L ${innerEnd.x} ${innerEnd.y} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`;
-      const result = { ...product, share: share * 100, path, color: colors[index % colors.length], midAngle: angle + (nextAngle - angle) / 2 };
+      const result = {
+        ...product,
+        sales,
+        share: share * 100,
+        color: colors[index % colors.length],
+        startAngle: angle,
+        midAngle: angle + (nextAngle - angle) / 2,
+        endAngle: nextAngle,
+      };
       angle = nextAngle;
       return result;
     });
     let legendTop = 15;
     const legend = slices.map((slice) => {
-      const labelLines = chartLabelLines(slice.name, 18);
+      const labelLines = chartLabelLines(slice.name, 16);
       const rowHeight = Math.max(38, labelLines.length * 14 + 10);
       const y = legendTop + rowHeight / 2;
       legendTop += rowHeight;
-      const labelMarkup = labelLines.map((line, index) => `<tspan x="384" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
+      const labelMarkup = labelLines.map((line, index) => `<tspan x="424" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
       const shareText = `${formatSharePercent(slice.share)}%`;
       const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
       const metricText = `${shareText} · ${quantityText}個`;
-      return `<rect class="share-legend-swatch" x="360" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>売上構成比 ${shareText}、販売数 ${quantityText}個</title>${metricText}</text>`;
+      return `<rect class="share-legend-swatch" x="400" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="424" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>${escapeHtml(`売上構成比 ${shareText}、販売数 ${quantityText}個`)}</title>${escapeHtml(metricText)}</text>`;
     }).join('');
     const positiveSlices = slices.filter((slice) => Number(slice.sales) > 0);
+    const calloutCounts = { left: 0, right: 0 };
+    positiveSlices.filter((slice) => slice.share < 8).forEach((slice) => {
+      const side = Math.cos(slice.midAngle * Math.PI / 180) >= 0 ? 'right' : 'left';
+      calloutCounts[side] += 1;
+    });
+    const maxSideCallouts = Math.max(calloutCounts.left, calloutCounts.right);
+    const chartHeight = Math.max(360, legendTop + 8, maxSideCallouts ? 44 + maxSideCallouts * 28 : 0);
+    const centerY = chartHeight / 2;
     const sliceMarkup = positiveSlices.length === 1
       ? `<circle class="share-slice" cx="${centerX}" cy="${centerY}" r="${radius}" fill="${positiveSlices[0].color}"/>`
-      : positiveSlices.map((slice) => `<path class="share-slice" d="${slice.path}" fill="${slice.color}"/>`).join('');
+      : positiveSlices.map((slice) => {
+        const start = polarPoint(centerX, centerY, radius, slice.startAngle);
+        const end = polarPoint(centerX, centerY, radius, slice.endAngle);
+        const innerEnd = polarPoint(centerX, centerY, innerRadius, slice.endAngle);
+        const innerStart = polarPoint(centerX, centerY, innerRadius, slice.startAngle);
+        const largeArc = slice.endAngle - slice.startAngle > 180 ? 1 : 0;
+        const path = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} L ${innerEnd.x} ${innerEnd.y} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`;
+        return `<path class="share-slice" d="${path}" fill="${slice.color}"/>`;
+      }).join('');
     const sliceLabelMarkup = positiveSlices
       .filter((slice) => slice.share >= 8)
       .map((slice) => {
@@ -1313,10 +1522,53 @@
         const y = Number(point.y) - 2;
         const shareText = `${formatSharePercent(slice.share)}%`;
         const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
-        return `<text class="share-slice-label" x="${x}" y="${y}" text-anchor="middle"><title>${escapeHtml(chartLabelText(slice.name))}: ${shareText}・${quantityText}個</title><tspan x="${x}">${shareText}</tspan><tspan x="${x}" dy="12">${quantityText}個</tspan></text>`;
+        return `<text class="share-slice-label" x="${x}" y="${y}" text-anchor="middle"><title>${escapeHtml(`${chartLabelText(slice.name)}: ${shareText}・${quantityText}個`)}</title><tspan x="${x}">${escapeHtml(shareText)}</tspan><tspan x="${x}" dy="12">${quantityText}個</tspan></text>`;
       }).join('');
-    element.setAttribute('viewBox', `0 0 760 ${Math.max(360, legendTop + 8)}`);
-    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/>${sliceLabelMarkup}<text class="share-total-label" x="180" y="174" text-anchor="middle">売上合計</text><text class="share-total-value" x="180" y="198" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
+    const calloutsBySide = { left: [], right: [] };
+    positiveSlices.filter((slice) => slice.share < 8).forEach((slice) => {
+      const side = Math.cos(slice.midAngle * Math.PI / 180) >= 0 ? 'right' : 'left';
+      calloutsBySide[side].push({
+        slice,
+        desiredY: centerY + (radius + 18) * Math.sin(slice.midAngle * Math.PI / 180),
+      });
+    });
+    const calloutPositions = [];
+    Object.entries(calloutsBySide).forEach(([side, callouts]) => {
+      const minY = 22;
+      const maxY = chartHeight - 22;
+      const gap = 28;
+      const sorted = [...callouts].sort((left, right) => left.desiredY - right.desiredY);
+      const positions = sorted.map((callout) => Math.max(minY, Math.min(maxY, callout.desiredY)));
+      for (let index = 1; index < positions.length; index += 1) {
+        positions[index] = Math.max(positions[index], positions[index - 1] + gap);
+      }
+      if (positions.length && positions[positions.length - 1] > maxY) {
+        const shift = positions[positions.length - 1] - maxY;
+        for (let index = 0; index < positions.length; index += 1) positions[index] -= shift;
+      }
+      for (let index = positions.length - 2; index >= 0; index -= 1) {
+        positions[index] = Math.min(positions[index], positions[index + 1] - gap);
+      }
+      if (positions.length && positions[0] < minY) {
+        const shift = minY - positions[0];
+        for (let index = 0; index < positions.length; index += 1) positions[index] += shift;
+      }
+      sorted.forEach((callout, index) => calloutPositions.push({ ...callout, side, y: positions[index] }));
+    });
+    const calloutMarkup = calloutPositions.map(({ slice, side, y }) => {
+      const start = polarPoint(centerX, centerY, radius + 2, slice.midAngle);
+      const outside = polarPoint(centerX, centerY, radius + 14, slice.midAngle);
+      const railX = side === 'left' ? 54 : 326;
+      const lineEndX = side === 'left' ? 54 : 326;
+      const labelX = side === 'left' ? 49 : 331;
+      const anchor = side === 'left' ? 'end' : 'start';
+      const shareText = `${formatSharePercent(slice.share)}%`;
+      const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
+      const path = `M ${start.x} ${start.y} L ${outside.x} ${outside.y} L ${railX} ${outside.y} L ${railX} ${y} L ${lineEndX} ${y}`;
+      return `<path class="share-leader-line" d="${path}" stroke="${slice.color}"/><text class="share-outside-label" x="${labelX}" y="${y - 5}" text-anchor="${anchor}"><title>${escapeHtml(`${chartLabelText(slice.name)}: ${shareText}・${quantityText}個`)}</title><tspan x="${labelX}">${escapeHtml(shareText)}</tspan><tspan x="${labelX}" dy="12">${quantityText}個</tspan></text>`;
+    }).join('');
+    element.setAttribute('viewBox', `0 0 760 ${chartHeight}`);
+    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/>${sliceLabelMarkup}${calloutMarkup}<text class="share-total-label" x="${centerX}" y="${centerY - 6}" text-anchor="middle">売上合計</text><text class="share-total-value" x="${centerX}" y="${centerY + 18}" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
   }
 
   function polarPoint(centerX, centerY, radius, angle) {
@@ -1568,6 +1820,74 @@
     elements.adminToggle.setAttribute('aria-expanded', String(isOpen));
   }
 
+  function openAdminAccess() {
+    if (!D1Client || !D1Client.isConfigured() || D1Client.isAdminAuthenticated()) {
+      setAdminMode(true);
+      return;
+    }
+    elements.adminPassword.value = '';
+    elements.adminPasswordError.textContent = '';
+    elements.adminPasswordDialog.showModal();
+    elements.adminPassword.focus();
+  }
+
+  function restoreAdminPasswordGate(request) {
+    if (request?.wasSharedGateLocked) root.document.documentElement.dataset.sharedGate = 'locked';
+  }
+
+  function requestAdminPassword() {
+    if (D1Client && D1Client.isAdminAuthenticated()) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const wasSharedGateLocked = root.document.documentElement.dataset.sharedGate === 'locked';
+      state.adminPasswordRequest = { resolve, reject, wasSharedGateLocked };
+      if (wasSharedGateLocked) delete root.document.documentElement.dataset.sharedGate;
+      elements.adminPassword.value = '';
+      elements.adminPasswordError.textContent = '';
+      elements.adminPasswordDialog.showModal();
+      elements.adminPassword.focus();
+    });
+  }
+
+  function finishAdminPasswordRequest() {
+    const request = state.adminPasswordRequest;
+    if (!request) return false;
+    state.adminPasswordRequest = null;
+    restoreAdminPasswordGate(request);
+    request.resolve();
+    return true;
+  }
+
+  function cancelAdminPasswordRequest(message = '管理者認証をキャンセルしました。') {
+    const request = state.adminPasswordRequest;
+    if (!request) return false;
+    state.adminPasswordRequest = null;
+    restoreAdminPasswordGate(request);
+    request.reject(new Error(message));
+    return true;
+  }
+
+  async function connectAdmin(password) {
+    if (!password) {
+      elements.adminPasswordError.textContent = '管理者パスワードを入力してください。';
+      elements.adminPassword.focus();
+      return;
+    }
+    elements.adminPasswordSubmit.disabled = true;
+    elements.adminPasswordError.textContent = '';
+    try {
+      await D1Client.adminLogin(password);
+      elements.adminPasswordDialog.close();
+      if (finishAdminPasswordRequest()) return;
+      setAdminMode(true);
+      setStatus('管理者として認証しました。商品・在庫・設定を変更できます。', 'success');
+    } catch (error) {
+      elements.adminPasswordError.textContent = error.message || '管理者認証に失敗しました。';
+      elements.adminPassword.focus();
+    } finally {
+      elements.adminPasswordSubmit.disabled = false;
+    }
+  }
+
   function renderAll() {
     renderCatalog();
     renderProductManagement();
@@ -1683,14 +2003,15 @@
     deleteTransaction(transactionId, { confirm: false, undo: true });
   }
 
-  function deleteTransaction(transactionId, options = {}) {
+  async function deleteTransaction(transactionId, options = {}) {
     if (options.confirm !== false && !root.confirm('この会計を削除しますか？')) return;
     try {
       const previousTransaction = state.transactions.find((item) => item.id === transactionId);
       if (!previousTransaction) return;
       const nextTransactions = Core.removeTransaction(state.transactions, transactionId);
       const nextInventory = Core.applyInventoryTransactionChange(state.inventory, previousTransaction, null, state.products);
-      Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory);
+      await persistSharedSnapshot({ transactions: nextTransactions, inventory: nextInventory },
+        () => Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory));
       state.transactions = nextTransactions;
       state.inventory = nextInventory;
       if (state.undoTransactionId === transactionId) clearUndoSale();
@@ -1698,7 +2019,7 @@
       renderAll();
       setStatus(options.undo ? '直前の会計を取り消しました。在庫数も戻しました。' : '会計を削除しました。在庫数も戻しました。', 'success');
     } catch (error) {
-      setStatus('会計を削除できませんでした。現在の履歴を維持します。', 'error');
+      setStatus(persistenceErrorMessage(error, '会計を削除できませんでした。現在の履歴を維持します。'), 'error');
     }
   }
 
@@ -1707,7 +2028,7 @@
     if (!target) return;
     const transactionId = target.dataset.transactionId;
     if (target.dataset.historyAction === 'edit') editTransaction(transactionId);
-    if (target.dataset.historyAction === 'delete') deleteTransaction(transactionId);
+    if (target.dataset.historyAction === 'delete') void deleteTransaction(transactionId);
   }
 
   function handleProductManagementAction(event) {
@@ -1724,14 +2045,14 @@
     }
     if (target.dataset.managementAction === 'move-up') void moveProduct(productId, -1);
     if (target.dataset.managementAction === 'move-down') void moveProduct(productId, 1);
-    if (target.dataset.managementAction === 'save') saveProductDetails(productId, target);
-    if (target.dataset.managementAction === 'adjust-stock') adjustProductStock(productId, target);
+    if (target.dataset.managementAction === 'save') void saveProductDetails(productId, target);
+    if (target.dataset.managementAction === 'adjust-stock') void adjustProductStock(productId, target);
     if (target.dataset.managementAction === 'copy') prepareProductCopy(productId, target.closest('.managed-product-row'));
     if (target.dataset.managementAction === 'icon') {
       elements.iconFile.dataset.targetProductId = productId;
       elements.iconFile.click();
     }
-    if (target.dataset.managementAction === 'delete') deleteProduct(productId);
+    if (target.dataset.managementAction === 'delete') void deleteProduct(productId);
   }
 
   function handleProductManagementChange(event) {
@@ -1792,7 +2113,7 @@
     elements.productManagementList.setAttribute('aria-busy', 'true');
     updateProductOrderActions();
     try {
-      Storage.saveProducts(storage, nextProducts);
+      await persistSharedSnapshot({ products: nextProducts }, () => Storage.saveProducts(storage, nextProducts));
       state.products = nextProducts;
       renderCatalog();
       renderProductManagement();
@@ -1892,7 +2213,7 @@
     setStatus('商品のコピーを取り消しました。', 'success');
   }
 
-  function saveProductDetails(productId, actionTarget) {
+  async function saveProductDetails(productId, actionTarget) {
     const row = actionTarget.closest('.managed-product-row');
     const draft = getManagedProductDraft(row, productId);
     if (!draft || !draft.name || !draft.category || draft.rawPrice === '') {
@@ -1919,18 +2240,19 @@
       else delete nextProduct.startNewRow;
       const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
       const nextInventory = updateInventoryForProductChange(state.inventory, draft.product, nextProduct);
-      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
+      await persistSharedSnapshot({ products: nextProducts, inventory: nextInventory },
+        () => Storage.saveProductsAndInventory(storage, nextProducts, nextInventory));
       state.products = nextProducts;
       state.inventory = nextInventory;
       if (state.cartProducts.has(productId)) state.cartProducts.set(productId, nextProduct);
       renderAll();
       setStatus(`${draft.name}の商品情報を反映しました。`, 'success');
     } catch (error) {
-      setStatus('商品情報を反映できませんでした。現在の商品一覧を維持します。', 'error');
+      setStatus(persistenceErrorMessage(error, '商品情報を反映できませんでした。現在の商品一覧を維持します。'), 'error');
     }
   }
 
-  function adjustProductStock(productId, actionTarget) {
+  async function adjustProductStock(productId, actionTarget) {
     const row = actionTarget.closest('.managed-product-row');
     const input = row && row.querySelector('[data-management-field="stock-remaining"]');
     const product = state.products.find((candidate) => candidate.id === productId);
@@ -1948,21 +2270,45 @@
       return;
     }
     try {
-      const sales = getProductSales(product);
-      const nextProduct = { ...product, stockLimit: sales + value };
-      const nextProducts = state.products.map((candidate) => candidate.id === productId ? nextProduct : candidate);
       const nextInventory = Core.adjustInventory(state.inventory, productId, product.name, value);
-      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
-      state.products = nextProducts;
+      await persistSharedSnapshot({ inventory: nextInventory },
+        () => Storage.saveInventory(storage, nextInventory));
       state.inventory = nextInventory;
       renderAll();
       setStatus(`${product.name}の在庫残数を${value}個に調整しました。`, 'success');
     } catch (error) {
-      setStatus('在庫数を保存できませんでした。現在の在庫を維持します。', 'error');
+      setStatus(persistenceErrorMessage(error, '在庫数を保存できませんでした。現在の在庫を維持します。'), 'error');
     }
   }
 
-  function addProduct(event) {
+  async function resetInventoryPeriod() {
+    if (state.editingTransactionId) {
+      setStatus('会計の変更を保存または取り消してから、販売期間をリセットしてください。', 'error');
+      return;
+    }
+    if (state.cart.size > 0) {
+      setStatus('カートを空にしてから、販売期間をリセットしてください。', 'error');
+      return;
+    }
+    if (!state.products.length) {
+      setStatus('リセットする商品がありません。', 'error');
+      return;
+    }
+    if (!root.confirm('販売済みを0に戻し、現在の残数を新しい販売期間の初期在庫にしますか？\n\n会計履歴は残ります。この操作は全端末の共有データに反映されます。')) return;
+    try {
+      const reset = Core.resetInventoryPeriod(state.products, state.inventory);
+      await persistSharedSnapshot({ products: reset.products, inventory: reset.inventory },
+        () => Storage.saveProductsAndInventory(storage, reset.products, reset.inventory));
+      state.products = reset.products;
+      state.inventory = reset.inventory;
+      renderAll();
+      setStatus('販売済みを0に戻し、新しい販売期間を開始しました。会計履歴は保持しています。', 'success');
+    } catch (error) {
+      setStatus(persistenceErrorMessage(error, '販売期間をリセットできませんでした。現在の在庫を維持します。'), 'error');
+    }
+  }
+
+  async function addProduct(event) {
     event.preventDefault();
     const categoryValue = elements.productAddCategory.value;
     const category = categoryValue === NEW_CATEGORY_VALUE ? elements.productAddNewCategory.value.trim() : categoryValue.trim();
@@ -1992,7 +2338,8 @@
       }
       const nextProducts = [...state.products, product];
       const nextInventory = addInventoryForProduct(state.inventory, product);
-      Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
+      await persistSharedSnapshot({ products: nextProducts, inventory: nextInventory },
+        () => Storage.saveProductsAndInventory(storage, nextProducts, nextInventory));
       state.products = nextProducts;
       state.inventory = nextInventory;
       state.pendingProductCopy = null;
@@ -2009,12 +2356,12 @@
     }
   }
 
-  function deleteProduct(productId) {
+  async function deleteProduct(productId) {
     const product = state.products.find((candidate) => candidate.id === productId);
     if (!product || !root.confirm(`${product.name}を商品一覧から削除しますか？\n過去の会計履歴は残ります。`)) return;
     try {
       const nextProducts = state.products.filter((candidate) => candidate.id !== productId);
-      Storage.saveProducts(storage, nextProducts);
+      await persistSharedSnapshot({ products: nextProducts }, () => Storage.saveProducts(storage, nextProducts));
       state.products = nextProducts;
       state.cart.delete(productId);
       state.cartProducts.delete(productId);
@@ -2028,15 +2375,15 @@
   function replaceProductIcon(file, productId) {
     if (!file || !productId) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const nextProducts = state.products.map((product) => product.id === productId ? { ...product, icon: String(reader.result) } : product);
-        Storage.saveProducts(storage, nextProducts);
+        await persistSharedSnapshot({ products: nextProducts }, () => Storage.saveProducts(storage, nextProducts));
         state.products = nextProducts;
         renderAll();
         setStatus('商品アイコンを更新しました。', 'success');
       } catch (error) {
-        setStatus('商品アイコンを保存できませんでした。', 'error');
+        setStatus(persistenceErrorMessage(error, '商品アイコンを保存できませんでした。'), 'error');
       }
     };
     reader.onerror = () => setStatus('画像を読み込めませんでした。', 'error');
@@ -2110,9 +2457,13 @@
     updateBackupStatus();
   }
 
-  function persistSettings(settings, successMessage, errorMessage) {
+  async function persistSettings(settings, successMessage, errorMessage, { shared = false } = {}) {
     try {
-      Storage.saveSettings(storage, settings);
+      if (shared) {
+        await persistSharedSnapshot({ settings }, () => Storage.saveSettings(storage, settings));
+      } else {
+        Storage.saveSettings(storage, settings);
+      }
       state.settings = settings;
       applyProductColumnWidth();
       startAutoBackupTimer();
@@ -2121,11 +2472,11 @@
       renderCart();
       setStatus(successMessage, 'success');
     } catch (error) {
-      setStatus(errorMessage, 'error');
+      setStatus(persistenceErrorMessage(error, errorMessage), 'error');
     }
   }
 
-  function saveSettings() {
+  async function saveSettings() {
     const settings = {
       ...state.settings,
       enabled: elements.settingsEnabled.checked,
@@ -2135,7 +2486,7 @@
     };
     state.temporaryCheckoutSiblings = null;
     updateSettingsSaveState();
-    persistSettings(settings, '制限設定を反映しました。', '制限設定を反映できませんでした。');
+    await persistSettings(settings, '制限設定を反映しました。', '制限設定を反映できませんでした。', { shared: true });
   }
 
   function adjustLimitSetting(settingKey, delta) {
@@ -2172,7 +2523,7 @@
       autoBackupLastAt: state.settings.autoBackupLastAt || '',
     };
     updateBackupSettingsSaveState();
-    persistSettings(settings, '自動バックアップ設定を保存しました。', '自動バックアップ設定を保存できませんでした。');
+    void persistSettings(settings, '自動バックアップ設定を保存しました。', '自動バックアップ設定を保存できませんでした。');
   }
 
   function handleCheckoutLimitAdjustment(event) {
@@ -2462,18 +2813,14 @@
     void maybeRunAutoBackup();
   }
 
-  function confirmSale() {
+  async function confirmSale() {
     const lines = getCartLines();
     // 履歴と在庫の次状態を両方保存してから画面上の state を更新し、保存失敗時の表示を食い違わせない。
     try {
       const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
       if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
-      lines.forEach(({ product, quantity }) => {
-        const stock = getProductStockInfo(product);
-        if (stock.limited && quantity > stock.maxQuantity) {
-          throw new Error(`${product.name}の在庫上限（${product.stockLimit}個）を超えています`);
-        }
-      });
+      const stockError = getCartStockError(lines);
+      if (stockError) throw new Error(stockError.message);
       const existing = state.transactions.find((transaction) => transaction.id === state.editingTransactionId);
       const transaction = Core.buildTransaction({
         id: existing ? existing.id : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
@@ -2484,7 +2831,8 @@
       });
       const nextTransactions = existing ? Core.upsertTransaction(state.transactions, transaction) : [transaction, ...state.transactions];
       const nextInventory = Core.applyInventoryTransactionChange(state.inventory, existing || null, transaction, state.products);
-      Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory);
+      await persistSharedSnapshot({ transactions: nextTransactions, inventory: nextInventory },
+        () => Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory));
       state.transactions = nextTransactions;
       state.inventory = nextInventory;
       // Persist successfully before dismissing the mobile checkout; keep it open when validation or storage fails.
@@ -2501,7 +2849,7 @@
 
   function importProducts(file) {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const parsed = Core.parseProductText(reader.result);
       if (!parsed.products.length) {
         setStatus(`商品を取り込めませんでした。${parsed.warnings.join(' ')}`, 'error');
@@ -2536,7 +2884,8 @@
             ? updateInventoryForProductChange(nextInventory, previous, product)
             : addInventoryForProduct(nextInventory, product);
         });
-        Storage.saveProductsAndInventory(storage, nextProducts, nextInventory);
+        await persistSharedSnapshot({ products: nextProducts, inventory: nextInventory },
+          () => Storage.saveProductsAndInventory(storage, nextProducts, nextInventory));
         state.products = nextProducts;
         state.inventory = nextInventory;
         clearCartState();
@@ -2544,7 +2893,7 @@
         const warningText = parsed.warnings.length ? ` 注意: ${parsed.warnings.join(' ')}` : '';
         setStatus(`${parsed.stats.accepted - parsed.stats.duplicates}件の商品を取り込みました。${parsed.stats.rejected}件を除外、重複${parsed.stats.duplicates}件。${warningText}`, parsed.warnings.length ? 'error' : 'success');
       } catch (error) {
-        setStatus('商品一覧を保存できませんでした。現在の商品一覧を維持します。', 'error');
+        setStatus(persistenceErrorMessage(error, '商品一覧を保存できませんでした。現在の商品一覧を維持します。'), 'error');
       }
     };
     reader.onerror = () => setStatus('ファイルを読み込めませんでした。', 'error');
@@ -2601,7 +2950,7 @@
 
   function importTransactions(file) {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const parsed = Core.parseTransactionCsv(reader.result);
       if (!parsed.transactions.length || parsed.warnings.length) {
         setStatus(`会計履歴を復元できませんでした。${parsed.warnings.join(' ')}`, 'error');
@@ -2609,21 +2958,22 @@
       }
       if (!root.confirm('現在の会計履歴を、CSVの内容で置き換えますか？\n在庫数はこの端末の現在値を維持します。新しい端末へ在庫数も移す場合は、先に「レジ設定一式」を復元してください。')) return;
       try {
+        migrateLegacyTransactionProductIds(parsed.transactions);
         const hasInventoryActivity = Object.values(state.inventory.salesByProduct || {}).some((quantity) => quantity > 0)
           || (state.inventory.adjustments || []).length > 0;
         const nextInventory = !state.transactions.length && !hasInventoryActivity
           ? Core.createInventoryLedger(state.products, parsed.transactions)
           : state.inventory;
-        Storage.saveSalesAndInventory(storage, parsed.transactions, nextInventory);
+        await persistSharedSnapshot({ transactions: parsed.transactions, inventory: nextInventory },
+          () => Storage.saveSalesAndInventory(storage, parsed.transactions, nextInventory));
         state.transactions = parsed.transactions;
         state.inventory = nextInventory;
-        migrateLegacyTransactionProductIds();
         clearUndoSale();
         clearCartState();
         renderAll();
         setStatus(`${parsed.transactions.length}件の会計履歴を復元しました。`, 'success');
       } catch (error) {
-        setStatus('会計履歴を保存できませんでした。現在の履歴を維持します。', 'error');
+        setStatus(persistenceErrorMessage(error, '会計履歴を保存できませんでした。現在の履歴を維持します。'), 'error');
       }
     };
     reader.onerror = () => setStatus('会計履歴CSVを読み込めませんでした。', 'error');
@@ -2632,7 +2982,7 @@
 
   function importSettings(file) {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const parsed = Core.parseSettingsCsv(reader.result);
       if (!parsed.settings) {
         setStatus(`制限設定を取り込めませんでした。${parsed.warnings.join(' ')}`, 'error');
@@ -2645,7 +2995,7 @@
           ...parsed.settings,
           productColumnWidth: normalizeProductColumnWidth(parsed.settings.productColumnWidth || state.settings.productColumnWidth),
         };
-        Storage.saveSettings(storage, nextSettings);
+        await persistSharedSnapshot({ settings: nextSettings }, () => Storage.saveSettings(storage, nextSettings));
         state.settings = nextSettings;
         applyProductColumnWidth();
         startAutoBackupTimer();
@@ -2654,7 +3004,7 @@
         renderCart();
         setStatus('制限設定を復元しました。', 'success');
       } catch (error) {
-        setStatus('制限設定を復元できませんでした。現在の設定を維持します。', 'error');
+        setStatus(persistenceErrorMessage(error, '制限設定を復元できませんでした。現在の設定を維持します。'), 'error');
       }
     };
     reader.onerror = () => setStatus('制限設定ファイルを読み込めませんでした。', 'error');
@@ -2663,7 +3013,7 @@
 
   function importSettingsBundle(file) {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const parsed = Core.parseSettingsBundle(reader.result);
       if (!parsed.settings || !parsed.products.length) {
         setStatus(`レジ設定一式を復元できませんでした。${parsed.warnings.join(' ')}`, 'error');
@@ -2681,8 +3031,10 @@
         autoBackupLastAt: state.settings.autoBackupLastAt || '',
       };
       try {
-        Storage.saveProductsAndInventory(storage, parsed.products, nextInventory);
-        Storage.saveSettings(storage, nextSettings);
+        await persistSharedSnapshot({ products: parsed.products, inventory: nextInventory, settings: nextSettings }, () => {
+          Storage.saveProductsAndInventory(storage, parsed.products, nextInventory);
+          Storage.saveSettings(storage, nextSettings);
+        });
         state.products = parsed.products;
         state.inventory = nextInventory;
         state.settings = nextSettings;
@@ -2693,21 +3045,150 @@
         setStatus(`${parsed.products.length}件の商品・在庫数・レジ設定を復元しました。販売履歴は変更していません。`, 'success');
       } catch (error) {
         // 商品・在庫と設定は別キーなので、片方だけ保存できた場合は読み込み前の組み合わせへ戻す。
-        try {
-          Storage.saveProductsAndInventory(storage, previousProducts, previousInventory);
-          Storage.saveSettings(storage, previousSettings);
-        } catch (restoreError) {
-          // 保存先自体が利用できない場合は、現在の画面状態を維持する。
+        if (!D1Client || !D1Client.isConfigured()) {
+          try {
+            Storage.saveProductsAndInventory(storage, previousProducts, previousInventory);
+            Storage.saveSettings(storage, previousSettings);
+          } catch (restoreError) {
+            // 保存先自体が利用できない場合は、現在の画面状態を維持する。
+          }
         }
-        setStatus('レジ設定一式を保存できませんでした。現在の設定を維持します。', 'error');
+        setStatus(persistenceErrorMessage(error, 'レジ設定一式を保存できませんでした。現在の設定を維持します。'), 'error');
       }
     };
     reader.onerror = () => setStatus('レジ設定一式ファイルを読み込めませんでした。', 'error');
     reader.readAsText(file, 'UTF-8');
   }
 
+  function finishAppStartup(warnings = []) {
+    renderHourlyHourOptions();
+    applyProductColumnWidth();
+    renderAll();
+    renderSettings();
+    startAutoBackupTimer();
+    void restoreBackupDirectory();
+    setStatus(warnings.filter(Boolean).join(' '), warnings.some(Boolean) ? 'error' : '');
+  }
+
+  function startRemoteSyncTimer() {
+    if (state.remoteSyncTimer) root.clearInterval(state.remoteSyncTimer);
+    state.remoteSyncTimer = root.setInterval(() => {
+      if (root.document.visibilityState === 'visible') {
+        void refreshRemoteData({ silent: true }).catch((error) => {
+          if (error.status === 401) lockRemoteSession('ログインの有効期限が切れました。再度ログインしてください。');
+          else setStatus(error.message || '共有データを確認できませんでした。', 'error');
+        });
+      }
+    }, 15000);
+    if (!state.remoteVisibilityHandler) state.remoteVisibilityHandler = () => {
+      if (root.document.visibilityState === 'visible') {
+        void refreshRemoteData({ silent: true }).catch((error) => {
+          if (error.status === 401) lockRemoteSession('ログインの有効期限が切れました。再度ログインしてください。');
+        });
+      }
+    };
+    root.document.addEventListener('visibilitychange', state.remoteVisibilityHandler);
+  }
+
+  function lockRemoteSession(message = '') {
+    if (state.remoteSyncTimer) root.clearInterval(state.remoteSyncTimer);
+    state.remoteSyncTimer = null;
+    if (state.autoBackupTimer) root.clearInterval(state.autoBackupTimer);
+    state.autoBackupTimer = null;
+    state.remoteAuthenticated = false;
+    cancelAdminPasswordRequest('共有ログインが終了しました。');
+    if (D1Client && D1Client.isConfigured()) D1Client.adminLogout();
+    if (elements.adminPasswordDialog && elements.adminPasswordDialog.open) elements.adminPasswordDialog.close();
+    setAdminMode(false);
+    root.document.documentElement.dataset.sharedGate = 'locked';
+    elements.sharedLogin.hidden = false;
+    elements.sharedLoginError.textContent = message;
+    elements.sharedPassword.value = '';
+    elements.sharedLogout.classList.add('is-hidden');
+    elements.sharedPassword.focus();
+  }
+
+  async function connectRemote(password = '') {
+    if (state.remoteConnecting) return;
+    state.remoteConnecting = true;
+    let temporaryAdminSession = false;
+    elements.sharedLoginSubmit.disabled = true;
+    elements.sharedLoginError.textContent = '';
+    elements.sharedLoginMessage.textContent = '共有データを読み込んでいます。';
+    try {
+      if (password) await D1Client.login(password);
+      else if (!D1Client.getToken()) throw new Error('共有パスワードを入力してください。');
+      let snapshot = await D1Client.getState();
+      let initializedFromThisDevice = false;
+      if (!snapshot.initialized) {
+        if (!D1Client.isAdminAuthenticated()) {
+          await requestAdminPassword();
+          temporaryAdminSession = true;
+        }
+        const shouldInitialize = root.confirm('D1に共有データがまだありません。\nこの端末の現在の商品一覧・会計履歴・在庫・購入制限を初期データとして登録しますか？\n\n初回登録する端末は1台だけにしてください。他端末の端末内データは自動では統合されません。');
+        if (!shouldInitialize) {
+          D1Client.logout();
+          throw new Error('初回登録をキャンセルしました。データのある端末からもう一度ログインしてください。');
+        }
+        migrateLegacyTransactionProductIds();
+        initializeInventoryLedger();
+        try {
+          await D1Client.initialize(makeSharedSnapshot());
+          initializedFromThisDevice = true;
+        } catch (error) {
+          if (error.status !== 409) throw error;
+        }
+        snapshot = await D1Client.getState();
+      }
+      if (!initializedFromThisDevice) {
+        const localSnapshot = makeSharedSnapshot();
+        const remoteSnapshot = {
+          products: normalizeProductsWithIcons(snapshot.products),
+          transactions: snapshot.transactions,
+          inventory: snapshot.inventory,
+          settings: sharedSettings(snapshot.settings),
+        };
+        if (sharedSnapshotsDiffer(localSnapshot, remoteSnapshot)
+          && !root.confirm('この端末には共有データと異なるローカルデータがあります。\n続行すると共有データでこの端末のデータを置き換えます（自動統合はしません）。\nこの端末にだけある会計履歴や商品設定を残す場合は、キャンセルして先にバックアップしてください。\n\n共有データに切り替えますか？')) {
+          D1Client.logout();
+          throw new Error('切り替えをキャンセルしました。必要なデータをバックアップしてから、もう一度ログインしてください。');
+        }
+      }
+      acceptRemoteSnapshot(snapshot);
+      state.remoteAuthenticated = true;
+      const beforeMigrations = JSON.parse(JSON.stringify(makeSharedSnapshot()));
+      migrateLegacyTransactionProductIds();
+      initializeInventoryLedger();
+      if (JSON.stringify(makeSharedSnapshot()) !== JSON.stringify(beforeMigrations)) {
+        await persistSharedSnapshot({}, () => {}, beforeMigrations);
+      }
+      elements.sharedLogin.hidden = true;
+      elements.sharedLogout.classList.remove('is-hidden');
+      delete root.document.documentElement.dataset.sharedGate;
+      finishAppStartup([]);
+      startRemoteSyncTimer();
+      setStatus('共有データに接続しました。', 'success');
+    } catch (error) {
+      if (error.status === 401) D1Client.logout();
+      elements.sharedLoginMessage.textContent = '共有データを利用するにはログインしてください。';
+      elements.sharedLoginError.textContent = error.message || 'ログインできませんでした。';
+      elements.sharedPassword.focus();
+    } finally {
+      if (temporaryAdminSession) D1Client.adminLogout();
+      state.remoteConnecting = false;
+      elements.sharedLoginSubmit.disabled = false;
+    }
+  }
+
   function start() {
     elements.status = $('#status');
+    elements.sharedLogin = $('#shared-login');
+    elements.sharedLoginForm = $('#shared-login-form');
+    elements.sharedPassword = $('#shared-password');
+    elements.sharedLoginMessage = $('#shared-login-message');
+    elements.sharedLoginError = $('#shared-login-error');
+    elements.sharedLoginSubmit = $('#shared-login-submit');
+    elements.sharedLogout = $('#shared-logout');
     elements.undoLastSale = $('#undo-last-sale');
     elements.pageShell = document.querySelector('.page-shell');
     elements.productList = $('#product-list');
@@ -2784,6 +3265,12 @@
     elements.adminPanel = $('#admin-panel');
     elements.adminToggle = $('#admin-toggle');
     elements.adminClose = $('#admin-close');
+    elements.adminPasswordDialog = $('#admin-password-dialog');
+    elements.adminPasswordForm = $('#admin-password-form');
+    elements.adminPassword = $('#admin-password');
+    elements.adminPasswordError = $('#admin-password-error');
+    elements.adminPasswordSubmit = $('#admin-password-submit');
+    elements.adminPasswordCancel = $('#admin-password-cancel');
     elements.settingsPanel = $('#settings-panel');
     elements.settingsEnabled = $('#settings-enabled');
     elements.settingsCategory = $('#settings-category');
@@ -2819,6 +3306,7 @@
     elements.productManagementPanel = $('#product-management-panel');
     elements.productManagementList = $('#product-management-list');
     elements.categoryOrderList = $('#category-order-list');
+    elements.resetInventoryPeriod = $('#reset-inventory-period');
     $('#product-list').addEventListener('click', handleProductListClick);
     $('#product-list').addEventListener('change', handleProductAction);
     $('#product-list').addEventListener('keydown', handleProductCardKeydown);
@@ -2857,7 +3345,8 @@
     elements.categoryOrderList.addEventListener('click', handleCategoryOrderAction);
     elements.productManagementList.addEventListener('change', handleProductManagementChange);
     elements.productManagementList.addEventListener('input', handleProductManagementInput);
-    elements.productAddForm.addEventListener('submit', addProduct);
+    elements.resetInventoryPeriod.addEventListener('click', () => { void resetInventoryPeriod(); });
+    elements.productAddForm.addEventListener('submit', (event) => { void addProduct(event); });
     elements.productCopyCancel.addEventListener('click', cancelProductCopy);
     elements.productAddForm.addEventListener('input', updateProductAddActionState);
     elements.productAddForm.addEventListener('change', updateProductAddActionState);
@@ -2892,7 +3381,7 @@
     elements.checkoutLimitAdjustment.addEventListener('change', handleCheckoutLimitAdjustmentChange);
     elements.checkoutLimitReset.addEventListener('click', () => setTemporaryCheckoutSiblings(state.settings.siblings));
     $('#exact-total').addEventListener('click', () => { state.received = String(Core.calculateCart(getCartLines()).total); elements.received.value = state.received; renderCart(); });
-    elements.confirmButton.addEventListener('click', confirmSale);
+    elements.confirmButton.addEventListener('click', () => { void confirmSale(); });
     elements.clearCart.addEventListener('click', requestClearCart);
     elements.clearCartDialogCancel.addEventListener('click', () => elements.clearCartDialog.close());
     elements.clearCartDialogConfirm.addEventListener('click', confirmClearCart);
@@ -2919,10 +3408,37 @@
       event.target.value = '';
     });
     elements.adminToggle.addEventListener('click', () => {
-      setAdminMode(elements.adminPanel.classList.contains('is-hidden'));
+      const opening = elements.adminPanel.classList.contains('is-hidden');
+      if (opening) openAdminAccess();
+      else setAdminMode(false);
     });
     elements.adminClose.addEventListener('click', () => {
       setAdminMode(false);
+      if (D1Client && D1Client.isConfigured()) D1Client.adminLogout();
+    });
+    elements.adminPasswordForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void connectAdmin(elements.adminPassword.value);
+    });
+    elements.adminPasswordCancel.addEventListener('click', () => {
+      cancelAdminPasswordRequest();
+      elements.adminPasswordDialog.close();
+      elements.adminPassword.value = '';
+      elements.adminPasswordError.textContent = '';
+    });
+    elements.adminPasswordDialog.addEventListener('cancel', () => {
+      cancelAdminPasswordRequest();
+      elements.adminPassword.value = '';
+      elements.adminPasswordError.textContent = '';
+    });
+    elements.sharedLoginForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void connectRemote(elements.sharedPassword.value);
+    });
+    elements.sharedLogout.addEventListener('click', () => {
+      if (!root.confirm('共有レジからログアウトしますか？')) return;
+      D1Client.logout();
+      lockRemoteSession();
     });
     elements.settingsSave.addEventListener('click', saveSettings);
     elements.settingsPanel.addEventListener('click', (event) => {
@@ -2952,7 +3468,12 @@
         setStatus('バックアップCSVをアーカイブできなかったため、会計履歴は消去していません。', 'error');
         return;
       }
-      Storage.clearTransactions(storage);
+      try {
+        await persistSharedSnapshot({ transactions: [] }, () => Storage.clearTransactions(storage));
+      } catch (error) {
+        setStatus(error.message || '会計履歴を消去できませんでした。', 'error');
+        return;
+      }
       state.transactions = [];
       clearUndoSale();
       renderAll();
@@ -2961,16 +3482,18 @@
         : 'アーカイブ対象のバックアップCSVはありませんでした。';
       setStatus(`会計履歴を消去しました。在庫残数・商品一覧・設定は維持されています。${archiveMessage}`, 'success');
     });
-    renderHourlyHourOptions();
-    applyProductColumnWidth();
+    if (D1Client && D1Client.isConfigured()) {
+      root.document.documentElement.dataset.sharedGate = 'locked';
+      elements.sharedLogin.hidden = false;
+      elements.sharedLoginMessage.textContent = '共有データを利用するにはログインしてください。';
+      if (D1Client.getToken()) void connectRemote();
+      else elements.sharedPassword.focus();
+      return;
+    }
     migrateLegacyTransactionProductIds();
     const inventoryWarning = initializeInventoryLedger();
-    renderAll();
-    renderSettings();
-    startAutoBackupTimer();
-    void restoreBackupDirectory();
-    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, inventoryState.warning, settingsState.warning, inventoryWarning].filter(Boolean);
-    setStatus(warnings.join(' '), warnings.length ? 'error' : '');
+    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, inventoryState.warning, settingsState.warning, inventoryWarning];
+    finishAppStartup(warnings);
   }
 
   if (typeof document !== 'undefined') {

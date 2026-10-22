@@ -3,6 +3,20 @@ const assert = require('node:assert/strict');
 
 const Core = require('../core.js');
 
+test('makeProductCopy carries product settings but not sales or remaining stock', () => {
+  const source = { id: 'original', category: 'チケット販売', name: 'ブレスレット作り', unitPrice: 200, stockLimit: 16, iconPath: 'assets/bracelet.png', sold: 5, remaining: 11 };
+  const existing = [source, { category: source.category, name: 'ブレスレット作り（コピー）' }];
+  const copy = Core.makeProductCopy(source, existing, 'new-copy-id');
+  assert.deepEqual(copy, {
+    id: 'new-copy-id', category: source.category, name: 'ブレスレット作り（コピー2）',
+    unitPrice: 200, stockLimit: 16, iconPath: 'assets/bracelet.png',
+  });
+  const inventory = Core.createInventoryLedger([copy], []);
+  assert.equal(inventory.salesByProduct[copy.id] || 0, 0);
+  assert.equal(inventory.remainingByProduct[copy.id], 16);
+  assert.equal(Core.makeProductCopy({ ...source, icon: '🎟️', stockLimit: undefined }, existing).icon, '🎟️');
+});
+
 test('parseProductText extracts both price-table blocks', () => {
   const text = [
     '値段表,,,',
@@ -51,9 +65,9 @@ test('productsToCsv exports products in a re-importable normalized format', () =
   ]);
 
   assert.equal(csv, [
-    'カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID',
-    '園グッズ,手提げ,500,👜,,20,product-tote',
-    '古園服,冬服ブレザー,400,,assets/icons/winter-blazer.png,,product-blazer',
+    'カテゴリ,商品名,単価,アイコン,アイコンパス,在庫上限,商品ID,次の行から表示',
+    '園グッズ,手提げ,500,👜,,20,product-tote,false',
+    '古園服,冬服ブレザー,400,,assets/icons/winter-blazer.png,,product-blazer,false',
   ].join('\r\n'));
   assert.deepEqual(Core.parseProductText(csv).products, [
     { id: 'product-tote', category: '園グッズ', name: '手提げ', unitPrice: 500, icon: '👜', stockLimit: 20 },

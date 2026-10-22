@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 550" role="img" aria-labelledby="title desc">
   <title id="title">販売レジのデータ保存先と移行経路</title>
-  <desc id="desc">アプリは商品、会計、在庫、設定をブラウザ内に保存します。CSVやJSONは選択フォルダへの自動保存またはダウンロードで端末間を移行します。</desc>
+  <desc id="desc">画面はGitHub Pagesから配信し、商品・会計・在庫・購入制限はCloudflare Workerを通じてD1へ保存します。端末固有設定とバックアップフォルダは各ブラウザに残ります。</desc>
   <defs>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
       <feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#153d3b" flood-opacity=".08"/>
@@ -11,7 +11,7 @@
   </defs>
   <rect width="1160" height="550" rx="22" fill="#f2f7f5"/>
   <text x="30" y="42" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="23" font-weight="700">データの保存先と移行経路</text>
-  <text x="30" y="68" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">販売レジはブラウザ内で動作し、データは用途別に保存されます</text>
+  <text x="30" y="68" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="13">静的な画面配信と共有データ保存を分けた構成</text>
 
   <g fill="#fff" stroke="#d6e4e1" filter="url(#shadow)">
     <rect x="28" y="94" width="262" height="300" rx="15"/>
@@ -24,32 +24,32 @@
   <text x="76" y="121" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="16" font-weight="700">販売レジ</text>
   <text x="48" y="157" fill="#526f6d" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12">商品・会計・設定を扱う画面</text>
   <rect x="48" y="177" width="222" height="79" rx="10" fill="#f4f8f6" stroke="#e0eae8"/>
-  <text x="64" y="201" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">確定したデータ</text>
-  <text x="64" y="222" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">商品・会計・在庫・レジ設定</text>
-  <text x="64" y="241" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">変更時にブラウザ内へ保存</text>
+  <text x="64" y="201" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">共有データ</text>
+  <text x="64" y="222" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">商品・会計・在庫・購入制限</text>
+  <text x="64" y="241" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">Worker経由でD1へ保存</text>
   <rect x="48" y="269" width="222" height="91" rx="10" fill="#fff9ec" stroke="#f0dfb9"/>
   <text x="64" y="293" fill="#815f22" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">一時的な入力</text>
   <text x="64" y="314" fill="#806f4e" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">カート・お預かり入力</text>
   <text x="64" y="333" fill="#806f4e" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">表示中タブ・検索条件など</text>
   <text x="64" y="350" fill="#9a7640" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10">更新すると初期状態に戻る</text>
 
-  <text x="350" y="124" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="16" font-weight="700">このブラウザの保存領域</text>
-  <text x="770" y="124" text-anchor="end" fill="#6b8583" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">端末・ブラウザ・URLごとに別</text>
+  <text x="350" y="124" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="16" font-weight="700">Cloudflare Workers + D1</text>
+  <text x="770" y="124" text-anchor="end" fill="#6b8583" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">ログインした端末で共有</text>
   <rect x="348" y="143" width="424" height="177" rx="11" fill="#fbfdfc" stroke="#dce8e5"/>
-  <text x="366" y="166" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">localStorage — 業務データ</text>
+  <text x="366" y="166" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">D1 — 一元管理する業務データ</text>
   <g font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">
     <rect x="365" y="178" width="390" height="27" rx="6" fill="#eaf5f2"/>
-    <text x="376" y="196" fill="#245d58" font-weight="700">商品一覧</text><text x="470" y="196" fill="#607a79">shirayuri-products-v1</text>
+    <text x="376" y="196" fill="#245d58" font-weight="700">商品一覧</text><text x="470" y="196" fill="#607a79">products</text>
     <rect x="365" y="209" width="390" height="27" rx="6" fill="#f3f6fb"/>
-    <text x="376" y="227" fill="#405d7b" font-weight="700">会計履歴</text><text x="470" y="227" fill="#607a79">shirayuri-transactions-v1</text>
+    <text x="376" y="227" fill="#405d7b" font-weight="700">会計履歴</text><text x="470" y="227" fill="#607a79">transactions</text>
     <rect x="365" y="240" width="390" height="27" rx="6" fill="#fff6e8"/>
-    <text x="376" y="258" fill="#84642c" font-weight="700">在庫台帳</text><text x="470" y="258" fill="#607a79">shirayuri-inventory-v1</text>
+    <text x="376" y="258" fill="#84642c" font-weight="700">在庫台帳</text><text x="470" y="258" fill="#607a79">app_meta.inventory_json</text>
     <rect x="365" y="271" width="390" height="27" rx="6" fill="#f8eff4"/>
-    <text x="376" y="289" fill="#80526b" font-weight="700">レジ設定</text><text x="470" y="289" fill="#607a79">shirayuri-settings-v1</text>
+    <text x="376" y="289" fill="#80526b" font-weight="700">購入制限</text><text x="470" y="289" fill="#607a79">app_meta.settings_json</text>
   </g>
   <rect x="348" y="332" width="424" height="45" rx="9" fill="#eef4f3" stroke="#dce8e5"/>
-  <text x="365" y="351" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11" font-weight="700">IndexedDB · shirayuri-backup-v1</text>
-  <text x="365" y="368" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10">選択フォルダへのハンドルを保存（CSV本体ではない）</text>
+  <text x="365" y="351" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11" font-weight="700">change_log · revision付きの差分</text>
+  <text x="365" y="368" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10">同時更新を検知し、直近の変更を各端末へ配信</text>
 
   <text x="854" y="124" fill="#164b4a" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="16" font-weight="700">ファイルとして保存</text>
   <rect x="852" y="143" width="258" height="104" rx="10" fill="#f4f9f7" stroke="#dce8e5"/>
@@ -66,11 +66,11 @@
   <text x="870" y="356" fill="#7b8e8b" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10">履歴CSVと設定JSONは別々に必要</text>
 
   <path d="M290 235h36" fill="none" stroke="#418d85" stroke-width="2" marker-start="url(#arrow-start)" marker-end="url(#arrow)"/>
-  <text x="307" y="221" text-anchor="middle" fill="#52716f" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="9">読込／保存</text>
+  <text x="307" y="221" text-anchor="middle" fill="#52716f" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="9">認証API</text>
 
   <path d="M160 394v30h820v-30" fill="none" stroke="#418d85" stroke-width="2" marker-end="url(#arrow)"/>
   <rect x="470" y="410" width="205" height="22" rx="11" fill="#f2f7f5"/>
-  <text x="572" y="425" text-anchor="middle" fill="#3e7772" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10" font-weight="700">書き出し・自動CSV保存</text>
+  <text x="572" y="425" text-anchor="middle" fill="#3e7772" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10" font-weight="700">CSV書き出し・端末内バックアップ</text>
   <path d="M1040 394v68H160v-68" fill="none" stroke="#8caaa6" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
   <rect x="470" y="449" width="205" height="22" rx="11" fill="#f2f7f5"/>
   <text x="572" y="464" text-anchor="middle" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="10">ファイルから復元・取込</text>
@@ -78,6 +78,6 @@
   <rect x="30" y="490" width="330" height="38" rx="9" fill="#e4f0ed"/>
   <text x="48" y="514" fill="#315755" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11" font-weight="700">初期データ</text>
   <text x="126" y="514" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">products.default.js · assets/icons/</text>
-  <text x="385" y="505" fill="#526f6d" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">端末間の自動同期なし</text>
-  <text x="385" y="525" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">ブラウザデータは各端末内。移行時は「レジ設定一式JSON」と「販売履歴CSV」を両方用意します。</text>
+  <text x="385" y="505" fill="#526f6d" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="12" font-weight="700">共有モードは端末間で自動同期</text>
+  <text x="385" y="525" fill="#607a79" font-family="Yu Gothic UI, Meiryo, sans-serif" font-size="11">初回だけ1台のデータを登録。端末列幅・バックアップ先は各ブラウザに保存します。</text>
 </svg>
