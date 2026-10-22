@@ -1265,6 +1265,7 @@
       .filter((product) => Number(product.quantity) > 0)
       .sort((a, b) => Number(b.sales) - Number(a.sales) || a.name.localeCompare(b.name, 'ja'));
     const totalSales = soldProducts.reduce((total, product) => total + Math.max(0, Number(product.sales) || 0), 0);
+    const formatSharePercent = (share) => share === 0 ? '0' : share < 0.005 ? '<0.01' : share >= 10 ? share.toFixed(0) : share >= 1 ? share.toFixed(1) : share.toFixed(2);
     if (!soldProducts.length) {
       element.innerHTML = '<text x="380" y="180" text-anchor="middle">確定した会計がここに表示されます</text>';
       return;
@@ -1284,7 +1285,7 @@
       const innerStart = polarPoint(centerX, centerY, innerRadius, angle);
       const largeArc = nextAngle - angle > 180 ? 1 : 0;
       const path = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} L ${innerEnd.x} ${innerEnd.y} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`;
-      const result = { ...product, share: share * 100, path, color: colors[index % colors.length] };
+      const result = { ...product, share: share * 100, path, color: colors[index % colors.length], midAngle: angle + (nextAngle - angle) / 2 };
       angle = nextAngle;
       return result;
     });
@@ -1295,8 +1296,7 @@
       const y = legendTop + rowHeight / 2;
       legendTop += rowHeight;
       const labelMarkup = labelLines.map((line, index) => `<tspan x="384" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
-      const sharePercent = slice.share === 0 ? '0' : slice.share < 0.005 ? '<0.01' : slice.share >= 10 ? slice.share.toFixed(0) : slice.share >= 1 ? slice.share.toFixed(1) : slice.share.toFixed(2);
-      const shareText = `${sharePercent}%`;
+      const shareText = `${formatSharePercent(slice.share)}%`;
       const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
       const metricText = `${shareText} · ${quantityText}個`;
       return `<rect class="share-legend-swatch" x="360" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>売上構成比 ${shareText}、販売数 ${quantityText}個</title>${metricText}</text>`;
@@ -1305,8 +1305,18 @@
     const sliceMarkup = positiveSlices.length === 1
       ? `<circle class="share-slice" cx="${centerX}" cy="${centerY}" r="${radius}" fill="${positiveSlices[0].color}"/>`
       : positiveSlices.map((slice) => `<path class="share-slice" d="${slice.path}" fill="${slice.color}"/>`).join('');
+    const sliceLabelMarkup = positiveSlices
+      .filter((slice) => slice.share >= 8)
+      .map((slice) => {
+        const point = polarPoint(centerX, centerY, (radius + innerRadius) / 2, slice.midAngle);
+        const x = point.x;
+        const y = Number(point.y) - 2;
+        const shareText = `${formatSharePercent(slice.share)}%`;
+        const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
+        return `<text class="share-slice-label" x="${x}" y="${y}" text-anchor="middle"><title>${escapeHtml(chartLabelText(slice.name))}: ${shareText}・${quantityText}個</title><tspan x="${x}">${shareText}</tspan><tspan x="${x}" dy="12">${quantityText}個</tspan></text>`;
+      }).join('');
     element.setAttribute('viewBox', `0 0 760 ${Math.max(360, legendTop + 8)}`);
-    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/><text class="share-total-label" x="180" y="174" text-anchor="middle">売上合計</text><text class="share-total-value" x="180" y="198" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
+    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/>${sliceLabelMarkup}<text class="share-total-label" x="180" y="174" text-anchor="middle">売上合計</text><text class="share-total-value" x="180" y="198" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
   }
 
   function polarPoint(centerX, centerY, radius, angle) {

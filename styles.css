@@ -432,6 +432,7 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 #share-chart .share-hole { fill: #fbfdfc; }
 #share-chart .share-legend-label, #share-chart .share-legend-value, #share-chart .share-total-label { fill: var(--ink); font-size: 12px; }
 #share-chart .share-legend-value { fill: var(--teal); font-weight: 800; }
+#share-chart .share-slice-label { fill: #fff; font-size: 10px; font-weight: 800; paint-order: stroke; stroke: rgba(25, 50, 53, .55); stroke-width: 2px; stroke-linejoin: round; pointer-events: none; }
 #share-chart .share-total-value { fill: var(--teal); font-size: 15px; font-weight: 800; }
 #sales-chart text, #quantity-chart text { fill: #547174; font-size: 12px; }
 #sales-chart .chart-label, #quantity-chart .chart-label { fill: var(--ink); font-weight: 600; }
