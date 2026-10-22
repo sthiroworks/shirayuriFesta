@@ -20,7 +20,7 @@ test('approved defaults preserve category order, product identities and reservat
   assert.deepEqual(reserved.map((product) => product.unitPrice), [100, 200, 200, 200, 200, 200, 200]);
   assert.deepEqual(regular.map((product) => product.name[0]), ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
   assert.equal(reserved[0].id, '園グッズ::【予約】A ブレスレット作り(09:20〜)');
-  assert.equal(reserved[0].iconPath, 'assets/icons/bracelet-coral.png');
+  assert.equal(reserved[0].iconPath, 'assets/icons/bracelet-resin-coral.png');
   assert.equal(reserved[1].id, '90d55210-502d-4946-a965-152887a6aa28');
   assert.ok(DEFAULT_PRODUCTS.every((product) => !Object.hasOwn(product, 'icon')));
 });
