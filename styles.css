@@ -37,7 +37,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, label.button:fo
 .brand-lockup, .header-actions { position: relative; z-index: 3; }
 .brand-lockup { min-width: 0; }
 .header-garden { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.header-flower-bed { position: absolute; bottom: 0; left: 50%; z-index: 1; display: block; width: 132px; height: 48px; overflow: visible; transform: translateX(-50%); }
+.header-flower-bed { position: absolute; bottom: 0; left: 50%; z-index: 1; display: block; width: 252px; height: 48px; overflow: visible; transform: translateX(-50%); }
 .header-flower .flower-stem { fill: none; stroke: #719b69; stroke-linecap: round; stroke-width: 1.8; }
 .header-flower .flower-leaf { fill: #94bc7b; stroke: #719b69; stroke-linecap: round; stroke-width: .7; }
 .header-flower .flower-petal { stroke: rgba(255, 255, 255, .8); stroke-width: .55; }
@@ -46,10 +46,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, label.button:fo
 .flower-lavender .flower-petal { fill: #9c83cf; }
 .flower-yellow .flower-petal { fill: #f4bd52; }
 .flower-blue .flower-petal { fill: #68b4d2; }
-.header-bee { position: absolute; z-index: 2; left: var(--bee-start-left, 2%); top: var(--bee-start-top, 12%); display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .16)); animation: header-bee-flight 24s ease-in-out infinite; }
-.header-bee-one { --bee-start-left: 2%; --bee-start-top: 12%; --bee-end-top: 61%; animation-duration: 24s; }
-.header-bee-two { --bee-start-left: 36%; --bee-start-top: 63%; --bee-end-top: 20%; animation-duration: 28s; animation-delay: -9.4s; }
-.header-bee-three { --bee-start-left: 69%; --bee-start-top: 31%; --bee-end-top: 76%; animation-duration: 26s; animation-delay: -16.4s; }
+.header-bee { position: absolute; z-index: 2; left: var(--bee-start-left, 2%); top: var(--bee-start-top, 12%); display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .16)); animation: header-bee-flight 48s ease-in-out infinite; }
+.header-bee-one { --bee-start-left: 2%; --bee-start-top: 12%; --bee-end-top: 61%; animation-duration: 48s; }
+.header-bee-two { --bee-start-left: 36%; --bee-start-top: 63%; --bee-end-top: 20%; animation-duration: 56s; animation-delay: -18.8s; }
+.header-bee-three { --bee-start-left: 69%; --bee-start-top: 31%; --bee-end-top: 76%; animation-duration: 52s; animation-delay: -32.8s; }
 .header-bee svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .header-bee-wings { transform-box: fill-box; transform-origin: center; animation: header-bee-wing-flutter .16s ease-in-out infinite alternate; }
 @keyframes header-bee-flight {
@@ -665,7 +665,7 @@ td.money { white-space: nowrap; font-weight: 700; }
 @media (max-width: 560px) {
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
-  .header-flower-bed { width: 84px; height: 31px; }
+  .header-flower-bed { width: 178px; height: 34px; }
   .header-bee { width: 15px; height: 11px; --bee-end-left: calc(100% - 15px); }
   .status { top: calc(env(safe-area-inset-top) + 76px); right: auto; bottom: auto; left: 50%; z-index: 90; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
   /* 下部の会計バーに商品が隠れない分だけ余白を確保する。 */
