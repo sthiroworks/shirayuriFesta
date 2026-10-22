@@ -46,10 +46,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, label.button:fo
 .flower-lavender .flower-petal { fill: #9c83cf; }
 .flower-yellow .flower-petal { fill: #f4bd52; }
 .flower-blue .flower-petal { fill: #68b4d2; }
-.header-bee { position: absolute; z-index: 2; left: var(--bee-start-left, 2%); top: var(--bee-start-top, 12%); display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .16)); animation: header-bee-flight 12s ease-in-out infinite; }
-.header-bee-one { --bee-start-left: 2%; --bee-start-top: 12%; --bee-end-top: 61%; animation-duration: 12s; }
-.header-bee-two { --bee-start-left: 36%; --bee-start-top: 63%; --bee-end-top: 20%; animation-duration: 14s; animation-delay: -4.7s; }
-.header-bee-three { --bee-start-left: 69%; --bee-start-top: 31%; --bee-end-top: 76%; animation-duration: 13s; animation-delay: -8.2s; }
+.header-bee { position: absolute; z-index: 2; left: var(--bee-start-left, 2%); top: var(--bee-start-top, 12%); display: block; width: 24px; height: 17px; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(25, 50, 53, .16)); animation: header-bee-flight 24s ease-in-out infinite; }
+.header-bee-one { --bee-start-left: 2%; --bee-start-top: 12%; --bee-end-top: 61%; animation-duration: 24s; }
+.header-bee-two { --bee-start-left: 36%; --bee-start-top: 63%; --bee-end-top: 20%; animation-duration: 28s; animation-delay: -9.4s; }
+.header-bee-three { --bee-start-left: 69%; --bee-start-top: 31%; --bee-end-top: 76%; animation-duration: 26s; animation-delay: -16.4s; }
 .header-bee svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .header-bee-wings { transform-box: fill-box; transform-origin: center; animation: header-bee-wing-flutter .16s ease-in-out infinite alternate; }
 @keyframes header-bee-flight {

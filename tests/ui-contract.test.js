@@ -167,6 +167,10 @@ test('header garden has three decorative bees and five flowers and respects redu
     assert.equal((html.match(/class="header-flower flower-(?:pink|lavender|yellow|blue|rose)"/g) || []).length, 5);
     assert.match(css, /\.header-garden \{ position: absolute; inset: 0; z-index: 2; pointer-events: none; \}/);
     assert.match(css, /\.header-bee \{[^}]*pointer-events: none;[^}]*animation: header-bee-flight/);
+    assert.match(css, /\.header-bee \{[^}]*animation: header-bee-flight 24s ease-in-out infinite/);
+    assert.match(css, /\.header-bee-one \{[^}]*animation-duration: 24s/);
+    assert.match(css, /\.header-bee-two \{[^}]*animation-duration: 28s; animation-delay: -9\.4s/);
+    assert.match(css, /\.header-bee-three \{[^}]*animation-duration: 26s; animation-delay: -16\.4s/);
     assert.match(css, /\.header-bee-three \{ --bee-start-left: 69%;[^}]*--bee-end-top: 76%;/);
     assert.match(css, /@keyframes header-bee-flight[\s\S]*?left: var\(--bee-end-left, calc\(100% - 24px\)\)/);
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.header-bee, \.header-bee-wings \{ animation: none; \}/);
