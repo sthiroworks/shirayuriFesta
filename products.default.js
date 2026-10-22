@@ -1,5 +1,5 @@
 (function (root) {
-  // 2026-10-21 のレジ設定を初回起動用に採用。商品ID・並び順・価格・在庫上限を保持する。
+  // 2026-10-22 のレジ設定を初回起動用に採用。商品ID・並び順・価格・在庫上限・改行位置を保持する。
   // 販売済み数と会計履歴は含めず、保存済みの端末データも上書きしない。
   const products = [
     ["園グッズ", "手提げ", 800, "tote-bag.png"],
@@ -15,11 +15,11 @@
     ["古園服", "冬服ブレザー", 400, "winter-blazer.png"],
     ["古園服", "冬服ブラウス", 200, "winter-blouse.png"],
     ["古園服", "冬服ズボン・スカート", 300, "winter-bottoms.png"],
-    ["古園服", "夏服セーラー", 200, "summer-sailor.png"],
+    ["古園服", "夏服セーラー", 200, "summer-sailor.png", undefined, undefined, true],
     ["古園服", "夏服ズボン・スカート", 300, "summer-bottoms.png"],
-    ["古園服", "体操服・長袖", 300, "gym-long.png"],
+    ["古園服", "体操服・長袖", 300, "gym-long.png", undefined, undefined, true],
     ["古園服", "体操服・半袖", 300, "gym-short.png"],
-    ["古園服", "カーディガン", 200, "cardigan.png"],
+    ["古園服", "カーディガン", 200, "cardigan.png", undefined, undefined, true],
     ["古園服", "タイツ・レギンス", 100, "tights-leggings.png"],
     ["古園服【その他】", "お買い得品（一律）", 50, "bargain-tag.png", "古園服::お買い得品（一律）"],
     ["チケット販売", "おまとめチケット", 500, "ticket-bundle.png"],
@@ -27,7 +27,7 @@
     ["チケット販売", "お魚釣り(お菓子)", 150, "candy-fishing.png"],
     ["チケット販売", "お宝すくい", 150, "treasure-scoop.png"],
     ["チケット販売", "先生スタンプラリー", 100, "takoyaki-bingo.png"],
-    ["チケット販売", "A ブレスレット作り(09:20〜)", 200, "bracelet-resin-coral.png", "チケット販売::ブレスレット作り(09:20〜)", 13],
+    ["チケット販売", "A ブレスレット作り(09:20〜)", 200, "bracelet-resin-coral.png", "チケット販売::ブレスレット作り(09:20〜)", 13, true],
     ["チケット販売", "B ブレスレット作り(09:40〜)", 200, "bracelet-resin-aqua.png", "チケット販売::ブレスレット作り(09:40〜)", 13],
     ["チケット販売", "C ブレスレット作り(10:00〜)", 200, "bracelet-resin-lavender.png", "チケット販売::ブレスレット作り(10:00〜)", 13],
     ["チケット販売", "D ブレスレット作り(10:20〜)", 200, "bracelet-resin-mint.png", "チケット販売::ブレスレット作り(10:20〜)", 13],
@@ -42,13 +42,14 @@
     ["チケット販売【予約】", "【予約】F ブレスレット作り(11:00〜)", 200, "bracelet-resin-orange.png", "ce16ba16-6307-4b6a-ab8f-5cad1b12f292", 2],
     ["チケット販売【予約】", "【予約】G ブレスレット作り(11:20〜)", 200, "bracelet-resin-rainbow.png", "666f73cd-167a-4751-8191-52c1ad6c9ae3", 2],
     ["他", "ありがとうチケット", -50, "thank-you-ticket.png"]
-  ].map(([category, name, unitPrice, iconFile, id, stockLimit]) => ({
+  ].map(([category, name, unitPrice, iconFile, id, stockLimit, startNewRow]) => ({
     id: id || `${category}::${name}`,
     category,
     name,
     unitPrice,
     iconPath: `assets/icons/${iconFile}`,
-    ...(stockLimit === undefined ? {} : { stockLimit })
+    ...(stockLimit === undefined ? {} : { stockLimit }),
+    ...(startNewRow === true ? { startNewRow: true } : {})
   }));
   const settings = Object.freeze({
     "enabled": true,
