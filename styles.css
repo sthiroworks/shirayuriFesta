@@ -36,6 +36,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, label.button:fo
 .site-header::after { right: 3%; bottom: -38px; width: 112px; height: 112px; border: 18px solid rgba(167, 207, 190, .2); }
 .brand-lockup, .header-actions { position: relative; z-index: 1; }
 .brand-lockup { min-width: 0; }
+.header-bee { --bee-flight-distance: 24px; position: absolute; top: 12px; left: 50%; z-index: 2; width: 30px; height: 22px; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(25, 50, 53, .16)); animation: header-bee-flight 5.4s ease-in-out infinite; }
+.header-bee svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.header-bee-wings { transform-box: fill-box; transform-origin: center; animation: header-bee-wing-flutter .16s ease-in-out infinite alternate; }
+@keyframes header-bee-flight {
+  0%, 100% { transform: translate3d(0, 2px, 0) rotate(-7deg); }
+  50% { transform: translate3d(var(--bee-flight-distance), -3px, 0) rotate(6deg); }
+}
+@keyframes header-bee-wing-flutter {
+  from { transform: scaleY(.72); }
+  to { transform: scaleY(1); }
+}
 .eyebrow, .section-kicker { margin: 0 0 4px; color: #6b9a7f; font-size: .7rem; font-weight: 800; letter-spacing: .16em; }
 h1, h2, h3, p { margin-top: 0; }
 h1 { margin-bottom: 0; color: #244e4e; font-size: clamp(1.45rem, 3.5vw, 2.25rem); letter-spacing: .04em; line-height: 1.2; }
@@ -253,6 +264,7 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
   .tab-panel .is-swipe-enter-from-left,
   .tab-panel .is-swipe-enter-from-right { animation: none; }
   .is-swipe-settling { transition: none; }
+  .header-bee, .header-bee-wings { animation: none; }
 }
 .analytics-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
 .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
@@ -640,6 +652,7 @@ td.money { white-space: nowrap; font-weight: 700; }
 @media (max-width: 560px) {
   .site-header { padding: 10px 16px; }
   .site-header h1 { font-size: 1.7rem; }
+  .header-bee { --bee-flight-distance: 16px; top: 8px; width: 24px; height: 18px; }
   .status { top: calc(env(safe-area-inset-top) + 76px); right: auto; bottom: auto; left: 50%; z-index: 90; width: min(460px, calc(100vw - 24px)); max-width: none; padding: 8px 11px; font-size: .78rem; text-align: center; transform: translateX(-50%); }
   /* 下部の会計バーに商品が隠れない分だけ余白を確保する。 */
   .page-shell { padding: 18px 12px calc(82px + env(safe-area-inset-bottom)); }

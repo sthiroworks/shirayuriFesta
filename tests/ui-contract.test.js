@@ -158,6 +158,18 @@ test('checkout limit reset sits immediately before the sibling stepper', () => {
   }
 });
 
+test('header bee is decorative, mobile-sized, and respects reduced-motion in source and dist', () => {
+  for (const directory of ['', 'dist/']) {
+    const html = read(`${directory}index.html`);
+    const css = read(`${directory}styles.css`);
+    assert.match(html, /<span class="header-bee" aria-hidden="true">[\s\S]*?<svg viewBox="0 0 44 30"/);
+    assert.match(css, /\.header-bee \{[^}]*pointer-events: none;[^}]*animation: header-bee-flight/);
+    assert.match(css, /@keyframes header-bee-flight[\s\S]*?var\(--bee-flight-distance\)/);
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.header-bee, \.header-bee-wings \{ animation: none; \}/);
+    assert.match(css, /\.header-bee \{ --bee-flight-distance: 16px; top: 8px; width: 24px; height: 18px; \}/);
+  }
+});
+
 test('app warns when browser persistence is unavailable and resets payment on import', () => {
   const html = read('index.html');
   const css = read('styles.css');
