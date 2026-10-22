@@ -104,6 +104,10 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(app, /renderHorizontalChart/);
   assert.match(app, /renderShareChart/);
+  assert.match(app, /const colors = \['#0072b2', '#d55e00', '#009e73', '#a64d79', '#5a4e9c', '#b04a4a', '#4f6d7a', '#8a6500'\]/);
+  assert.match(css, /--chart-sales: #0072b2;/);
+  assert.match(css, /--chart-quantity: #c65300;/);
+  assert.match(css, /rgba\(0, 114, 178, calc\(var\(--heatmap-intensity\) \* \.38\)\)/);
   const horizontalChart = app.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '';
   assert.match(horizontalChart, /\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
   assert.match(horizontalChart, /element\.innerHTML = [\s\S]*?\$\{rows\}/);

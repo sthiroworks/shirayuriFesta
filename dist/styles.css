@@ -6,6 +6,12 @@
   --panel: #ffffff;
   --teal: #2f6b67;
   --teal-light: #e3f0ed;
+  --chart-sales: #0072b2;
+  --chart-sales-dark: #005a8c;
+  --chart-quantity: #c65300;
+  --chart-quantity-dark: #994000;
+  --chart-stock: #00835f;
+  --chart-stock-low: #b64237;
   --yellow: #f4c95d;
   --danger: #b74a43;
   --shadow: 0 12px 28px rgba(25, 50, 53, .07);
@@ -451,9 +457,9 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 #sales-chart, #quantity-chart, #share-chart { height: auto; }
 #daily-sales-chart, #hourly-chart { display: block; width: 100%; min-width: 560px; height: 300px; }
 #sales-chart .grid-line { stroke: var(--line); stroke-width: 1; }
-#sales-chart .bar { fill: #2f8f89; }
+#sales-chart .bar { fill: var(--chart-sales); }
 #quantity-chart .grid-line { stroke: var(--line); stroke-width: 1; }
-#quantity-chart .bar { fill: #d48632; }
+#quantity-chart .bar { fill: var(--chart-quantity); }
 #share-chart .grid-line { stroke: var(--line); stroke-width: 1; }
 #share-chart .share-slice { stroke: #fff; stroke-width: 2; }
 #share-chart .share-hole { fill: #fbfdfc; }
@@ -465,13 +471,14 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 #share-chart .share-total-value { fill: var(--teal); font-size: 15px; font-weight: 800; }
 #sales-chart text, #quantity-chart text { fill: #547174; font-size: 12px; }
 #sales-chart .chart-label, #quantity-chart .chart-label { fill: var(--ink); font-weight: 600; }
-#sales-chart .chart-value { fill: #236f6b; font-weight: 800; }
-#quantity-chart .chart-value { fill: #b76b24; font-weight: 800; }
+#sales-chart .chart-value { fill: var(--chart-sales-dark); font-weight: 800; }
+#quantity-chart .chart-value { fill: var(--chart-quantity-dark); font-weight: 800; }
 #daily-sales-chart .grid-line, #hourly-chart .grid-line { stroke: var(--line); stroke-width: 1; }
-#daily-sales-chart .daily-bar { fill: #2f8f89; }
+#daily-sales-chart .daily-bar { fill: var(--chart-sales); }
 #daily-sales-chart text, #hourly-chart text { fill: var(--ink); font-size: 12px; }
-#daily-sales-chart .chart-value, #hourly-chart .chart-value { fill: var(--teal); font-weight: 800; }
-#hourly-chart .hourly-bar { fill: #d48632; }
+#daily-sales-chart .chart-value { fill: var(--chart-sales-dark); font-weight: 800; }
+#hourly-chart .chart-value { fill: var(--chart-quantity-dark); font-weight: 800; }
+#hourly-chart .hourly-bar { fill: var(--chart-quantity); }
 #hourly-chart .hour-label { fill: var(--muted); }
 .ranking-list { display: grid; gap: 9px; margin: 0; padding-left: 28px; }
 .ranking-list li { padding-left: 4px; }
@@ -483,8 +490,8 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .category-chart-row { display: grid; grid-template-columns: minmax(100px, 150px) minmax(160px, 1fr) auto; gap: 12px; align-items: center; }
 .category-chart-label { overflow: hidden; color: var(--muted); font-size: .8rem; font-weight: 700; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .category-chart-track { height: 18px; overflow: hidden; border-radius: 999px; background: #edf3f1; }
-.category-chart-bar { display: block; width: var(--bar-width); height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2f8f89, #6fb4ab); }
-.category-quantity-bar { background: linear-gradient(90deg, #d48632, #e6b46d); }
+.category-chart-bar { display: block; width: var(--bar-width); height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--chart-sales-dark), #3c9bc9); }
+.category-quantity-bar { background: linear-gradient(90deg, var(--chart-quantity-dark), #e58a28); }
 .category-chart-value { min-width: 72px; color: var(--ink); font-size: .82rem; text-align: right; white-space: nowrap; }
 .inventory-chart-card { align-content: start; }
 .inventory-chart-summary { margin: 0; color: var(--muted); font-size: .76rem; font-weight: 700; }
@@ -494,8 +501,8 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .inventory-chart-label strong { min-width: 0; color: var(--ink); font-size: .78rem; line-height: 1.3; overflow-wrap: anywhere; }
 .inventory-chart-label small { min-width: 0; color: var(--muted); font-size: .65rem; line-height: 1.3; overflow-wrap: anywhere; }
 .inventory-chart-track { display: block; height: 16px; overflow: hidden; border-radius: 999px; background: #edf3f1; }
-.inventory-chart-bar { display: block; width: var(--bar-width); height: 100%; min-width: 0; border-radius: inherit; background: linear-gradient(90deg, #2f8f89, #6fb4ab); transition: width .2s ease; }
-.inventory-chart-row.is-low .inventory-chart-bar { background: linear-gradient(90deg, #dc8b39, #efbd68); }
+.inventory-chart-bar { display: block; width: var(--bar-width); height: 100%; min-width: 0; border-radius: inherit; background: linear-gradient(90deg, #006b50, var(--chart-stock)); transition: width .2s ease; }
+.inventory-chart-row.is-low .inventory-chart-bar { background: linear-gradient(90deg, #97342d, var(--chart-stock-low)); }
 .inventory-chart-value { color: var(--ink); font-size: .8rem; text-align: right; white-space: nowrap; }
 .inventory-chart-value small { display: block; color: var(--muted); font-size: .64rem; font-weight: 500; }
 .inventory-chart-note, .weekday-heatmap-note { margin: 0; color: var(--muted); font-size: .7rem; line-height: 1.5; }
@@ -507,7 +514,7 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .weekday-heatmap th:first-child { position: sticky; left: 0; z-index: 1; width: 68px; background: #fbfdfc; color: var(--ink); font-weight: 800; }
 .weekday-heatmap thead th:first-child { z-index: 3; background: #f4f8f6; }
 .weekday-heatmap td { background: #f8faf9; color: #a5b4b1; }
-.weekday-heatmap td.has-value { background: rgba(47, 143, 137, var(--heatmap-intensity)); color: #123d40; font-weight: 800; }
+.weekday-heatmap td.has-value { background: rgba(0, 114, 178, calc(var(--heatmap-intensity) * .38)); color: #123d40; font-weight: 800; }
 .weekday-heatmap tr:last-child th, .weekday-heatmap tr:last-child td { border-bottom: 0; }
 .weekday-heatmap th:last-child, .weekday-heatmap td:last-child { border-right: 0; }
 .hourly-table-scroll { max-height: 250px; overflow: auto; margin-top: 8px; border-top: 1px solid var(--line); }
@@ -526,7 +533,7 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .hourly-category-table thead th { position: sticky; top: 0; z-index: 3; background: #fbfdfc; }
 .hourly-category-table thead th:first-child { z-index: 4; }
 .hourly-category-table tfoot th, .hourly-category-table tfoot td { border-top: 2px solid var(--teal); border-bottom: 0; background: #fbfdfc; font-weight: 800; }
-.hourly-category-cell.has-value { background: rgba(47, 143, 137, var(--cell-intensity)); }
+.hourly-category-cell.has-value { background: rgba(0, 114, 178, calc(var(--cell-intensity) * .34)); }
 .hourly-category-cell span, .hourly-category-total span, .hourly-category-table tfoot span { display: block; font-weight: 800; white-space: nowrap; }
 .hourly-category-cell small, .hourly-category-total small, .hourly-category-table tfoot small { display: block; margin-top: 2px; color: var(--muted); font-size: .66rem; white-space: nowrap; }
 .hourly-category-empty { color: #b4c3c0; }
@@ -538,7 +545,7 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .hourly-product-table thead th:first-child { z-index: 4; }
 .hourly-product-table thead th small { display: block; margin-top: 2px; color: var(--muted); font-size: .62rem; font-weight: 600; }
 .hourly-product-table tfoot th, .hourly-product-table tfoot td { border-top: 2px solid var(--teal); border-bottom: 0; background: #fbfdfc; font-weight: 800; }
-.hourly-product-cell.has-value { background: rgba(212, 134, 50, var(--cell-intensity)); }
+.hourly-product-cell.has-value { background: rgba(198, 83, 0, calc(var(--cell-intensity) * .28)); }
 .hourly-product-cell span, .hourly-product-total span, .hourly-product-table tfoot span { display: block; font-weight: 800; white-space: nowrap; }
 .hourly-product-cell small, .hourly-product-total small, .hourly-product-table tfoot small { display: block; margin-top: 2px; color: var(--muted); font-size: .66rem; white-space: nowrap; }
 .table-scroll { overflow-x: auto; }

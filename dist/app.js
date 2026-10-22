@@ -1461,7 +1461,7 @@
       element.innerHTML = '<text x="380" y="180" text-anchor="middle">確定した会計がここに表示されます</text>';
       return;
     }
-    const colors = ['#2f8f89', '#d48632', '#c39a39', '#6d8fbe', '#a26795', '#709e60', '#cc6b50', '#687279'];
+    const colors = ['#0072b2', '#d55e00', '#009e73', '#a64d79', '#5a4e9c', '#b04a4a', '#4f6d7a', '#8a6500'];
     const centerX = 190;
     const radius = 132;
     const innerRadius = 76;
