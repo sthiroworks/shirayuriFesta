@@ -499,23 +499,23 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .hourly-analysis-tools label:first-child select, .hourly-analysis-tools label:nth-child(2) select { min-width: 132px; }
 .hourly-check { display: flex !important; grid-template-columns: auto 1fr; align-items: center; gap: 6px !important; min-height: 32px; padding: 0 3px; white-space: nowrap; }
 .hourly-check input { accent-color: var(--teal); }
-#sales-chart, #quantity-chart, #share-chart { display: block; width: 100%; min-width: 560px; height: 360px; }
-#sales-chart, #quantity-chart { min-width: 0; }
-#sales-chart, #quantity-chart, #share-chart { height: auto; }
+#sales-chart, #quantity-chart, .share-chart { display: block; width: 100%; min-width: 560px; height: 360px; }
+#sales-chart, #quantity-chart, .share-chart { min-width: 0; }
+#sales-chart, #quantity-chart, .share-chart { height: auto; }
 #daily-sales-chart, #hourly-chart { display: block; width: 100%; min-width: 560px; height: 300px; }
 #sales-chart .grid-line { stroke: var(--line); stroke-width: 1; }
 #sales-chart .bar { fill: var(--chart-sales); }
 #quantity-chart .grid-line { stroke: var(--line); stroke-width: 1; }
 #quantity-chart .bar { fill: var(--chart-quantity); }
-#share-chart .grid-line { stroke: var(--line); stroke-width: 1; }
-#share-chart .share-slice { stroke: #fff; stroke-width: 2; }
-#share-chart .share-hole { fill: #fbfdfc; }
-#share-chart .share-legend-label, #share-chart .share-legend-value, #share-chart .share-total-label { fill: var(--ink); font-size: 12px; }
-#share-chart .share-legend-value { fill: var(--teal); font-weight: 800; }
-#share-chart .share-slice-label { fill: #fff; font-size: 10px; font-weight: 800; paint-order: stroke; stroke: rgba(25, 50, 53, .55); stroke-width: 2px; stroke-linejoin: round; pointer-events: none; }
-#share-chart .share-leader-line { fill: none; opacity: .8; stroke-width: 1.5px; }
-#share-chart .share-outside-label { fill: var(--ink); font-size: 10px; font-weight: 800; paint-order: stroke; stroke: #fbfdfc; stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
-#share-chart .share-total-value { fill: var(--teal); font-size: 15px; font-weight: 800; }
+.share-chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.share-chart .share-slice { stroke: #fff; stroke-width: 2; }
+.share-chart .share-hole { fill: #fbfdfc; }
+.share-chart .share-legend-label, .share-chart .share-legend-value, .share-chart .share-total-label { fill: var(--ink); font-size: 12px; }
+.share-chart .share-legend-value { fill: var(--teal); font-weight: 800; }
+.share-chart .share-slice-label { fill: #fff; font-size: 10px; font-weight: 800; paint-order: stroke; stroke: rgba(25, 50, 53, .55); stroke-width: 2px; stroke-linejoin: round; pointer-events: none; }
+.share-chart .share-leader-line { fill: none; opacity: .8; stroke-width: 1.5px; }
+.share-chart .share-outside-label { fill: var(--ink); font-size: 10px; font-weight: 800; paint-order: stroke; stroke: #fbfdfc; stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.share-chart .share-total-value { fill: var(--teal); font-size: 15px; font-weight: 800; }
 #sales-chart text, #quantity-chart text { fill: #547174; font-size: 12px; }
 #sales-chart .chart-label, #quantity-chart .chart-label { fill: var(--ink); font-weight: 600; }
 #sales-chart .chart-value { fill: var(--chart-sales-dark); font-weight: 800; }
@@ -782,6 +782,7 @@ td.money { white-space: nowrap; font-weight: 700; }
   #checkout-panel .undo-sale-anchor { margin-top: 5px; }
   #checkout-panel .confirm-button { height: 60px; margin-top: 0; padding: 8px; border-radius: 7px; }
   .category-chart-row { grid-template-columns: minmax(74px, 92px) minmax(0, 1fr) auto; gap: 6px; }
+  .share-chart { min-width: 560px; }
   .category-chart-label, .category-chart-value { font-size: .72rem; }
   .inventory-chart-row { grid-template-columns: minmax(72px, 92px) minmax(0, 1fr) auto; gap: 6px; }
   .inventory-chart-label strong, .inventory-chart-value { font-size: .7rem; }

@@ -1449,15 +1449,22 @@
     renderHorizontalChart(elements.salesChart, products, 'sales', 'sales');
     renderHorizontalChart(elements.quantityChart, products, 'quantity', 'quantity');
     renderShareChart(elements.shareChart, products);
+    renderShareChart(elements.quantityShareChart, products, 'quantity');
   }
 
-  function renderShareChart(element, products) {
+  function renderShareChart(element, products, metric = 'sales') {
+    const isQuantity = metric === 'quantity';
+    const valueKey = isQuantity ? 'quantity' : 'sales';
+    const chartTitle = isQuantity ? '販売数構成比' : '売上構成比';
+    const totalLabel = isQuantity ? '販売数合計' : '売上合計';
+    const formatTotal = isQuantity ? (value) => `${value.toLocaleString('ja-JP')}個` : formatYen;
     const soldProducts = products
       .filter((product) => Number(product.quantity) > 0)
       .sort((a, b) => Number(b.sales) - Number(a.sales) || a.name.localeCompare(b.name, 'ja'));
-    const totalSales = soldProducts.reduce((total, product) => total + Math.max(0, Number(product.sales) || 0), 0);
+    const totalValue = soldProducts.reduce((total, product) => total + Math.max(0, Number(product[valueKey]) || 0), 0);
     const formatSharePercent = (share) => share === 0 ? '0' : share < 0.005 ? '<0.01' : share >= 10 ? share.toFixed(0) : share >= 1 ? share.toFixed(1) : share.toFixed(2);
     if (!soldProducts.length) {
+      element.setAttribute('viewBox', '0 0 760 360');
       element.innerHTML = '<text x="380" y="180" text-anchor="middle">確定した会計がここに表示されます</text>';
       return;
     }
@@ -1466,15 +1473,20 @@
     const radius = 132;
     const innerRadius = 76;
     let angle = -90;
-    const slices = soldProducts.map((product, index) => {
+    // 商品色は売上順で共通化し、個数順に並べ替えても同じ商品は同じ色にする。
+    const chartProducts = soldProducts.map((product, index) => ({ ...product, color: colors[index % colors.length] }));
+    if (isQuantity) chartProducts.sort((a, b) => Number(b.quantity) - Number(a.quantity) || Number(b.sales) - Number(a.sales) || a.name.localeCompare(b.name, 'ja'));
+    const slices = chartProducts.map((product) => {
       const sales = Math.max(0, Number(product.sales) || 0);
-      const share = totalSales > 0 ? sales / totalSales : 0;
+      const value = Math.max(0, Number(product[valueKey]) || 0);
+      const share = totalValue > 0 ? value / totalValue : 0;
       const nextAngle = angle + share * 360;
       const result = {
         ...product,
         sales,
         share: share * 100,
-        color: colors[index % colors.length],
+        color: product.color,
+        value,
         startAngle: angle,
         midAngle: angle + (nextAngle - angle) / 2,
         endAngle: nextAngle,
@@ -1492,9 +1504,9 @@
       const shareText = `${formatSharePercent(slice.share)}%`;
       const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
       const metricText = `${shareText} · ${quantityText}個`;
-      return `<rect class="share-legend-swatch" x="400" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="424" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>${escapeHtml(`売上構成比 ${shareText}、販売数 ${quantityText}個`)}</title>${escapeHtml(metricText)}</text>`;
+      return `<rect class="share-legend-swatch" x="400" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="424" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>${escapeHtml(`${chartTitle} ${shareText}、販売数 ${quantityText}個`)}</title>${escapeHtml(metricText)}</text>`;
     }).join('');
-    const positiveSlices = slices.filter((slice) => Number(slice.sales) > 0);
+    const positiveSlices = slices.filter((slice) => slice.value > 0);
     const calloutCounts = { left: 0, right: 0 };
     positiveSlices.filter((slice) => slice.share < 8).forEach((slice) => {
       const side = Math.cos(slice.midAngle * Math.PI / 180) >= 0 ? 'right' : 'left';
@@ -1568,7 +1580,7 @@
       return `<path class="share-leader-line" d="${path}" stroke="${slice.color}"/><text class="share-outside-label" x="${labelX}" y="${y - 5}" text-anchor="${anchor}"><title>${escapeHtml(`${chartLabelText(slice.name)}: ${shareText}・${quantityText}個`)}</title><tspan x="${labelX}">${escapeHtml(shareText)}</tspan><tspan x="${labelX}" dy="12">${quantityText}個</tspan></text>`;
     }).join('');
     element.setAttribute('viewBox', `0 0 760 ${chartHeight}`);
-    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/>${sliceLabelMarkup}${calloutMarkup}<text class="share-total-label" x="${centerX}" y="${centerY - 6}" text-anchor="middle">売上合計</text><text class="share-total-value" x="${centerX}" y="${centerY + 18}" text-anchor="middle">${escapeHtml(formatYen(totalSales))}</text>${legend}`;
+    element.innerHTML = `${sliceMarkup}<circle class="share-hole" cx="${centerX}" cy="${centerY}" r="${innerRadius}"/>${sliceLabelMarkup}${calloutMarkup}<text class="share-total-label" x="${centerX}" y="${centerY - 6}" text-anchor="middle">${totalLabel}</text><text class="share-total-value" x="${centerX}" y="${centerY + 18}" text-anchor="middle">${escapeHtml(formatTotal(totalValue))}</text>${legend}`;
   }
 
   function polarPoint(centerX, centerY, radius, angle) {
@@ -3222,6 +3234,7 @@
     elements.salesChart = $('#sales-chart');
     elements.quantityChart = $('#quantity-chart');
     elements.shareChart = $('#share-chart');
+    elements.quantityShareChart = $('#quantity-share-chart');
     elements.dailySalesChart = $('#daily-sales-chart');
     elements.hourlyChart = $('#hourly-chart');
     elements.hourlyTableBody = $('#hourly-table-body');

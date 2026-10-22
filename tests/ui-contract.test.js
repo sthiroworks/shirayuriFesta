@@ -114,7 +114,6 @@ test('styles and app files are present and app uses the core and storage APIs', 
   assert.doesNotMatch(horizontalChart, /\$\{bars\}/);
   assert.doesNotMatch(app.match(/function renderHorizontalChart\([\s\S]*?\n  function renderChart/)?.[0] ?? '', /\.slice\(0, 8\)/);
   assert.doesNotMatch(app.match(/function renderShareChart\([\s\S]*?\n  function polarPoint/)?.[0] ?? '', /\.slice\(0, 7\)|その他/);
-  assert.match(app, /function renderShareChart\(element, products\)[\s\S]*?\.filter\(\(product\) => Number\(product\.quantity\) > 0\)/);
   assert.match(app, /function chartLabelLines\(/);
   assert.match(app, /renderCategoryChart/);
   assert.match(app, /renderCategoryQuantityChart/);

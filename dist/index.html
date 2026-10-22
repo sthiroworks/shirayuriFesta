@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261023-header-meadow" />
+    <link rel="stylesheet" href="styles.css?v=20261023-quantity-share" />
   </head>
   <body>
     <section id="shared-login" class="shared-login" aria-labelledby="shared-login-title" hidden>
@@ -1307,9 +1307,28 @@
                 <div class="chart-wrap">
                   <svg
                     id="share-chart"
+                    class="share-chart"
                     viewBox="0 0 760 360"
                     role="img"
                     aria-label="商品別売上構成比・販売個数"
+                  ></svg>
+                </div>
+              </article>
+              <article
+                class="analytics-chart-card"
+                aria-labelledby="quantity-share-chart-title"
+              >
+                <div class="chart-card-heading">
+                  <h3 id="quantity-share-chart-title">販売数構成比</h3>
+                  <span class="chart-card-unit">販売数割合・販売個数</span>
+                </div>
+                <div class="chart-wrap">
+                  <svg
+                    id="quantity-share-chart"
+                    class="share-chart"
+                    viewBox="0 0 760 360"
+                    role="img"
+                    aria-label="商品別販売数構成比・販売個数"
                   ></svg>
                 </div>
               </article>
@@ -1609,6 +1628,6 @@
     <script src="core.js"></script>
     <script src="storage.js"></script>
     <script src="products.default.js"></script>
-    <script src="app.js?v=20261022-share-chart-leaders"></script>
+    <script src="app.js?v=20261023-quantity-share"></script>
   </body>
 </html>
