@@ -165,14 +165,13 @@ test('header garden has three decorative bees and five flowers and respects redu
     assert.match(html, /<div class="header-garden" aria-hidden="true">[\s\S]*?<svg class="header-flower-bed"/);
     assert.equal((html.match(/class="header-bee header-bee-(?:one|two|three)"/g) || []).length, 3);
     assert.equal((html.match(/class="header-flower flower-(?:pink|lavender|yellow|blue|rose)"/g) || []).length, 5);
-    assert.match(css, /\.header-garden \{[^}]*pointer-events: none;/);
+    assert.match(css, /\.header-garden \{ position: absolute; inset: 0; z-index: 2; pointer-events: none; \}/);
     assert.match(css, /\.header-bee \{[^}]*pointer-events: none;[^}]*animation: header-bee-flight/);
-    assert.match(css, /\.header-bee-three \{[^}]*animation-delay: -3\.1s;/);
-    assert.match(css, /@keyframes header-bee-flight[\s\S]*?var\(--bee-flight-distance(?:,)/);
+    assert.match(css, /\.header-bee-three \{ --bee-start-left: 69%;[^}]*--bee-end-top: 76%;/);
+    assert.match(css, /@keyframes header-bee-flight[\s\S]*?left: var\(--bee-end-left, calc\(100% - 24px\)\)/);
     assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\.header-bee, \.header-bee-wings \{ animation: none; \}/);
-    assert.match(css, /\.header-garden \{ top: 8px; right: 105px; width: 84px; height: 31px; \}/);
-    assert.match(css, /\.header-bee \{ width: 15px; height: 11px; \}/);
-    assert.match(css, /\.header-bee-three \{ --bee-flight-distance: 4px; \}/);
+    assert.match(css, /\.header-flower-bed \{ width: 84px; height: 31px; \}/);
+    assert.match(css, /\.header-bee \{ width: 15px; height: 11px; --bee-end-left: calc\(100% - 15px\); \}/);
   }
 });
 
