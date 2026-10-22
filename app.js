@@ -1290,13 +1290,16 @@
     });
     let legendTop = 15;
     const legend = slices.map((slice) => {
-      const labelLines = chartLabelLines(slice.name, 24);
+      const labelLines = chartLabelLines(slice.name, 18);
       const rowHeight = Math.max(38, labelLines.length * 14 + 10);
       const y = legendTop + rowHeight / 2;
       legendTop += rowHeight;
       const labelMarkup = labelLines.map((line, index) => `<tspan x="384" dy="${index === 0 ? -((labelLines.length - 1) * 7) : 14}">${escapeHtml(line)}</tspan>`).join('');
-      const shareText = `${slice.share.toFixed(slice.share >= 10 ? 0 : 1)}%`;
-      return `<rect class="share-legend-swatch" x="360" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="710" y="${y + 4}" text-anchor="end">${shareText}</text>`;
+      const sharePercent = slice.share === 0 ? '0' : slice.share < 0.005 ? '<0.01' : slice.share >= 10 ? slice.share.toFixed(0) : slice.share >= 1 ? slice.share.toFixed(1) : slice.share.toFixed(2);
+      const shareText = `${sharePercent}%`;
+      const quantityText = Math.max(0, Number(slice.quantity) || 0).toLocaleString('ja-JP');
+      const metricText = `${shareText} · ${quantityText}個`;
+      return `<rect class="share-legend-swatch" x="360" y="${y - 7}" width="14" height="14" rx="3" fill="${slice.color}"/><text class="share-legend-label" x="384" y="${y + 4}"><title>${escapeHtml(chartLabelText(slice.name))}</title>${labelMarkup}</text><text class="share-legend-value" x="744" y="${y + 4}" text-anchor="end"><title>売上構成比 ${shareText}、販売数 ${quantityText}個</title>${metricText}</text>`;
     }).join('');
     const positiveSlices = slices.filter((slice) => Number(slice.sales) > 0);
     const sliceMarkup = positiveSlices.length === 1
