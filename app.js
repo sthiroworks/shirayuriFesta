@@ -97,6 +97,9 @@
     statusTimer: null,
     autoBackupTimer: null,
     autoBackupInProgress: false,
+    backupReminderStartedAt: Date.now(),
+    backupReminderSnoozedUntil: 0,
+    backupReminderDue: false,
     backupDirectoryHandle: null,
     temporaryCheckoutSiblings: null,
     serverRevision: 0,
@@ -2403,6 +2406,7 @@
   }
 
   function renderSettings() {
+    updateUnsupportedFeatureVisibility();
     const categories = getProductCategories();
     if (state.settings.category && !categories.includes(state.settings.category)) categories.unshift(state.settings.category);
     if (!categories.length) categories.push('その他');
@@ -2424,14 +2428,34 @@
     return date.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function supportsDirectoryBackup() {
+    return typeof root.showDirectoryPicker === 'function' && Boolean(root.indexedDB);
+  }
+
+  function setBackupReminderDue(due) {
+    state.backupReminderDue = Boolean(due);
+    if (!elements.backupReminder) return;
+    elements.backupReminder.hidden = !state.backupReminderDue;
+    elements.backupReminder.classList.toggle('is-hidden', !state.backupReminderDue);
+  }
+
+  function postponeBackupReminder() {
+    const interval = Math.max(1, Number(state.settings.autoBackupIntervalMinutes) || 5) * 60 * 1000;
+    state.backupReminderSnoozedUntil = Date.now() + interval;
+    setBackupReminderDue(false);
+  }
+
   function updateBackupStatus() {
     if (!elements.backupStatus) return;
     const last = formatBackupDate(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt);
     const lastMessage = last ? `最終バックアップ：${last}` : 'バックアップ履歴はまだありません。';
     const interval = Number(state.settings.autoBackupIntervalMinutes) || 5;
     let mode;
-    if (state.settings.autoBackupEnabled && !root.showDirectoryPicker) {
-      mode = '自動保存はこのブラウザでは使えません。手動CSV保存をご利用ください。';
+    if (!supportsDirectoryBackup()) {
+      mode = state.settings.autoBackupEnabled
+        ? `${interval}分ごとに、画面を開いている間だけ保存をお知らせします。`
+        : '定期バックアップの通知は停止中です。';
+      mode += ' この端末ではフォルダへの自動保存はできません。「今すぐ保存・共有」からCSVを保存できます。共有メニューでは「ファイルに保存」を選んでください。';
     } else if (state.settings.autoBackupEnabled && !state.backupDirectoryHandle) {
       mode = '自動保存の保存先フォルダを選択してください。';
     } else if (state.settings.autoBackupEnabled) {
@@ -2442,14 +2466,25 @@
     const lastAt = Date.parse(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt || '');
     const stale = !Number.isFinite(lastAt) || Date.now() - lastAt > 24 * 60 * 60 * 1000;
     const reminder = stale ? ' 24時間以上バックアップがないため、CSV保存をおすすめします。' : '';
-    const error = state.lastBackupError ? ` 直近の自動保存に失敗しました：${state.lastBackupError}` : '';
+    const error = state.lastBackupError ? ` 直近のバックアップ処理で問題がありました：${state.lastBackupError}` : '';
     elements.backupStatus.textContent = `${mode} ${lastMessage}${reminder}${error}`;
   }
 
   function updateUnsupportedFeatureVisibility() {
-    const automaticBackupSupported = typeof root.showDirectoryPicker === 'function' && Boolean(root.indexedDB);
-    if (elements.backupOptions) elements.backupOptions.hidden = !automaticBackupSupported;
+    const folderBackup = supportsDirectoryBackup();
+    // フォルダ非対応でも通知と手動保存は使える。設定欄全体は隠さない。
+    if (elements.backupOptions) elements.backupOptions.hidden = false;
+    if (elements.backupFolder) {
+      elements.backupFolder.hidden = !folderBackup;
+      elements.backupFolder.classList.toggle('is-hidden', !folderBackup);
+    }
+    if (elements.backupOptionsTitle) elements.backupOptionsTitle.textContent = folderBackup ? '自動バックアップの設定' : '定期バックアップの通知';
+    if (elements.backupEnabledLabel) elements.backupEnabledLabel.textContent = folderBackup ? '自動バックアップを有効にする' : '定期的にバックアップを通知する';
+    if (elements.backupIntervalLabel) elements.backupIntervalLabel.textContent = folderBackup ? '自動バックアップの間隔' : '通知の間隔';
+    if (elements.backupSettingsSave) elements.backupSettingsSave.textContent = folderBackup ? '自動バックアップ設定を保存' : '通知設定を保存';
+    if (elements.backupNow) elements.backupNow.textContent = folderBackup ? '今すぐバックアップ' : '今すぐ保存・共有';
     if (elements.backupStatus) elements.backupStatus.hidden = false;
+    if (folderBackup) setBackupReminderDue(false);
   }
 
   function recordHistoryBackupSuccess(type) {
@@ -2466,6 +2501,9 @@
     } catch (error) {
       state.lastBackupError = 'バックアップ日時を記録できませんでした';
     }
+    state.backupReminderStartedAt = Date.now();
+    state.backupReminderSnoozedUntil = 0;
+    setBackupReminderDue(false);
     updateBackupStatus();
   }
 
@@ -2535,7 +2573,8 @@
       autoBackupLastAt: state.settings.autoBackupLastAt || '',
     };
     updateBackupSettingsSaveState();
-    void persistSettings(settings, '自動バックアップ設定を保存しました。', '自動バックアップ設定を保存できませんでした。');
+    const label = supportsDirectoryBackup() ? '自動バックアップ設定' : '通知設定';
+    void persistSettings(settings, `${label}を保存しました。`, `${label}を保存できませんでした。`);
   }
 
   function handleCheckoutLimitAdjustment(event) {
@@ -2759,10 +2798,7 @@
   }
 
   async function selectBackupDirectory({ writeImmediately = false } = {}) {
-    if (!root.showDirectoryPicker) {
-      setStatus('このブラウザはフォルダへの自動保存に対応していません。ChromeまたはEdgeをご利用ください。', 'error');
-      return;
-    }
+    if (!supportsDirectoryBackup()) return backupNow();
     try {
       const handle = await root.showDirectoryPicker({ mode: 'readwrite' });
       state.backupDirectoryHandle = handle;
@@ -2782,6 +2818,16 @@
   }
 
   async function backupNow() {
+    if (!supportsDirectoryBackup()) {
+      if (state.autoBackupInProgress) return;
+      state.autoBackupInProgress = true;
+      try {
+        // shareCsvは最初のawait前に呼び、タップ直後の共有権限を維持する。
+        return await shareCsv();
+      } finally {
+        state.autoBackupInProgress = false;
+      }
+    }
     if (!state.backupDirectoryHandle) {
       await selectBackupDirectory({ writeImmediately: true });
       return;
@@ -2790,7 +2836,7 @@
   }
 
   async function restoreBackupDirectory() {
-    if (!root.showDirectoryPicker) return;
+    if (!supportsDirectoryBackup()) return;
     try {
       const handle = await loadBackupDirectoryHandle();
       if (handle && await hasBackupDirectoryPermission(handle)) {
@@ -2805,6 +2851,17 @@
 
   async function maybeRunAutoBackup() {
     if (!state.settings.autoBackupEnabled || state.autoBackupInProgress) return;
+    if (!supportsDirectoryBackup()) {
+      // iPhone等ではタイマーから共有画面を開かず、ユーザーのタップを待つ。
+      if (root.document && root.document.visibilityState === 'hidden') return;
+      const interval = Math.max(1, Number(state.settings.autoBackupIntervalMinutes) || 5) * 60 * 1000;
+      const savedAt = Date.parse(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt || '');
+      const baseline = Math.max(Number.isFinite(savedAt) ? savedAt : 0, state.backupReminderStartedAt);
+      const dueAt = Math.max(baseline + interval, state.backupReminderSnoozedUntil);
+      setBackupReminderDue(state.transactions.length > 0 && Date.now() >= dueAt);
+      updateBackupStatus();
+      return;
+    }
     if (!state.backupDirectoryHandle) {
       updateBackupStatus();
       return;
@@ -2818,6 +2875,9 @@
     if (state.autoBackupTimer) root.clearInterval(state.autoBackupTimer);
     state.autoBackupTimer = null;
     if (!state.settings.autoBackupEnabled) {
+      state.backupReminderStartedAt = Date.now();
+      state.backupReminderSnoozedUntil = 0;
+      setBackupReminderDue(false);
       updateBackupStatus();
       return;
     }
@@ -3299,6 +3359,12 @@
     elements.backupInterval = $('#backup-interval');
     elements.backupFolder = $('#backup-folder');
     elements.backupOptions = document.querySelector('.backup-options');
+    elements.backupOptionsTitle = $('#backup-options-title');
+    elements.backupEnabledLabel = $('#backup-enabled-label');
+    elements.backupIntervalLabel = $('#backup-interval-label');
+    elements.backupReminder = $('#backup-reminder');
+    elements.backupReminderSave = $('#backup-reminder-save');
+    elements.backupReminderLater = $('#backup-reminder-later');
     elements.backupStatus = $('#backup-status');
     elements.backupNow = $('#backup-now');
     elements.iconFile = $('#icon-file');
@@ -3468,6 +3534,11 @@
     elements.backupOptions.addEventListener('change', updateBackupSettingsSaveState);
     elements.backupFolder.addEventListener('click', () => { void selectBackupDirectory(); });
     elements.backupNow.addEventListener('click', () => { void backupNow(); });
+    elements.backupReminderSave.addEventListener('click', () => { void backupNow(); });
+    elements.backupReminderLater.addEventListener('click', postponeBackupReminder);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void maybeRunAutoBackup();
+    });
     root.addEventListener('beforeunload', handleBeforeUnload);
     $('#clear-history').addEventListener('click', async () => {
       const lastBackup = Date.parse(state.settings.historyBackupLastAt || state.settings.autoBackupLastAt || '');

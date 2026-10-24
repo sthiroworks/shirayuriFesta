@@ -129,6 +129,14 @@ h3 { margin: 24px 0 10px; font-size: .88rem; }
 .backup-settings .settings-help { grid-column: 1 / -1; margin: 4px 0 0; }
 .backup-settings .setting-check { grid-column: 1 / -1; }
 .backup-options #backup-now { margin-left: auto; }
+#backup-folder[hidden] { display: none; }
+.backup-reminder { position: fixed; right: 24px; bottom: 24px; z-index: 55; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; width: min(480px, calc(100vw - 32px)); padding: 14px; border: 1px solid #b9d8d3; border-radius: 12px; color: var(--ink); background: #f4faf7; box-shadow: 0 8px 24px rgba(25, 50, 53, .16); }
+.backup-reminder[hidden] { display: none; }
+.backup-reminder-copy { display: grid; gap: 3px; min-width: 0; }
+.backup-reminder-copy strong { color: var(--teal); font-size: .88rem; }
+.backup-reminder-copy span { color: var(--muted); font-size: .74rem; }
+.backup-reminder-actions { display: flex; gap: 6px; }
+.backup-reminder-actions .button { min-height: 40px; padding: 8px 10px; font-size: .78rem; white-space: nowrap; }
 .is-hidden { display: none !important; }
 
 html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !important; }
@@ -768,6 +776,12 @@ td.money { white-space: nowrap; font-weight: 700; }
   .backup-options .setting-check { min-height: 36px; }
   .backup-options #backup-settings-save { width: 100%; }
   .backup-options #backup-now { width: 100%; margin-left: 0; }
+  .backup-reminder { right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); left: 12px; grid-template-columns: minmax(0, 1fr); width: auto; padding: 12px; gap: 8px; }
+  .backup-reminder-actions { justify-content: flex-end; }
+  .page-shell.admin-mode .backup-reminder,
+  .page-shell[data-active-tab="chart"] .backup-reminder,
+  .page-shell[data-active-tab="history"] .backup-reminder { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .page-shell.mobile-checkout-open .backup-reminder { display: none; }
   .settings-data-actions { align-items: stretch; flex-direction: column; }
   .settings-data-actions strong { margin-right: 0; }
   .settings-data-actions .button { width: 100%; }

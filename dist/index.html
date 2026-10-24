@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#174c4f" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261023-header-original" />
+    <link rel="stylesheet" href="styles.css?v=20261025-iphone-backup" />
   </head>
   <body>
     <section id="shared-login" class="shared-login" aria-labelledby="shared-login-title" hidden>
@@ -42,6 +42,16 @@
 
     <main class="page-shell" data-active-tab="products">
       <div id="status" class="status" role="status" aria-live="polite"></div>
+      <aside id="backup-reminder" class="backup-reminder is-hidden" role="status" hidden>
+        <div class="backup-reminder-copy">
+          <strong>バックアップの時間です</strong>
+          <span>販売履歴をCSVで保存してください。</span>
+        </div>
+        <div class="backup-reminder-actions">
+          <button id="backup-reminder-save" class="button button-primary" type="button">保存・共有</button>
+          <button id="backup-reminder-later" class="button button-secondary" type="button">あとで</button>
+        </div>
+      </aside>
 
       <section
         id="admin-panel"
@@ -358,7 +368,7 @@
               <h2 id="history-backup-title" class="admin-fold-label">
                 <span class="section-kicker">SALES BACKUP</span>
                 <span class="admin-fold-title">販売履歴のバックアップ</span>
-                <span class="admin-fold-description">販売履歴の保存・共有・復元・自動バックアップ</span>
+                <span class="admin-fold-description">販売履歴の保存・共有・復元・定期バックアップ</span>
               </h2>
             </summary>
             <div class="admin-fold-content">
@@ -414,15 +424,15 @@
               </div>
             </details>
             <details id="auto-backup-fold" class="admin-subfold">
-              <summary class="admin-subfold-summary"><h3>自動バックアップの設定</h3></summary>
+              <summary class="admin-subfold-summary"><h3 id="backup-options-title">自動バックアップの設定</h3></summary>
               <div class="admin-subfold-content">
               <div class="backup-options">
                 <label class="setting-check"
                   ><input id="backup-enabled" type="checkbox" />
-                  自動バックアップを有効にする</label
+                  <span id="backup-enabled-label">自動バックアップを有効にする</span></label
                 >
                 <label class="backup-interval-label"
-                  >自動バックアップの間隔
+                  ><span id="backup-interval-label">自動バックアップの間隔</span>
                   <select id="backup-interval">
                     <option value="1">1分ごと</option>
                     <option value="5">5分ごと</option>
@@ -1499,6 +1509,6 @@
     <script src="core.js"></script>
     <script src="storage.js"></script>
     <script src="products.default.js?v=20261024-defaults"></script>
-    <script src="app.js?v=20261023-quantity-share"></script>
+    <script src="app.js?v=20261025-iphone-backup"></script>
   </body>
 </html>
