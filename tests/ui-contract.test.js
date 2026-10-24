@@ -212,7 +212,7 @@ test('app warns when browser persistence is unavailable and resets payment on im
   assert.match(css, /\.received-quick-buttons button\[data-received-add\] \{[^}]*flex: 1 1 0;/);
   assert.match(css, /#checkout-panel \.received-quick-buttons button \{ flex: 1 1 0; min-width: 0;/);
   assert.match(css, /\.received-quick-buttons button \{ min-width: 0; height: 50px;/);
-  assert.match(css, /#exact-total \{ border: 1px solid #[\da-f]{6}; color: var\(--teal\); background: #[\da-f]{6}; \}/i);
+  assert.match(css, /#exact-total \{ border: 1px solid var\(--accent-line\); color: var\(--accent\); background: var\(--accent-soft\); \}/);
   assert.match(css, /#checkout-panel \.payment-box \{[^}]*grid-template-columns: minmax\(112px, 1fr\) minmax\(0, 2\.2fr\); grid-template-areas: "label quick" "received quick" "change quick" "message message";/);
   assert.match(css, /#checkout-panel \.received-label-row \{ grid-area: label; margin: 0; \}/);
   assert.match(css, /#checkout-panel \.received-quick-buttons \{ grid-area: quick; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); grid-template-rows: repeat\(2, 48px\);/);
