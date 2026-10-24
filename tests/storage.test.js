@@ -18,8 +18,8 @@ function fakeStorage(initial = {}) {
 test('default products contain current-day categories and ticket', () => {
   assert.equal(DEFAULT_PRODUCTS.length, 40);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '園グッズ').length, 10);
-  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 9);
-  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服【その他】').length, 1);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 7);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服【その他】').length, 3);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売【予約】').length, 7);
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === 'ありがとうチケット').unitPrice, -50);
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === '手提げ').iconPath, 'assets/icons/tote-bag.png');

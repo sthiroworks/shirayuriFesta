@@ -38,7 +38,7 @@ test('a new register starts with approved stock but no exported historical sales
   }
   assert.deepEqual(DEFAULT_SETTINGS, {
     enabled: true, category: '古園服', siblings: 1, perSibling: 4,
-    productColumnWidth: 'standard', autoBackupEnabled: false, autoBackupIntervalMinutes: 5
+    productColumnWidth: 'standard', autoBackupEnabled: true, autoBackupIntervalMinutes: 5
   });
   const restored = Core.parseSettingsBundle(Core.settingsBundleToJson(DEFAULT_PRODUCTS, DEFAULT_SETTINGS, inventory));
   assert.deepEqual(restored.warnings, []);
@@ -54,7 +54,7 @@ test('new defaults never overwrite saved product or restriction settings', () =>
   assert.deepEqual(Storage.loadProducts(storage, DEFAULT_PRODUCTS).products, DEFAULT_PRODUCTS);
   assert.deepEqual(Storage.loadSettings(storage, DEFAULT_SETTINGS).settings, DEFAULT_SETTINGS);
   const savedProducts = [{ id: 'saved', category: '保存済み', name: '端末の商品', unitPrice: 123, stockLimit: 8 }];
-  const savedSettings = { ...DEFAULT_SETTINGS, siblings: 2, perSibling: 3 };
+  const savedSettings = { ...DEFAULT_SETTINGS, siblings: 2, perSibling: 3, autoBackupEnabled: false };
   Storage.saveProducts(storage, savedProducts);
   Storage.saveSettings(storage, savedSettings);
   assert.deepEqual(Storage.loadProducts(storage, DEFAULT_PRODUCTS).products, savedProducts);

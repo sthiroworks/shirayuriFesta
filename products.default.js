@@ -1,5 +1,5 @@
 (function (root) {
-  // 2026-10-22 のレジ設定を初回起動用に採用。商品ID・並び順・価格・在庫上限・改行位置を保持する。
+  // 2026-10-24 のレジ設定を初回起動用に採用。商品ID・並び順・価格・在庫上限・改行位置を保持する。
   // 販売済み数と会計履歴は含めず、保存済みの端末データも上書きしない。
   const products = [
     ["園グッズ", "手提げ", 800, "tote-bag.png"],
@@ -19,8 +19,8 @@
     ["古園服", "夏服ズボン・スカート", 300, "summer-bottoms.png"],
     ["古園服", "体操服・長袖", 300, "gym-long.png", undefined, undefined, true],
     ["古園服", "体操服・半袖", 300, "gym-short.png"],
-    ["古園服", "カーディガン", 200, "cardigan.png", undefined, undefined, true],
-    ["古園服", "タイツ・レギンス", 100, "tights-leggings.png"],
+    ["古園服【その他】", "カーディガン", 200, "cardigan.png", "古園服::カーディガン", undefined, true],
+    ["古園服【その他】", "タイツ・レギンス", 100, "tights-leggings.png", "古園服::タイツ・レギンス"],
     ["古園服【その他】", "お買い得品（一律）", 50, "bargain-tag.png", "古園服::お買い得品（一律）"],
     ["チケット販売", "おまとめチケット", 500, "ticket-bundle.png"],
     ["チケット販売", "もぐらたたき&\nたこ焼きビンゴ", 100, "mole-whack.png"],
@@ -57,7 +57,7 @@
     "siblings": 1,
     "perSibling": 4,
     "productColumnWidth": "standard",
-    "autoBackupEnabled": false,
+    "autoBackupEnabled": true,
     "autoBackupIntervalMinutes": 5
   });
 
