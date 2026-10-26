@@ -96,7 +96,6 @@
     editingTransactionId: null,
     saleSaving: false,
     pendingChangeConfirmation: null,
-    lastCompletedSale: null,
     statusTimer: null,
     autoBackupTimer: null,
     autoBackupInProgress: false,
@@ -550,7 +549,6 @@
           : `${product.name}は残り${available}個までです。`, 'error');
       }
     }
-    if (quantity > 0) state.lastCompletedSale = null;
     if (quantity === 0) state.cart.delete(id);
     else state.cart.set(id, quantity);
     renderCart();
@@ -1125,7 +1123,6 @@
       : state.editingTransactionId ? '変更を保存'
         : canConfirm && received > cart.total ? `お釣り ${formatYen(received - cart.total)} を確認` : '会計を確定する';
     elements.confirmButton.disabled = state.saleSaving || !canConfirm;
-    renderSaleCompletion();
   }
 
   function renderDashboard() {
@@ -1975,7 +1972,6 @@
     if (state.saleSaving) return;
     const transaction = state.transactions.find((item) => item.id === transactionId);
     if (!transaction) return;
-    state.lastCompletedSale = null;
     cancelChangeConfirmation();
     state.cart.clear();
     state.cartProducts.clear();
@@ -2953,21 +2949,6 @@
     }
   }
 
-  function renderSaleCompletion() {
-    let sale = state.lastCompletedSale;
-    if (sale && !state.transactions.some((transaction) => transaction.id === sale.id && transaction.total === sale.total && transaction.received === sale.received)) {
-      state.lastCompletedSale = null;
-      sale = null;
-    }
-    elements.saleCompletion.hidden = !sale;
-    elements.saleCompletion.classList.toggle('is-hidden', !sale);
-    if (!sale) return;
-    const amount = formatYen(sale.change);
-    const details = `合計 ${formatYen(sale.total)} ／ お預かり ${formatYen(sale.received)}${sale.change === 0 ? '（ちょうど）' : ''}`;
-    if (elements.saleCompletionAmount.textContent !== amount) elements.saleCompletionAmount.textContent = amount;
-    if (elements.saleCompletionDetails.textContent !== details) elements.saleCompletionDetails.textContent = details;
-  }
-
   function setSaleSaving(saving) {
     state.saleSaving = saving;
     elements.pageShell.inert = saving;
@@ -3003,9 +2984,6 @@
         () => Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory));
       state.transactions = nextTransactions;
       state.inventory = nextInventory;
-      state.lastCompletedSale = existing ? null : {
-        id: transaction.id, total: transaction.total, received: transaction.received, change: transaction.change,
-      };
       // Persist successfully before dismissing the mobile checkout; keep it open when validation or storage fails.
       setMobileCheckoutOpen(false, { restoreFocus: false });
       clearCartState();
@@ -3266,8 +3244,6 @@
 
   function lockRemoteSession(message = '') {
     cancelChangeConfirmation();
-    state.lastCompletedSale = null;
-    renderSaleCompletion();
     if (state.remoteSyncTimer) root.clearInterval(state.remoteSyncTimer);
     state.remoteSyncTimer = null;
     if (state.autoBackupTimer) root.clearInterval(state.autoBackupTimer);
@@ -3393,9 +3369,6 @@
     elements.changeConfirmationMessage = $('#change-confirmation-message');
     elements.changeConfirmationCancel = $('#change-confirmation-cancel');
     elements.changeConfirmationConfirm = $('#change-confirmation-confirm');
-    elements.saleCompletion = $('#sale-completion');
-    elements.saleCompletionAmount = $('#sale-completion-amount');
-    elements.saleCompletionDetails = $('#sale-completion-details');
     elements.salesTotal = $('#sales-total');
     elements.transactionCount = $('#transaction-count');
     elements.itemCount = $('#item-count');

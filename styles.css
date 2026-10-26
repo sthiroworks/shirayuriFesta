@@ -344,17 +344,8 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .change-confirmation-dialog .confirmation-dialog-actions { grid-template-columns: minmax(0, 1fr); margin: 0; }
 .change-confirmation-dialog .confirmation-dialog-actions .button { min-height: 48px; padding: 10px; font-size: .88rem; white-space: normal; }
 .change-confirmation-dialog .button:disabled { cursor: wait; opacity: .6; }
-.sale-completion { display: grid; gap: 4px; padding: 14px 16px; border: 1px solid var(--accent-line); border-radius: 12px; color: var(--ink); background: var(--panel); box-shadow: 0 8px 24px rgba(41, 40, 36, .14); }
-.sale-completion[hidden] { display: none; }
-.sale-completion-label { color: var(--accent); font-size: .76rem; font-weight: 700; }
-.sale-completion-change { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 700; }
-.sale-completion-change > span { font-size: .9rem; }
-.sale-completion-change > strong { color: var(--accent); font-size: 2rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.sale-completion-details, .sale-completion-hint { color: var(--muted); font-size: .72rem; }
-.sale-completion-hint { font-size: .66rem; }
 @media (max-width: 560px) {
   .register-notices { right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); left: 12px; width: auto; max-height: calc(100dvh - 180px); }
-  .sale-completion { padding: 12px 14px; }
   .page-shell.admin-mode .register-notices,
   .page-shell[data-active-tab="chart"] .register-notices,
   .page-shell[data-active-tab="history"] .register-notices { bottom: calc(12px + env(safe-area-inset-bottom)); }

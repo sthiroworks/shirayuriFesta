@@ -10,7 +10,7 @@ function harness(directory = '', options = {}) {
   const names = [
     'formatYen', 'getCartLines', 'findProduct', 'getCheckoutLimitSettings', 'changeQuantity',
     'clearCartState', 'renderCart', 'getSaleDraft', 'cancelChangeConfirmation',
-    'showChangeConfirmation', 'requestConfirmSale', 'renderSaleCompletion', 'setSaleSaving',
+    'showChangeConfirmation', 'requestConfirmSale', 'setSaleSaving',
     'confirmSale', 'handleMobileCheckoutKeydown',
   ];
   const functions = names.map((name) => {
@@ -45,7 +45,7 @@ function harness(directory = '', options = {}) {
     settings: { enabled: true, category: '古園服', siblings: 1, perSibling: 4 },
     cart: new Map([['p1', 1]]), cartProducts: new Map(), received: '1000', saleNote: '',
     editingTransactionId: null, temporaryCheckoutSiblings: null, checkoutHeight: null,
-    mobileCheckoutOpen: true, saleSaving: false, pendingChangeConfirmation: null, lastCompletedSale: null,
+    mobileCheckoutOpen: true, saleSaving: false, pendingChangeConfirmation: null,
   };
   const calls = { saves: [], statuses: [], undo: [], mobile: [], fallback: [] };
   let stockError = null;
@@ -88,7 +88,7 @@ function harness(directory = '', options = {}) {
 for (const directory of ['', 'dist/']) {
   const prefix = directory || 'source/';
 
-  test(prefix + 'change requires review, focuses the amount, then persists and retains a receipt', async () => {
+  test(prefix + 'change requires review, focuses the amount, then persists and clears the draft', async () => {
     const h = harness(directory);
     h.api.renderCart();
     assert.equal(h.elements.confirmButton.textContent, 'お釣り ¥800 を確認');
@@ -109,14 +109,8 @@ for (const directory of ['', 'dist/']) {
     assert.equal(h.state.received, '');
     assert.equal(h.state.mobileCheckoutOpen, false);
     assert.equal(h.elements.changeConfirmationDialog.open, false);
-    assert.equal(h.elements.saleCompletion.hidden, false);
-    assert.equal(h.elements.saleCompletionAmount.textContent, '¥800');
-    assert.match(h.elements.saleCompletionDetails.textContent, /合計 ¥200 ／ お預かり ¥1,000/);
-    h.api.renderCart();
-    assert.equal(h.elements.saleCompletion.hidden, false, 'normal refresh does not dismiss the receipt');
     h.api.changeQuantity('p1', 1);
-    assert.equal(h.elements.saleCompletion.hidden, true);
-    assert.equal(h.state.lastCompletedSale, null);
+    assert.equal(h.state.cart.get('p1'), 1, 'the next sale can start normally');
   });
 
   test(prefix + 'cancel keeps the draft and exact payment bypasses the review', async () => {
@@ -133,8 +127,9 @@ for (const directory of ['', 'dist/']) {
     assert.equal(h.elements.confirmButton.textContent, '会計を確定する');
     await h.api.requestConfirmSale();
     assert.equal(h.calls.saves.length, 1);
-    assert.equal(h.elements.saleCompletionAmount.textContent, '¥0');
-    assert.match(h.elements.saleCompletionDetails.textContent, /ちょうど/);
+    assert.equal(h.state.transactions[0].change, 0);
+    assert.equal(h.state.cart.size, 0);
+    assert.equal(h.elements.changeConfirmationDialog.open, false);
   });
 
   test(prefix + 'incomplete, insufficient, empty, stock and purchase-limit errors cannot save', async () => {
@@ -154,12 +149,11 @@ for (const directory of ['', 'dist/']) {
       await h.api.requestConfirmSale();
       assert.equal(h.calls.saves.length, 0);
       assert.equal(h.elements.changeConfirmationDialog.open, false);
-      assert.equal(h.state.lastCompletedSale, null);
       assert.equal(h.calls.statuses.at(-1).type, 'error');
     }
   });
 
-  test(prefix + 'changed receipt, quantity, price or memo requires a fresh review including zero change', async () => {
+  test(prefix + 'changed received amount, quantity, price or memo requires a fresh review including zero change', async () => {
     for (const change of [
       (h) => { h.state.received = '200'; },
       (h) => { h.state.cart.set('p1', 2); },
@@ -198,7 +192,6 @@ for (const directory of ['', 'dist/']) {
     assert.equal(h.state.transactions.length, 0);
     assert.equal(h.state.cart.get('p1'), 1);
     assert.equal(h.state.received, '1000');
-    assert.equal(h.state.lastCompletedSale, null);
     assert.equal(h.elements.pageShell.inert, false);
     assert.equal(h.state.saleSaving, false);
     assert.equal(h.state.mobileCheckoutOpen, true);
@@ -237,7 +230,7 @@ for (const directory of ['', 'dist/']) {
     assert.equal(h.elements.sharedLogout.disabled, false);
   });
 
-  test(prefix + 'history editing updates the same record without a new-cash review or receipt', async () => {
+  test(prefix + 'history editing updates the same record without a new-cash review', async () => {
     const h = harness(directory);
     const original = Core.buildTransaction({ id: 'existing', lines: h.api.getCartLines(), received: 1000 });
     h.state.transactions = [original];
@@ -251,8 +244,6 @@ for (const directory of ['', 'dist/']) {
     assert.equal(h.state.transactions[0].id, 'existing');
     assert.equal(h.state.transactions[0].recordedAt, original.recordedAt);
     assert.equal(h.state.transactions[0].change, 600);
-    assert.equal(h.state.lastCompletedSale, null);
-    assert.equal(h.elements.saleCompletion.hidden, true);
     assert.equal(h.elements.changeConfirmationDialog.open, false);
   });
 
@@ -273,7 +264,7 @@ for (const directory of ['', 'dist/']) {
     assert.match(h.calls.statuses.at(-1).message, /編集中の会計が見つかりません/);
   });
 
-  test(prefix + 'the modal actions and persistent receipt are wired into the responsive UI', () => {
+  test(prefix + 'the modal remains wired into the responsive UI without a post-sale change notice', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', directory, 'index.html'), 'utf8');
     const css = fs.readFileSync(path.join(__dirname, '..', directory, 'styles.css'), 'utf8');
     const app = fs.readFileSync(path.join(__dirname, '..', directory, 'app.js'), 'utf8');
@@ -283,9 +274,11 @@ for (const directory of ['', 'dist/']) {
     assert.match(app, /confirmSale\(state\.pendingChangeConfirmation\)/);
     assert.match(app, /changeConfirmationDialog\.addEventListener\('cancel'/);
     assert.match(app, /if \(state.saleSaving\) event.preventDefault\(\)/);
-    assert.match(html, /class="register-notices">[\s\S]*?id="backup-reminder"[\s\S]*?id="sale-completion"/);
+    assert.match(html, /class="register-notices">[\s\S]*?id="backup-reminder"/);
+    assert.doesNotMatch(html, /id="sale-completion"|直前のお釣り|次の商品を選ぶまで表示/);
+    assert.doesNotMatch(app, /lastCompletedSale|renderSaleCompletion|elements\.saleCompletion/);
+    assert.doesNotMatch(css, /\.sale-completion/);
     assert.match(css, /\.register-notices \{[^}]*display: grid; gap: 10px/);
-    assert.match(css, /\.sale-completion\[hidden\] \{ display: none; \}/);
     assert.match(css, /\.change-confirmation-dialog \{[^}]*overflow-y: auto/);
     assert.match(css, /#checkout-panel \.checkout-actions-footer \.confirm-button \{[^}]*white-space: normal; overflow-wrap: anywhere/);
   });
@@ -300,13 +293,4 @@ for (const directory of ['', 'dist/']) {
     }
   });
 
-  test(prefix + 'a removed or edited completed sale does not leave a stale change receipt', async () => {
-    const h = harness(directory);
-    h.state.received = '200';
-    await h.api.requestConfirmSale();
-    assert.equal(h.elements.saleCompletion.hidden, false);
-    h.state.transactions = [];
-    h.api.renderSaleCompletion();
-    assert.equal(h.elements.saleCompletion.hidden, true);
-  });
 }
