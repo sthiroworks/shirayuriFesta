@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#f3f1eb" />
     <title>白ゆりフェスタ レジ</title>
-    <link rel="stylesheet" href="styles.css?v=20261025-paper-palette" />
+    <link rel="stylesheet" href="styles.css?v=20261026-change-confirmation" />
   </head>
   <body>
     <section id="shared-login" class="shared-login" aria-labelledby="shared-login-title" hidden>
@@ -42,16 +42,24 @@
 
     <main class="page-shell" data-active-tab="products">
       <div id="status" class="status" role="status" aria-live="polite"></div>
-      <aside id="backup-reminder" class="backup-reminder is-hidden" role="status" hidden>
-        <div class="backup-reminder-copy">
-          <strong>バックアップの時間です</strong>
-          <span>販売履歴をCSVで保存してください。</span>
-        </div>
-        <div class="backup-reminder-actions">
-          <button id="backup-reminder-save" class="button button-primary" type="button">保存・共有</button>
-          <button id="backup-reminder-later" class="button button-secondary" type="button">あとで</button>
-        </div>
-      </aside>
+      <div class="register-notices">
+        <aside id="backup-reminder" class="backup-reminder is-hidden" role="status" hidden>
+          <div class="backup-reminder-copy">
+            <strong>バックアップの時間です</strong>
+            <span>販売履歴をCSVで保存してください。</span>
+          </div>
+          <div class="backup-reminder-actions">
+            <button id="backup-reminder-save" class="button button-primary" type="button">保存・共有</button>
+            <button id="backup-reminder-later" class="button button-secondary" type="button">あとで</button>
+          </div>
+        </aside>
+        <aside id="sale-completion" class="sale-completion is-hidden" role="status" hidden>
+          <span class="sale-completion-label">会計を確定しました</span>
+          <div class="sale-completion-change"><span>直前のお釣り</span><strong id="sale-completion-amount">¥0</strong></div>
+          <span id="sale-completion-details" class="sale-completion-details"></span>
+          <span class="sale-completion-hint">次の商品を選ぶまで表示します</span>
+        </aside>
+      </div>
 
       <section
         id="admin-panel"
@@ -1482,6 +1490,30 @@
     </dialog>
 
     <dialog
+      id="change-confirmation-dialog"
+      class="confirmation-dialog change-confirmation-dialog"
+      aria-labelledby="change-confirmation-title"
+      aria-describedby="change-confirmation-message"
+    >
+      <div class="confirmation-dialog-content">
+        <h2 id="change-confirmation-title">お釣りを確認してください</h2>
+        <div class="change-confirmation-change">
+          <span>お釣り</span>
+          <strong id="change-confirmation-amount" tabindex="-1">¥0</strong>
+        </div>
+        <dl class="change-confirmation-breakdown">
+          <div><dt>合計</dt><dd id="change-confirmation-total">¥0</dd></div>
+          <div><dt>お預かり</dt><dd id="change-confirmation-received">¥0</dd></div>
+        </dl>
+        <p id="change-confirmation-message">表示されたお釣りを確認してから、会計を確定してください。</p>
+        <div class="confirmation-dialog-actions">
+          <button id="change-confirmation-confirm" class="button button-primary" type="button">お釣りを確認して確定</button>
+          <button id="change-confirmation-cancel" class="button button-secondary" type="button">戻って修正</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog
       id="clear-cart-dialog"
       class="confirmation-dialog"
       aria-labelledby="clear-cart-dialog-title"
@@ -1509,6 +1541,6 @@
     <script src="core.js"></script>
     <script src="storage.js"></script>
     <script src="products.default.js?v=20261024-defaults"></script>
-    <script src="app.js?v=20261025-iphone-backup"></script>
+    <script src="app.js?v=20261026-change-confirmation"></script>
   </body>
 </html>

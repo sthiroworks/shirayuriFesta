@@ -45,7 +45,7 @@ for (const directory of ['', 'dist/']) {
     assert.doesNotMatch(css, /\.site-header::(?:before|after)/);
     assert.doesNotMatch(css, /(?:linear|radial)-gradient\(/);
     assert.match(html, /name="theme-color" content="#f3f1eb"/);
-    assert.match(html, /styles\.css\?v=20261025-paper-palette/);
+    assert.match(html, /styles\.css\?v=\d{8}-[a-z-]+/);
   });
 
   test(prefix + 'selection, disabled actions and stock errors retain separate visual states', () => {

@@ -94,6 +94,9 @@
     fitCheckoutHeightAfterClear: false,
     mobileCheckoutOpen: false,
     editingTransactionId: null,
+    saleSaving: false,
+    pendingChangeConfirmation: null,
+    lastCompletedSale: null,
     statusTimer: null,
     autoBackupTimer: null,
     autoBackupInProgress: false,
@@ -534,6 +537,7 @@
   }
 
   function changeQuantity(id, nextQuantity) {
+    if (state.saleSaving) return;
     let quantity = Math.max(0, Math.floor(Number(nextQuantity) || 0));
     const product = findProduct(id);
     if (product) {
@@ -546,6 +550,7 @@
           : `${product.name}は残り${available}個までです。`, 'error');
       }
     }
+    if (quantity > 0) state.lastCompletedSale = null;
     if (quantity === 0) state.cart.delete(id);
     else state.cart.set(id, quantity);
     renderCart();
@@ -579,6 +584,7 @@
   }
 
   function clearCartState() {
+    cancelChangeConfirmation();
     state.fitCheckoutHeightAfterClear = state.checkoutHeight != null;
     state.cart.clear();
     state.cartProducts.clear();
@@ -593,6 +599,7 @@
   }
 
   function requestClearCart() {
+    if (state.saleSaving) return;
     const editing = Boolean(state.editingTransactionId);
     elements.clearCartDialogTitle.textContent = editing
       ? '変更内容を取り消しますか？'
@@ -660,6 +667,8 @@
   }
 
   function handleMobileCheckoutKeydown(event) {
+    // ネイティブdialogのフォーカス移動とEscape処理を優先する。
+    if (elements.changeConfirmationDialog.open) return;
     if (!state.mobileCheckoutOpen) return;
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -1082,7 +1091,6 @@
       : `この会計のみ${temporarySiblings}人として計算中。保存済みの設定は変更されません。`;
     elements.checkoutLimitReset.classList.toggle('is-hidden', temporarySiblings == null);
     elements.clearCart.textContent = state.editingTransactionId ? '変更を取り消す' : 'すべて取り消す';
-    elements.confirmButton.textContent = state.editingTransactionId ? '変更を保存' : '会計を確定する';
     elements.editingBadge.classList.toggle('is-hidden', !state.editingTransactionId);
     if (!cart.lineItems.length) {
       elements.cartList.innerHTML = '<div class="empty-state">商品を選ぶと、ここに明細が表示されます。</div>';
@@ -1112,7 +1120,12 @@
     else if (temporarySiblings != null) elements.paymentMessage.textContent = `${limit.category}をこの会計だけ${temporarySiblings}人分として計算しています。`;
     else if (canCalculateChange && received < cart.total) elements.paymentMessage.textContent = `あと${formatYen(cart.total - received)}必要です。`;
     else elements.paymentMessage.textContent = '';
-    elements.confirmButton.disabled = !cart.lineItems.length || cart.total < 0 || Boolean(stockError) || limit.exceeded || !canCalculateChange || received < cart.total;
+    const canConfirm = cart.lineItems.length > 0 && cart.total >= 0 && !stockError && !limit.exceeded && canCalculateChange && received >= cart.total;
+    elements.confirmButton.textContent = state.saleSaving ? '保存中…'
+      : state.editingTransactionId ? '変更を保存'
+        : canConfirm && received > cart.total ? `お釣り ${formatYen(received - cart.total)} を確認` : '会計を確定する';
+    elements.confirmButton.disabled = state.saleSaving || !canConfirm;
+    renderSaleCompletion();
   }
 
   function renderDashboard() {
@@ -1959,8 +1972,11 @@
   }
 
   function editTransaction(transactionId) {
+    if (state.saleSaving) return;
     const transaction = state.transactions.find((item) => item.id === transactionId);
     if (!transaction) return;
+    state.lastCompletedSale = null;
+    cancelChangeConfirmation();
     state.cart.clear();
     state.cartProducts.clear();
     state.temporaryCheckoutSiblings = null;
@@ -2885,28 +2901,111 @@
     void maybeRunAutoBackup();
   }
 
-  async function confirmSale() {
+  function getSaleDraft() {
+    if (state.editingTransactionId && !state.transactions.some((transaction) => transaction.id === state.editingTransactionId)) {
+      throw new Error('編集中の会計が見つかりません。履歴を確認してください。');
+    }
     const lines = getCartLines();
+    const cart = Core.calculateCart(lines);
+    if (!cart.lineItems.length) throw new Error('商品を選んでください。');
+    if (String(state.received).trim() === '') throw new Error('お預かり金額を入力してください。');
+    const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
+    if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
+    const stockError = getCartStockError(lines);
+    if (stockError) throw new Error(stockError.message);
+    // buildTransactionと同じ検証を、確認画面を開く前にも行う。
+    const transaction = Core.buildTransaction({ id: 'preview', lines, received: Number(state.received), note: state.saleNote });
+    const signature = JSON.stringify({ items: transaction.items, received: transaction.received, note: transaction.note || '', editingId: state.editingTransactionId });
+    return { lines, ...transaction, signature };
+  }
+
+  function cancelChangeConfirmation() {
+    state.pendingChangeConfirmation = null;
+    if (elements.changeConfirmationDialog && elements.changeConfirmationDialog.open) elements.changeConfirmationDialog.close();
+  }
+
+  function showChangeConfirmation(draft, changed = false) {
+    state.pendingChangeConfirmation = draft.signature;
+    elements.changeConfirmationAmount.textContent = formatYen(draft.change);
+    elements.changeConfirmationTotal.textContent = formatYen(draft.total);
+    elements.changeConfirmationReceived.textContent = formatYen(draft.received);
+    elements.changeConfirmationMessage.textContent = changed
+      ? '会計内容が変わりました。金額をもう一度確認してください。'
+      : '表示されたお釣りを確認してから、会計を確定してください。';
+    if (typeof elements.changeConfirmationDialog.showModal !== 'function') {
+      if (root.confirm(`お釣り ${formatYen(draft.change)}\n合計 ${formatYen(draft.total)} ／ お預かり ${formatYen(draft.received)}\n\nお釣りを確認して会計を確定しますか？`)) return confirmSale(draft.signature);
+      state.pendingChangeConfirmation = null;
+      return;
+    }
+    if (!elements.changeConfirmationDialog.open) elements.changeConfirmationDialog.showModal();
+    // 開いた直後のEnterが確定ボタンへ届かないよう、金額へフォーカスする。
+    elements.changeConfirmationAmount.focus();
+  }
+
+  async function requestConfirmSale() {
+    if (state.saleSaving || elements.changeConfirmationDialog.open) return;
+    try {
+      const draft = getSaleDraft();
+      if (!state.editingTransactionId && draft.change > 0) return await showChangeConfirmation(draft);
+      return await confirmSale();
+    } catch (error) {
+      setStatus(error.message || '会計内容を確認してください。', 'error');
+    }
+  }
+
+  function renderSaleCompletion() {
+    let sale = state.lastCompletedSale;
+    if (sale && !state.transactions.some((transaction) => transaction.id === sale.id && transaction.total === sale.total && transaction.received === sale.received)) {
+      state.lastCompletedSale = null;
+      sale = null;
+    }
+    elements.saleCompletion.hidden = !sale;
+    elements.saleCompletion.classList.toggle('is-hidden', !sale);
+    if (!sale) return;
+    const amount = formatYen(sale.change);
+    const details = `合計 ${formatYen(sale.total)} ／ お預かり ${formatYen(sale.received)}${sale.change === 0 ? '（ちょうど）' : ''}`;
+    if (elements.saleCompletionAmount.textContent !== amount) elements.saleCompletionAmount.textContent = amount;
+    if (elements.saleCompletionDetails.textContent !== details) elements.saleCompletionDetails.textContent = details;
+  }
+
+  function setSaleSaving(saving) {
+    state.saleSaving = saving;
+    elements.pageShell.inert = saving;
+    elements.adminToggle.disabled = saving;
+    elements.sharedLogout.disabled = saving;
+    elements.checkoutPanel.setAttribute('aria-busy', String(saving));
+    elements.changeConfirmationConfirm.disabled = saving;
+    elements.changeConfirmationCancel.disabled = saving;
+    elements.changeConfirmationConfirm.textContent = saving ? '保存中…' : 'お釣りを確認して確定';
+    renderCart();
+  }
+
+  async function confirmSale(confirmedSignature = null) {
+    if (state.saleSaving) return;
     // 履歴と在庫の次状態を両方保存してから画面上の state を更新し、保存失敗時の表示を食い違わせない。
     try {
-      const limit = Core.calculatePurchaseLimit(lines, getCheckoutLimitSettings());
-      if (limit.exceeded) throw new Error(`${limit.category}は${limit.limit}点までです`);
-      const stockError = getCartStockError(lines);
-      if (stockError) throw new Error(stockError.message);
+      const draft = getSaleDraft();
+      if (!state.editingTransactionId && (draft.change > 0 || confirmedSignature !== null) && confirmedSignature !== draft.signature) {
+        return await showChangeConfirmation(draft, confirmedSignature !== null);
+      }
       const existing = state.transactions.find((transaction) => transaction.id === state.editingTransactionId);
       const transaction = Core.buildTransaction({
         id: existing ? existing.id : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         recordedAt: existing ? existing.recordedAt : new Date().toISOString(),
-        lines,
-        received: Number(state.received),
+        lines: draft.lines,
+        received: draft.received,
         note: state.saleNote,
       });
       const nextTransactions = existing ? Core.upsertTransaction(state.transactions, transaction) : [transaction, ...state.transactions];
       const nextInventory = Core.applyInventoryTransactionChange(state.inventory, existing || null, transaction, state.products);
+      setSaleSaving(true);
       await persistSharedSnapshot({ transactions: nextTransactions, inventory: nextInventory },
         () => Storage.saveSalesAndInventory(storage, nextTransactions, nextInventory));
       state.transactions = nextTransactions;
       state.inventory = nextInventory;
+      state.lastCompletedSale = existing ? null : {
+        id: transaction.id, total: transaction.total, received: transaction.received, change: transaction.change,
+      };
       // Persist successfully before dismissing the mobile checkout; keep it open when validation or storage fails.
       setMobileCheckoutOpen(false, { restoreFocus: false });
       clearCartState();
@@ -2915,7 +3014,10 @@
       else offerUndoForSale(transaction.id);
       setStatus(existing ? `会計を変更しました。${formatYen(transaction.total)}に更新しました。` : `会計を確定しました。${formatYen(transaction.total)}を記録しました。`, 'success');
     } catch (error) {
+      cancelChangeConfirmation();
       setStatus(error.message || '会計を保存できませんでした。', 'error');
+    } finally {
+      if (state.saleSaving) setSaleSaving(false);
     }
   }
 
@@ -3163,6 +3265,9 @@
   }
 
   function lockRemoteSession(message = '') {
+    cancelChangeConfirmation();
+    state.lastCompletedSale = null;
+    renderSaleCompletion();
     if (state.remoteSyncTimer) root.clearInterval(state.remoteSyncTimer);
     state.remoteSyncTimer = null;
     if (state.autoBackupTimer) root.clearInterval(state.autoBackupTimer);
@@ -3281,6 +3386,16 @@
     elements.change = $('#change');
     elements.paymentMessage = $('#payment-message');
     elements.confirmButton = $('#confirm-button');
+    elements.changeConfirmationDialog = $('#change-confirmation-dialog');
+    elements.changeConfirmationAmount = $('#change-confirmation-amount');
+    elements.changeConfirmationTotal = $('#change-confirmation-total');
+    elements.changeConfirmationReceived = $('#change-confirmation-received');
+    elements.changeConfirmationMessage = $('#change-confirmation-message');
+    elements.changeConfirmationCancel = $('#change-confirmation-cancel');
+    elements.changeConfirmationConfirm = $('#change-confirmation-confirm');
+    elements.saleCompletion = $('#sale-completion');
+    elements.saleCompletionAmount = $('#sale-completion-amount');
+    elements.saleCompletionDetails = $('#sale-completion-details');
     elements.salesTotal = $('#sales-total');
     elements.transactionCount = $('#transaction-count');
     elements.itemCount = $('#item-count');
@@ -3460,7 +3575,16 @@
     elements.checkoutLimitAdjustment.addEventListener('change', handleCheckoutLimitAdjustmentChange);
     elements.checkoutLimitReset.addEventListener('click', () => setTemporaryCheckoutSiblings(state.settings.siblings));
     $('#exact-total').addEventListener('click', () => { state.received = String(Core.calculateCart(getCartLines()).total); elements.received.value = state.received; renderCart(); });
-    elements.confirmButton.addEventListener('click', () => { void confirmSale(); });
+    elements.confirmButton.addEventListener('click', () => { void requestConfirmSale(); });
+    elements.changeConfirmationCancel.addEventListener('click', cancelChangeConfirmation);
+    elements.changeConfirmationConfirm.addEventListener('click', () => { void confirmSale(state.pendingChangeConfirmation); });
+    elements.changeConfirmationDialog.addEventListener('cancel', (event) => {
+      if (state.saleSaving) event.preventDefault();
+      else state.pendingChangeConfirmation = null;
+    });
+    elements.changeConfirmationDialog.addEventListener('close', () => {
+      if (!elements.changeConfirmationDialog.open) state.pendingChangeConfirmation = null;
+    });
     elements.clearCart.addEventListener('click', requestClearCart);
     elements.clearCartDialogCancel.addEventListener('click', () => elements.clearCartDialog.close());
     elements.clearCartDialogConfirm.addEventListener('click', confirmClearCart);

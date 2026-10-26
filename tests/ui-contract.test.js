@@ -260,7 +260,8 @@ test('UI exposes editable limits, history actions, and replaceable product icons
   assert.match(app, /aria-label="\$\{escapeHtml\(accessibleLabel\)\}"/);
   assert.match(app, /function getCartStockError\(/);
   assert.match(app, /在庫切れです。管理画面から在庫残数を調整してください/);
-  assert.match(app, /elements\.confirmButton\.disabled = [^;]*Boolean\(stockError\)/);
+  assert.match(app, /const canConfirm = [^;]*!stockError/);
+  assert.match(app, /elements\.confirmButton\.disabled = state\.saleSaving \|\| !canConfirm/);
   assert.match(app, /is-stock-error/);
   assert.match(html, /id="payment-message"[^>]*role="alert"[^>]*aria-live="polite"/);
   assert.match(app, /renderProductManagement/);
