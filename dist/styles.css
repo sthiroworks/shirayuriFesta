@@ -277,6 +277,10 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .analytics-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
 .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
 .checkout-panel { color: var(--ink); }
+.checkout-resize-handle { display: flex; align-items: center; justify-content: center; width: 48px; min-width: 48px; height: 24px; margin: -12px auto 10px; padding: 0; border: 0; border-radius: 999px; color: var(--muted); background: transparent; cursor: ns-resize; touch-action: none; }
+.checkout-resize-handle::before { width: 36px; height: 5px; border-radius: 999px; background: var(--line); content: ""; transition: background-color .16s ease; }
+.checkout-resize-handle:hover::before, .checkout-resize-handle:focus-visible::before { background: var(--accent); }
+.checkout-resize-handle:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .catalog-panel, .checkout-panel, .chart-panel, .analytics-panel, .ranking-panel, .history-panel { padding: 22px; }
 .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .catalog-panel-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; touch-action: pan-y; }
@@ -336,7 +340,8 @@ html[data-shared-gate="locked"] body > :not(#shared-login) { display: none !impo
 .change-confirmation-change { display: grid; justify-items: center; gap: 2px; width: 100%; padding: 16px 10px; border: 1px solid var(--accent-line); border-radius: 10px; background: var(--accent-soft); }
 .change-confirmation-change > span { color: var(--accent); font-size: .85rem; font-weight: 700; }
 #change-confirmation-amount { max-width: 100%; color: var(--accent); font-size: clamp(2.2rem, 10vw, 3.25rem); line-height: 1.25; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-#change-confirmation-amount:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+/* 金額にはフォーカスを移したまま、装飾の枠だけを消す。 */
+#change-confirmation-amount:focus, #change-confirmation-amount:focus-visible { outline: none; }
 .change-confirmation-breakdown { display: grid; gap: 6px; width: 100%; margin: 0; font-size: .86rem; }
 .change-confirmation-breakdown > div { display: flex; justify-content: space-between; gap: 12px; }
 .change-confirmation-breakdown dt { color: var(--muted); }
