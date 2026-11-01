@@ -3671,10 +3671,16 @@
       else elements.sharedPassword.focus();
       return;
     }
+    // 共有モードは上でreturnする。サーバーの商品価格を一般利用者の端末から補正しない。
+    const priceCorrection = Storage.migrateLegacyBraceletPrice(storage, state.products);
+    state.products = priceCorrection.products;
     migrateLegacyTransactionProductIds();
     const inventoryWarning = initializeInventoryLedger();
-    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, inventoryState.warning, settingsState.warning, inventoryWarning];
+    const warnings = [storageInfo.warning, productState.warning, transactionState.warning, inventoryState.warning, settingsState.warning, inventoryWarning, priceCorrection.warning];
     finishAppStartup(warnings);
+    if (priceCorrection.corrected && !warnings.some(Boolean)) {
+      setStatus('予約A枠のブレスレットを200円に修正しました。在庫数と過去の販売価格は変更していません。', 'success');
+    }
   }
 
   if (typeof document !== 'undefined') {

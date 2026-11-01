@@ -10,6 +10,7 @@
   const TRANSACTION_KEY = 'shirayuri-transactions-v1';
   const SETTINGS_KEY = 'shirayuri-settings-v1';
   const INVENTORY_KEY = 'shirayuri-inventory-v1';
+  const BRACELET_PRICE_FIX_KEY = 'shirayuri-bracelet-price-200-v1';
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -63,6 +64,31 @@
 
   function saveProducts(storage, products) {
     saveJson(storage, PRODUCT_KEY, products);
+  }
+
+  function migrateLegacyBraceletPrice(storage, products) {
+    // 旧初期値にあった予約A枠の100円だけを一度補正。他の商品や後日の価格変更は保持する。
+    const unchanged = { products, corrected: false, warning: null };
+    let nextProducts = products;
+    let corrected = false;
+    try {
+      if (storage.getItem(BRACELET_PRICE_FIX_KEY) === 'done') return unchanged;
+      nextProducts = products.map((product) => {
+        if (product.id !== '園グッズ::【予約】A ブレスレット作り(09:20〜)'
+          || !product.name.includes('ブレスレット作り') || product.unitPrice !== 100) return product;
+        corrected = true;
+        return { ...product, unitPrice: 200 };
+      });
+      if (corrected) saveProducts(storage, nextProducts);
+    } catch (error) {
+      return { ...unchanged, warning: 'ブレスレット価格を補正できませんでした。管理画面で予約A枠の単価を200円にしてください。' };
+    }
+    try {
+      storage.setItem(BRACELET_PRICE_FIX_KEY, 'done');
+    } catch (error) {
+      return { products: nextProducts, corrected, warning: '価格補正の完了記録を保存できませんでした。端末の保存容量を確認してください。' };
+    }
+    return { products: nextProducts, corrected, warning: null };
   }
 
   function loadTransactions(storage) {
@@ -147,6 +173,6 @@
     storage.removeItem(TRANSACTION_KEY);
   }
 
-  return { loadProducts, saveProducts, saveProductsAndInventory, loadTransactions, saveTransactions, saveSalesAndInventory, clearTransactions, loadInventory, saveInventory, loadSettings, saveSettings };
+  return { loadProducts, saveProducts, migrateLegacyBraceletPrice, saveProductsAndInventory, loadTransactions, saveTransactions, saveSalesAndInventory, clearTransactions, loadInventory, saveInventory, loadSettings, saveSettings };
 });
 
