@@ -4,7 +4,7 @@
 
 共有モードの構成・設定・初回データ移行は [`cloudflare/README.md`](cloudflare/README.md) を参照してください。共有APIのURLを設定しない場合は、これまでどおり端末ごとの`localStorage`保存で動きます。
 
-ページアイコンは深緑と白ゆりをモチーフにしたオリジナルです。タブ用のSVG・16/32pxのICO・32pxのPNG、スマートフォン用の180/192pxのPNGを同梱しています。元データは `assets/site-icon.svg` と `dist/assets/site-icon.svg` です。両方を同じ内容に編集してから、WindowsのPowerShellで `.\scripts\build-site-icons.ps1` を実行すると各サイズを再生成できます。アイコンの参照先は相対パスなので、GitHub Pagesのプロジェクト配下でも利用できます。
+ページアイコンは白ゆりとレジを組み合わせた、深緑ベースのオリジナルです。金額表示・キー・引き出しでレジを表現しています。タブ用のSVG・16/32pxのICO・32pxのPNG、スマートフォン用の180/192pxのPNGを同梱しています。元データは `assets/site-icon.svg` と `dist/assets/site-icon.svg` です。両方を同じ内容に編集してから、WindowsのPowerShellで `.\scripts\build-site-icons.ps1` を実行すると各サイズを再生成できます。アイコンの参照先は相対パスなので、GitHub Pagesのプロジェクト配下でも利用できます。
 
 ## macOSで使う
 

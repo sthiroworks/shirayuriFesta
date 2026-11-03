@@ -43,12 +43,21 @@ for (const directory of ['', 'dist/']) {
   test(prefix + 'site icon is a self-contained vector with accessible name and no external artwork', () => {
     const svg = read('assets/site-icon.svg').toString('utf8');
     assert.match(svg, /viewBox="0 0 64 64"/);
-    assert.match(svg, /<title id="title">白ゆりフェスタ<\/title>/);
+    assert.match(svg, /<title id="title">白ゆりフェスタ レジ<\/title>/);
     assert.match(svg, /aria-labelledby="title desc"/);
     assert.match(svg, /fill="#36533f"/);
     assert.match(svg, /fill="#fffdf5"/);
     assert.match(svg, /fill="#d9bd80"/);
     assert.doesNotMatch(svg, /<script|<foreignObject|<image|href=|url\(|gradient/i);
+  });
+
+  test(prefix + 'white lily and recognizable register features are both included in the vector', () => {
+    const svg = read('assets/site-icon.svg').toString('utf8');
+    for (const id of ['register-display', 'register-body', 'register-keys', 'register-drawer', 'lily-bloom']) {
+      assert.match(svg, new RegExp('<path id="' + id + '"[^>]*d="[^"]+'), id + ' has vector geometry');
+    }
+    assert.match(svg, /金額表示・キー・引き出し/);
+    assert.match(svg, /id="lily-bloom" fill="#fffdf5"/);
   });
 
   test(prefix + 'all icon links work under a project subdirectory and include a cache version', () => {
@@ -59,7 +68,7 @@ for (const directory of ['', 'dist/']) {
     for (const link of links) {
       const href = /href="([^"]+)"/.exec(link)[1];
       assert.ok(!href.startsWith('/') && !href.includes('://'), 'use a project-relative path');
-      assert.match(href, /\?v=20261103-lily$/);
+      assert.match(href, /\?v=20261103-lily-register$/);
       const resolved = new URL(href, 'https://example.test/shirayuriFesta/index.html');
       assert.ok(resolved.pathname.startsWith('/shirayuriFesta/'));
       assert.ok(fs.existsSync(path.join(projectRoot, directory, href.split('?')[0])));
