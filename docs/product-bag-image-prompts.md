@@ -5,11 +5,11 @@
 | 商品 | 初期設定 | 画像 | 公開用の同一画像 |
 | --- | --- | --- | --- |
 | 巾着M | 園グッズ・200円 | `assets/icons/drawstring-bag-m.png` | `dist/assets/icons/drawstring-bag-m.png` |
-| 通園カバン | 古園服・300円 | `assets/icons/kindergarten-bag-navy-v3.png` | `dist/assets/icons/kindergarten-bag-navy-v3.png` |
+| 通園カバン | 古園服・300円 | `assets/icons/kindergarten-bag-navy-v4.png` | `dist/assets/icons/kindergarten-bag-navy-v4.png` |
 
 実物の写真ではなく、商品を見分けるためのイメージ。生成時は両方とも `transparent_background: true` を指定した。
 
-通園カバンは提供された紺色リュックの正面写真を元に、丸い上部・半円形の前ポケット・丸い金色のボタン・短い持ち手・下部のひもを再現した。既存の `shoe-bag.png` を水彩・色鉛筆調のスタイル参照にして作成後、組み込みの画像生成ツールで形と金色のボタンを保ったまま色だけを黒に近い濃紺へ変更。明るい青色のハイライトも抑えた。古い設定ファイルからの参照に備えて旧画像 `kindergarten-bag.png`・`kindergarten-bag-navy.png`・`kindergarten-bag-navy-v2.png` も残している。
+通園カバンは提供された紺色リュックの正面写真を元に、丸い上部・半円形の前ポケット・丸い金色のボタン・短い持ち手・下部のひもを再現した。既存の `shoe-bag.png` を水彩・色鉛筆調のスタイル参照にして作成。組み込みの画像生成ツールで形と金色のボタンを保ち、本体・ひも・縁取りを黒に近い濃紺に揃えた後、ポケットの輪郭が読み取りやすくなる程度にわずかに明度を上げた。旧版の画像も保存済み設定からの参照用に保持している。
 
 ## 巾着Mの最終プロンプト
 
@@ -20,5 +20,5 @@ Use case: product-mockup. Asset type: a single square transparent PNG product il
 ## 通園カバンの最終プロンプト
 
 ```text
-Use case: precise-object-edit. Input image 1 is the ONLY edit target: the existing transparent watercolor illustration of a front-facing kindergarten backpack. Make a STRICT COLOR-ONLY edit. Darken every navy part of the backpack, including body, curved front pocket flap, piping, top carry loop and bottom webbing straps, to a very deep almost-BLACK midnight navy. The body base color should be around #0D1420, shadows around #080D15, with only restrained dark slate navy highlights around #202A38. The overall first impression must be BLACK with a faint navy undertone, substantially darker than the current blue. Preserve enough soft shading and fine outlines for the front pocket and arched silhouette to remain visible, but remove the bright blue and silvery-blue highlights from the current rendering. Keep EXACTLY the same shape, proportions, front view, curved flap outline, round gold snap button including its size, color and position, loop, two strap tails, edge margins, watercolor/colored pencil texture, and all other geometry. Do not redesign or change materials. Keep the gold button unchanged as the single small contrasting accent. Preserve the genuinely transparent alpha background. Do not add a backdrop, scene, shadows on the ground, text, logo, other objects, patterns or decorative elements. Output a single square transparent PNG product illustration, retaining the original composition and full uncropped backpack.
+Use case: precise-object-edit. Input image 1 is the ONLY edit target: the current almost-black midnight navy watercolor illustration of a front-facing kindergarten backpack with one gold button. Make a VERY SMALL BRIGHTNESS-ONLY adjustment to the navy areas: lift the dark navy body, curved front pocket, piping, top loop and bottom webbing straps just a little, roughly a 10 percent perceived brightness increase. Keep it distinctly very dark, close-to-black navy. Aim for soft dark navy midtones near #152131 with restrained highlights near #293747 and deep shadows still near #0A111B. This is a subtle small lift, not a return to a medium or bright blue bag. Let the watercolor texture and curved pocket edge read a little more easily. Do not increase saturation or add strong shiny highlights. Preserve EXACTLY the same silhouette, shape, proportions, front view, curved pocket flap, seams, loop, two short strap tails, scale, composition, edge margins, colored-pencil/watercolor material and all other details. Keep the round gold snap button completely unchanged in its color, brightness, size and position. Do not redesign the backpack. Preserve the genuinely transparent alpha background with no scene or ground shadow. Do not add patterns, text, logos, borders or other objects. Output a single square transparent PNG containing the same complete uncropped backpack, only slightly brighter in its navy areas.
 ```
