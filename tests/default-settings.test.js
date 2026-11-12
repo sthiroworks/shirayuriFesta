@@ -4,9 +4,9 @@ const Core = require('../core.js');
 const Storage = require('../storage.js');
 const { DEFAULT_PRODUCTS, DEFAULT_SETTINGS } = require('../products.default.js');
 
-test('approved defaults preserve category order, product identities and reservation prices', () => {
+test('approved defaults preserve category order, product identities and bracelet prices', () => {
   assert.deepEqual([...new Set(DEFAULT_PRODUCTS.map((product) => product.category))], [
-    '園グッズ', '古園服', '古園服【その他】', 'チケット販売', 'チケット販売【予約】', '他'
+    '園グッズ', '古園服', '古園服【その他】', 'チケット販売', '他'
   ]);
   const bargain = DEFAULT_PRODUCTS.find((product) => product.name === 'お買い得品（一律）');
   assert.equal(bargain.id, '古園服::お買い得品（一律）');
@@ -14,19 +14,15 @@ test('approved defaults preserve category order, product identities and reservat
   const regular = DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売' && product.stockLimit !== undefined);
   const reserved = DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売【予約】');
   assert.equal(regular.length, 7);
-  assert.equal(reserved.length, 7);
-  assert.deepEqual(regular.map((product) => product.stockLimit), Array(7).fill(13));
-  assert.deepEqual(reserved.map((product) => product.stockLimit), Array(7).fill(2));
+  assert.equal(reserved.length, 0);
+  assert.deepEqual(regular.map((product) => product.stockLimit), Array(7).fill(15));
   const bracelets = DEFAULT_PRODUCTS.filter((product) => product.name.includes('ブレスレット作り'));
-  assert.equal(bracelets.length, 14);
-  assert.deepEqual(bracelets.map((product) => product.unitPrice), Array(14).fill(200));
+  assert.equal(bracelets.length, 7);
+  assert.deepEqual(bracelets.map((product) => product.unitPrice), Array(7).fill(200));
   assert.deepEqual(regular.map((product) => product.name[0]), ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
   assert.deepEqual(DEFAULT_PRODUCTS.filter((product) => product.startNewRow === true).map((product) => product.name), [
     '夏服セーラー', '体操服・長袖', 'カーディガン', 'A ブレスレット作り(09:20〜)'
   ]);
-  assert.equal(reserved[0].id, '園グッズ::【予約】A ブレスレット作り(09:20〜)');
-  assert.equal(reserved[0].iconPath, 'assets/icons/bracelet-resin-coral.png');
-  assert.equal(reserved[1].id, '90d55210-502d-4946-a965-152887a6aa28');
   assert.ok(DEFAULT_PRODUCTS.every((product) => !Object.hasOwn(product, 'icon')));
 });
 
@@ -34,7 +30,7 @@ test('a new register starts with approved stock but no exported historical sales
   const inventory = Core.createInventoryLedger(DEFAULT_PRODUCTS, []);
   assert.deepEqual(inventory.salesByProduct, {});
   assert.deepEqual(inventory.adjustments, []);
-  assert.equal(Object.keys(inventory.remainingByProduct).length, 14);
+  assert.equal(Object.keys(inventory.remainingByProduct).length, 7);
   for (const product of DEFAULT_PRODUCTS.filter((entry) => entry.stockLimit !== undefined)) {
     assert.equal(inventory.remainingByProduct[product.id], product.stockLimit);
   }

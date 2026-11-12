@@ -6,6 +6,14 @@ const path = require('node:path');
 const targetId = '園グッズ::【予約】A ブレスレット作り(09:20〜)';
 const marker = 'shirayuri-bracelet-price-200-v1';
 const productKey = 'shirayuri-products-v1';
+const legacyReservation = Object.freeze({
+  id: targetId,
+  category: 'チケット販売【予約】',
+  name: '【予約】A ブレスレット作り(09:20〜)',
+  unitPrice: 200,
+  iconPath: 'assets/icons/bracelet-resin-coral.png',
+  stockLimit: 2,
+});
 
 function memoryStorage(seed = {}) {
   const values = new Map(Object.entries(seed));
@@ -27,13 +35,12 @@ for (const directory of ['', 'dist/']) {
   const prefix = directory || 'source/';
   const Storage = require('../' + directory + 'storage.js');
   const { DEFAULT_PRODUCTS } = require('../' + directory + 'products.default.js');
-  const target = DEFAULT_PRODUCTS.find((product) => product.id === targetId);
+  const target = legacyReservation;
 
-  test(prefix + 'every default bracelet including reservations costs 200 yen', () => {
+  test(prefix + 'every default bracelet slot costs 200 yen', () => {
     const bracelets = DEFAULT_PRODUCTS.filter((product) => product.name.includes('ブレスレット作り'));
-    assert.equal(bracelets.length, 14);
+    assert.equal(bracelets.length, 7);
     assert.ok(bracelets.every((product) => product.unitPrice === 200));
-    assert.equal(target.unitPrice, 200);
   });
 
   test(prefix + 'only the legacy 100-yen reservation changes; identities, stock, history and settings remain intact', () => {
