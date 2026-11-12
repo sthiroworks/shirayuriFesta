@@ -21,7 +21,7 @@
     ["古園服", "夏服ズボン・スカート", 300, "summer-bottoms.png"],
     ["古園服", "体操服・長袖", 300, "gym-long.png", undefined, undefined, true],
     ["古園服", "体操服・半袖", 300, "gym-short.png"],
-    ["古園服", "通園カバン", 300, "kindergarten-bag.png"],
+    ["古園服", "通園カバン", 300, "kindergarten-bag-navy.png"],
     ["古園服【その他】", "カーディガン", 200, "cardigan.png", "古園服::カーディガン", undefined, true],
     ["古園服【その他】", "タイツ・レギンス", 100, "tights-leggings.png", "古園服::タイツ・レギンス"],
     ["古園服【その他】", "お買い得品（一律）", 50, "bargain-tag.png", "古園服::お買い得品（一律）"],
