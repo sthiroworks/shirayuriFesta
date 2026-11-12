@@ -126,7 +126,8 @@ for (const directory of ['', 'dist/']) {
     assert.match(app.slice(sharedBranch, correction), /\breturn;\s*\}\s*\/\/[^\n]*\n\s*$/);
     assert.equal((app.match(/Storage\.migrateLegacyBraceletPrice\(/g) || []).length, 1);
     for (const filename of ['storage.js', 'products.default.js', 'app.js']) {
-      assert.ok(html.includes('src="' + filename + '?v=20261102-bracelet-price"'));
+      const scriptSrc = html.match(new RegExp('src="' + filename.replace(/\./g, '\\.') + '\\?v=(\\d{8})[^"\\s]*"'));
+      assert.ok(scriptSrc && scriptSrc[1] >= '20261102', filename + ' must load the price correction or a newer version');
     }
   });
 }
