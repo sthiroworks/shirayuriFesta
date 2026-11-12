@@ -1,0 +1,11 @@
+# 先生スタンプラリーの商品画像
+
+先生とスタンプカードを描いた背景透過の商品アイコン。画像は組み込みの画像生成ツールで作成し、既存の「手提げ」「コップ袋」の商品画像を作風の参照にした。256×256pxのPNG。
+
+**ファイル:** `assets/icons/teacher-stamp-rally.png`（公開用: `dist/assets/icons/teacher-stamp-rally.png`）
+
+## 最終プロンプト
+
+```text
+Use case: style-transfer. Asset type: a 256px transparent product icon for the teacher stamp rally at a Japanese kindergarten fair. Input image 1 is a SUBJECT REFERENCE only: the small illustration of a smiling brown-haired teacher in a pink cardigan holding a stamp-rally card. Ignore the image viewer frame, filename label, white page and green checkmark overlay. Input images 2 and 3 are the STYLE REFERENCES from the existing cash-register product icons: a pink flower-pattern tote bag and a blue drawstring cup bag. Create one new friendly teacher stamp-rally illustration that looks as if it were drawn by the SAME illustrator as images 2 and 3. Composition: a cheerful young adult female teacher from the waist up, warm chestnut-brown softly wavy bob haircut, eyes smiling closed, open gentle smile, soft rosy cheeks. She wears a simple rose-pink cardigan over a white blouse and presents one small pale-cream/pale-pink rectangular stamp card toward the viewer. Make 4 small, distinct colorful stamped flower/star circles visible on the card, with no words or numbers. In her other hand she holds one small simple stamp with a rose-red handle, poised beside the card. Keep her face, card and hand-held stamp easy to recognize at a 64px thumbnail. Match the existing reference icons' crisp dark navy ink outlines, clean confident contours, smooth cheerful pastel fills and modest simple two-tone shading. Use the same cute outlined Japanese merchandise-cartoon look. Keep the face and hands warm and expressive. Simplify all details so the card remains legible when small. One teacher and only the card and handheld stamp, centered in a square canvas, entire character and props inside the frame, occupying about 86% of the height with transparent padding. Genuinely transparent background outside the figure; no background scene or cast ground shadow. Avoid photographic or 3D rendering, realistic skin, watercolor paper grain, fabric texture, scratchy strokes, busy sparkles, extra people, extra books, text, letters, numbers, logos, watermark, frame, filename, or UI overlays.
+```
