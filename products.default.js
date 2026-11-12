@@ -8,7 +8,7 @@
     ["園グッズ", "コップ袋", 100, "cup-bag.png"],
     ["園グッズ", "お弁当袋", 500, "lunch-bag.png"],
     ["園グッズ", "ナフキン", 150, "napkin.png"],
-    ["園グッズ", "水筒紐カバー", 150, "bottle-strap-cover.png"],
+    ["園グッズ", "水筒紐カバー", 200, "bottle-strap-cover.png"],
     ["園グッズ", "献金用財布", 100, "donation-wallet.png"],
     ["園グッズ", "スモックフタ", 100, "smock-cover.png"],
     ["園グッズ", "雑巾（２枚）", 50, "cleaning-cloths.png"],
