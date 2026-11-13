@@ -21,7 +21,7 @@ test('approved defaults preserve category order, product identities and bracelet
   assert.deepEqual(bracelets.map((product) => product.unitPrice), Array(7).fill(200));
   assert.deepEqual(regular.map((product) => product.name[0]), ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
   assert.deepEqual(DEFAULT_PRODUCTS.filter((product) => product.startNewRow === true).map((product) => product.name), [
-    '夏服セーラー', '体操服・長袖', 'カーディガン', 'A ブレスレット作り(09:20〜)'
+    '夏服セーラー', '体操服長袖', 'カーディガン', 'A ブレスレット作り(09:20〜)'
   ]);
   assert.ok(DEFAULT_PRODUCTS.every((product) => !Object.hasOwn(product, 'icon')));
 });

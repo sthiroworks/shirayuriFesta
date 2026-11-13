@@ -16,9 +16,9 @@
 古園服,夏服セーラー,200,👕
 古園服,夏服ズボン,300,🩳,assets/icons/summer-pants.png,古園服::夏服ズボン
 古園服,夏服スカート,300,👗,assets/icons/summer-skirt.png,古園服::夏服スカート
-古園服,体操服・長袖,300,🏃,assets/icons/gym-long-shirt.png,古園服::体操服・長袖
-古園服,体操服・半袖,300,🏃‍♀️,assets/icons/gym-short-shirt.png,古園服::体操服・半袖
-古園服,体操服・ズボン,300,🩳,assets/icons/gym-shorts.png,古園服::体操服・ズボン
+古園服,体操服長袖,300,🏃,assets/icons/gym-long-shirt.png,古園服::体操服長袖
+古園服,体操服半袖,300,🏃‍♀️,assets/icons/gym-short-shirt.png,古園服::体操服半袖
+古園服,体操服ズボン,300,🩳,assets/icons/gym-shorts.png,古園服::体操服ズボン
 古園服,カーディガン,200,🧶
 古園服【その他】,タイツ・レギンス・ハイソックス,100,🧦,assets/icons/tights-leggings-high-socks.png,古園服::タイツ・レギンス
 古園服,お買い得品（一律）,50,🏷️
