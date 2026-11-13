@@ -16,9 +16,9 @@ function fakeStorage(initial = {}) {
 }
 
 test('default products contain current-day categories and ticket', () => {
-  assert.equal(DEFAULT_PRODUCTS.length, 35);
+  assert.equal(DEFAULT_PRODUCTS.length, 38);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '園グッズ').length, 11);
-  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 8);
+  assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服').length, 11);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === '古園服【その他】').length, 3);
   assert.equal(DEFAULT_PRODUCTS.filter((product) => product.category === 'チケット販売【予約】').length, 0);
   assert.equal(DEFAULT_PRODUCTS.find((product) => product.name === 'ありがとうチケット').unitPrice, -50);

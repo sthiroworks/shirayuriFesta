@@ -3,6 +3,7 @@
   // 販売済み数と会計履歴は含めず、保存済みの端末データも上書きしない。
   // 2026-11-02: 予約A枠の誤価格を修正。ブレスレットは全枠200円。
   // 2026-11-13: 当日販売は各枠15点。予約枠は初期設定から削除。
+  // 2026-11-13: 古園服の上下を分割し、体操服ズボンとハイソックスを追加。
   const products = [
     ["園グッズ", "手提げ", 800, "tote-bag.png"],
     ["園グッズ", "上履き袋", 500, "shoe-bag.png"],
@@ -17,14 +18,17 @@
     ["園グッズ", "巾着M", 200, "drawstring-bag-m-illustrated.png"],
     ["古園服", "冬服ブレザー", 400, "winter-blazer.png"],
     ["古園服", "冬服ブラウス", 200, "winter-blouse.png"],
-    ["古園服", "冬服ズボン・スカート", 300, "winter-bottoms.png"],
+    ["古園服", "冬服ズボン", 300, "winter-pants.png"],
+    ["古園服", "冬服スカート", 300, "winter-skirt.png"],
     ["古園服", "夏服セーラー", 200, "summer-sailor.png", undefined, undefined, true],
-    ["古園服", "夏服ズボン・スカート", 300, "summer-bottoms.png"],
-    ["古園服", "体操服・長袖", 300, "gym-long.png", undefined, undefined, true],
-    ["古園服", "体操服・半袖", 300, "gym-short.png"],
+    ["古園服", "夏服ズボン", 300, "summer-pants.png"],
+    ["古園服", "夏服スカート", 300, "summer-skirt.png"],
+    ["古園服", "体操服・長袖", 300, "gym-long-shirt.png", undefined, undefined, true],
+    ["古園服", "体操服・半袖", 300, "gym-short-shirt.png"],
+    ["古園服", "体操服・ズボン", 300, "gym-shorts.png"],
     ["古園服", "通園カバン", 300, "kindergarten-bag-navy-illustrated.png"],
     ["古園服【その他】", "カーディガン", 200, "cardigan.png", "古園服::カーディガン", undefined, true],
-    ["古園服【その他】", "タイツ・レギンス", 100, "tights-leggings.png", "古園服::タイツ・レギンス"],
+    ["古園服【その他】", "タイツ・レギンス・ハイソックス", 100, "tights-leggings-high-socks.png", "古園服::タイツ・レギンス"],
     ["古園服【その他】", "お買い得品（一律）", 50, "bargain-tag.png", "古園服::お買い得品（一律）"],
     ["チケット販売", "おまとめチケット", 500, "ticket-bundle.png"],
     ["チケット販売", "もぐらたたき&たこ焼きビンゴ", 100, "mole-whack.png"],
